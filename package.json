@@ -1,0 +1,20 @@
+{
+  "name": "@dopejs/dsh-tui",
+  "version": "0.0.0",
+  "description": "A plugin-native terminal user interface for DeepSeek Harness",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/dopejs/dsh-tui.git"
+  },
+  "engines": {
+    "node": "^22.19.0 || >=24.0.0"
+  },
+  "packageManager": "pnpm@11.7.0",
+  "scripts": {
+    "check": "node scripts/check-docs.mjs",
+    "test": "pnpm check"
+  }
+}
