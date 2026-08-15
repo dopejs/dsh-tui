@@ -6,10 +6,10 @@ distributed as an out-of-tree Harness bundle and run in the same process as the
 agent runtime.
 
 > [!IMPORTANT]
-> This repository is in the design phase. It does not yet contain an installable
-> TUI bundle. The package remains private until the first end-to-end vertical
-> slice is usable, so `dsh plugin` cannot mistake a design scaffold for a working
-> application.
+> This repository is in Milestone 1 development. It contains a tested terminal
+> lifecycle shell but not an installable TUI bundle or agent integration. The
+> package remains private until the first end-to-end vertical slice is usable,
+> so `dsh plugin` cannot mistake the shell for a working application.
 
 ## Direction
 
@@ -46,15 +46,16 @@ tracked explicitly rather than assumed.
 
 ## Development
 
-The repository currently has no third-party development dependencies.
-
 ```bash
 pnpm check
+pnpm build
+pnpm bench
 ```
 
-The check verifies the documentation inventory and local Markdown links. Build,
-typecheck, unit-test, snapshot, and PTY-test commands will be introduced with
-the runtime milestones that need them.
+The check verifies documentation links, lint, TypeScript types, unit tests,
+fixed-size rendering snapshots, and PTY lifecycle tests. The benchmark compares
+the selected Ink adapter with the low-level Terminal Kit spike; its local timing
+is diagnostic and is not yet a portable CI budget.
 
 ## License
 

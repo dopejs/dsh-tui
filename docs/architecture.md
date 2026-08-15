@@ -23,8 +23,9 @@ tui profile = dsh-base + @dopejs/dsh-tui + user patch layers
  command results ──┘
 ```
 
-The renderer is replaceable. The state and lifecycle layers do not import the
-terminal framework.
+The initial renderer uses Ink 7 behind the terminal adapter, as selected in
+[ADR-0004](decisions/0004-select-ink-for-terminal-rendering.md). The renderer
+remains replaceable: state and lifecycle layers do not import Ink or React.
 
 ## Why same-process
 

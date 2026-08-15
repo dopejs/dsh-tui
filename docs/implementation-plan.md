@@ -30,6 +30,11 @@ Exit criteria:
 
 ## Milestone 1 — framework spike and lifecycle shell
 
+Status: **in progress**. The TypeScript gates, Ink selection, startup parser,
+framework-neutral resource owner, lifecycle shell, deterministic empty-screen
+rendering, and initial PTY teardown matrix are implemented. Cordis fixture
+mounting and the remaining platform coverage are not complete.
+
 Goal: prove terminal ownership and Cordis application startup without driving a
 model turn.
 

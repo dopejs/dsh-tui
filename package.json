@@ -14,7 +14,29 @@
   },
   "packageManager": "pnpm@11.7.0",
   "scripts": {
-    "check": "node scripts/check-docs.mjs",
-    "test": "pnpm check"
+    "bench": "vitest bench --run",
+    "build": "tsc -p tsconfig.build.json",
+    "check": "pnpm check:docs && pnpm lint && pnpm typecheck && pnpm test",
+    "check:docs": "node scripts/check-docs.mjs",
+    "lint": "eslint . --max-warnings=0",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "dependencies": {
+    "ink": "7.1.1",
+    "react": "19.2.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "10.0.1",
+    "@lydell/node-pty": "1.2.0-beta.15",
+    "@types/node": "22.19.20",
+    "@types/react": "19.2.18",
+    "@types/terminal-kit": "2.5.7",
+    "eslint": "10.8.1",
+    "terminal-kit": "3.1.4",
+    "tsx": "4.23.12",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.67.0",
+    "vitest": "4.1.10"
   }
 }

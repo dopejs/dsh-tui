@@ -1,0 +1,16 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`renderTerminalKitFrame > renders a deterministic mixed-width candidate frame 1`] = `
+"dsh-tui · spike-session · busy
+transcript 1–3 of 3
+U hello
+A 寬 字  é emoji 👩 🏽‍💻
+T pnpm test
+
+
+
+
+╭─ Approval · agent root
+│ Allow command?
+╰─"
+`;

@@ -15,14 +15,16 @@ preferred.
 
 ## Verification
 
-For the current documentation scaffold:
+For the current lifecycle shell and framework spike:
 
 ```bash
 pnpm check
 ```
 
-Runtime milestones will add TypeScript, reducer, snapshot, and pseudo-terminal
-test gates. Do not weaken or bypass a failing gate.
+`pnpm check` runs documentation validation, lint, typecheck, unit/snapshot tests,
+and pseudo-terminal lifecycle tests. Use `pnpm build` to verify emitted ESM and
+`pnpm bench` when changing renderer performance. Do not weaken or bypass a
+failing gate.
 
 ## Architecture decisions
 
