@@ -24,6 +24,11 @@ artifacts and exercised through their public entry points. Harness is a
 developer preview, so the runtime package pins exact tested peers and does not
 assume compatibility across release candidates.
 
+On Linux, Harness `0.1.0-rc.6` loads `node-pty@1.1.0`, whose npm artifact must
+compile its native addon during installation. pnpm 11 `dlx` invocations must
+therefore pass `--allow-build=node-pty`; no broader dependency-script allowance
+is required by this bundle.
+
 ## Public contracts the TUI expects
 
 - Profile bundles declared through `dsh.bundle.patch` and layered over

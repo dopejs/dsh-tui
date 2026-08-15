@@ -7,6 +7,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { spawn } from '@lydell/node-pty'
 
 const DSH_VERSION = '0.1.0-rc.6'
+const dshDlx = ['dlx', '--allow-build=node-pty', `@deepseek-ai/dsh@${DSH_VERSION}`]
 const root = fileURLToPath(new URL('..', import.meta.url))
 const sandbox = mkdtempSync(join(tmpdir(), 'dsh-tui-package-smoke-'))
 const packDirectory = join(sandbox, 'pack')
@@ -50,8 +51,7 @@ const environment = {
 }
 
 run('pnpm', [
-  'dlx',
-  `@deepseek-ai/dsh@${DSH_VERSION}`,
+  ...dshDlx,
   'plugin',
   '--profile',
   'tui',
@@ -60,8 +60,7 @@ run('pnpm', [
 ], { env: environment })
 
 const help = run('pnpm', [
-  'dlx',
-  `@deepseek-ai/dsh@${DSH_VERSION}`,
+  ...dshDlx,
   '--profile',
   'tui',
   '--help',
@@ -71,8 +70,7 @@ if (!help.includes('dsh --profile tui') || !help.includes('--resume <session-id>
 }
 
 const composed = run('pnpm', [
-  'dlx',
-  `@deepseek-ai/dsh@${DSH_VERSION}`,
+  ...dshDlx,
   '--profile',
   'tui',
   '--dump-config',
@@ -95,8 +93,7 @@ for (const forbidden of [
 
 function runTui(args) {
   const child = spawn('pnpm', [
-    'dlx',
-    `@deepseek-ai/dsh@${DSH_VERSION}`,
+    ...dshDlx,
     '--profile',
     'tui',
     ...args,

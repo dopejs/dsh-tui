@@ -36,15 +36,17 @@ Prerequisites are Node.js `^22.19.0 || >=24.0.0` and pnpm `11.7.0`.
 pnpm install --frozen-lockfile
 pnpm check
 npm pack --pack-destination /tmp
-pnpm dlx @deepseek-ai/dsh@0.1.0-rc.6 plugin --profile tui add \
+pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.6 \
+  plugin --profile tui add \
   /tmp/dopejs-dsh-tui-0.1.0-rc.1.tgz
-pnpm dlx @deepseek-ai/dsh@0.1.0-rc.6 --profile tui
+pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.6 --profile tui
 ```
 
 Start a persisted session again with:
 
 ```bash
-pnpm dlx @deepseek-ai/dsh@0.1.0-rc.6 --profile tui --resume <session-id>
+pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.6 \
+  --profile tui --resume <session-id>
 ```
 
 Press Enter to submit, Ctrl-S to steer, and Ctrl-C to clear or cancel according
