@@ -48,6 +48,8 @@ Use fixture Cordis services and fake agents to test:
 - the exact returned handle is disposed once;
 - listeners and providers unregister before late callbacks can update UI;
 - follow-up, steering, command, and cancellation route correctly;
+- unresolved slash commands never enter either agent inbox and concurrent
+  commands are refused until the owned request settles;
 - `whenIdle()` is treated as whole-agent quiescence;
 - question and approval aborts settle their promises;
 - a request for another agent is delegated or refused, never displayed as the

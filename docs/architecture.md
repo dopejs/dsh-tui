@@ -236,6 +236,13 @@ One input arbiter owns stdin and focus. It routes a completed entry as follows:
 status and automation must not attribute an idle transition to a specific
 follow-up.
 
+The framework-neutral input controller preserves ordinary message text
+verbatim, rejects empty input and entries above 100,000 UTF-16 code units by
+default, and permits only one asynchronous slash command at a time. Command
+cancellation has its own owned signal; agent cancellation always calls the
+exact attached agent with `{ kind: 'user' }`. Disposal aborts and awaits the
+owned command request before releasing the controller.
+
 ## Human interaction
 
 The interaction scheduler serializes terminal ownership across the composer,

@@ -1,4 +1,5 @@
 import type {} from '@deepseek-ai/dsh-compaction/types'
+import { CommandId } from '@deepseek-ai/dsh-commands'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { describe, expect, it } from 'vitest'
 
@@ -304,6 +305,36 @@ describe('transcript reducer', () => {
       'Compaction compact-1 completed',
       'Compaction pruned 1 transcript events',
     ])
+  })
+
+  it('renders durable command lifecycle and ignores durable inbox bookkeeping', () => {
+    const commandId = CommandId('command-1')
+    const state = reduceTranscriptBatch(createTranscriptState(), [
+      event(0, 'agent/inbox/spliced', {
+        inserted: [],
+        start: 0,
+        target: 'next-turn',
+      }),
+      event(1, 'command/run', {
+        args: '  exact args',
+        commandId,
+        name: 'fixture',
+        source: { kind: 'user' },
+      }),
+      event(2, 'command/done', {
+        commandId,
+        kind: 'success',
+        text: 'command output',
+      }),
+    ])
+
+    expect(state.rows).toEqual([{
+      content: '/fixture  exact args\ncommand output',
+      id: 'command:command-1',
+      kind: 'system',
+      status: 'complete',
+    }])
+    expect(state.nextSeq).toBe(3)
   })
 
   it('deduplicates replay overlap and refuses sequence gaps or unknown required events', () => {

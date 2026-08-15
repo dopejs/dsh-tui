@@ -1,4 +1,5 @@
 import type {} from '@deepseek-ai/dsh-compaction/types'
+import type {} from '@deepseek-ai/dsh-commands/types'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 
 import type { TranscriptRow, TranscriptRowKind } from './view-model'
@@ -560,6 +561,44 @@ export function reduceTranscript(
         state.limits,
       )
       break
+    case 'command/run': {
+      const commandId = String(event.data.commandId)
+      const rowId = `command:${commandId}`
+      const commandRow = row(
+        rowId,
+        'system',
+        `/${event.data.name}${event.data.args ?? ''}`,
+        maximum,
+        'pending',
+      )
+      if (!updateRow(fold.rows, rowId, commandRow)) {
+        appendRow(fold, commandRow, state.limits)
+      }
+      break
+    }
+    case 'command/done': {
+      const commandId = String(event.data.commandId)
+      const rowId = `command:${commandId}`
+      const existing = fold.rows.find(candidate => candidate.id === rowId)
+      const outcome = event.data.text
+        ?? (event.data.kind === 'success' ? 'Command completed' : 'Command failed')
+      const content = existing === undefined
+        ? { text: outcome, truncated: false }
+        : pairedToolContent(existing.content, outcome, maximum)
+      const commandRow = row(
+        rowId,
+        'system',
+        content.text,
+        maximum,
+        event.data.kind === 'success' ? 'complete' : 'error',
+        content.truncated,
+      )
+      if (!updateRow(fold.rows, rowId, commandRow)) {
+        appendRow(fold, commandRow, state.limits)
+      }
+      break
+    }
+    case 'agent/inbox/spliced':
     case 'request/context':
     case 'request/header':
     case 'session/end-seed':
@@ -580,7 +619,7 @@ export function reduceTranscript(
       appendRow(
         fold,
         row(
-          `event:${String(event.seq)}`,
+          `event:${String(unknown.seq)}`,
           'system',
           `Skipped informational event: ${unknown.type}`,
           maximum,

@@ -57,7 +57,7 @@ assume compatibility across release candidates.
 
 | dsh-tui | Harness | Status | Notes |
 | --- | --- | --- | --- |
-| `0.0.0` fixture | `47f9438` / npm `0.1.0-rc.6` | Agent lifecycle verified | Exact peers; real AgentRegistry/default-model fixture; transcript semantics in progress. |
+| `0.0.0` fixture | `47f9438` / npm `0.1.0-rc.6` | Agent lifecycle and input contracts verified | Exact peers; real AgentRegistry/default-model fixture; durable transcript/controller and command routing covered. |
 
 ## Upgrade procedure
 

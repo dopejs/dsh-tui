@@ -61,10 +61,12 @@ Exit criteria:
 Status: **in progress**. Loader settlement, default-model setup, create/resume,
 exact `AgentHandle` ownership, listener-first replay/live handoff, sequence-gap
 validation, bounded event batches, quiescent teardown, and the bounded durable
-transcript reducer are implemented. User-driving controls, tool-owned
-presentation, and the final application composition remain. The transcript
-controller now coalesces repaint notifications, exposes a race-free external
-store, and feeds fixed-size Ink snapshots.
+transcript reducer are implemented. Tool-owned presentation and the final
+application composition remain. The transcript controller coalesces repaint
+notifications, exposes a race-free external store, and feeds fixed-size Ink
+snapshots. The input controller routes exact identified follow-up/steering
+messages, rejects every unresolved slash command, executes known commands
+through `ctx.commands`, and owns command/agent cancellation separately.
 
 Goal: create or resume one agent and render a correct text/tool transcript.
 
@@ -86,7 +88,7 @@ Exit criteria:
 - long-output tests remain within defined memory/render budgets;
 - agent disposal reaches quiescence.
 
-MVP progress after the transcript controller/render slice: **68%**. Percentages track the
+MVP progress after the input and control-routing slice: **78%**. Percentages track the
 reviewable production plan agreed for this repository; they are not inferred
 from file or line counts.
 
