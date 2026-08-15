@@ -140,7 +140,7 @@ settlement signals.
 
 ## Performance budgets
 
-Budgets will be measured and fixed during Milestone 2. They must include:
+The current release-candidate budgets are:
 
 - maximum retained expanded tool output per card: 20,000 UTF-16 code units by
   default, with explicit truncation state;

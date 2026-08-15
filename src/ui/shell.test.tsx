@@ -8,8 +8,8 @@ describe('Shell', () => {
     expect(renderToString(<Shell onQuit={() => undefined} />, { columns: 60 }))
       .toMatchInlineSnapshot(`
         "dsh-tui
-        Milestone 1 lifecycle shell
-        new session (agent attachment not implemented)
+        Standalone terminal lifecycle fixture
+        fresh-session terminal path
         Press q or Ctrl-C to exit."
       `)
   })

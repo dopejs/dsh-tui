@@ -1,8 +1,7 @@
 # Contributing
 
-`dsh-tui` is currently in its architecture and vertical-slice phase. Small,
-reviewable changes that preserve the documented dependency direction are
-preferred.
+`dsh-tui` is currently a release candidate. Small, reviewable changes that
+preserve the documented dependency direction are preferred.
 
 ## Before opening a change
 
@@ -15,16 +14,18 @@ preferred.
 
 ## Verification
 
-For the current lifecycle shell and framework spike:
+For every change:
 
 ```bash
 pnpm check
 ```
 
 `pnpm check` runs documentation validation, lint, typecheck, unit/snapshot tests,
-and pseudo-terminal lifecycle tests. Use `pnpm build` to verify emitted ESM and
-`pnpm bench` when changing renderer performance. Do not weaken or bypass a
-failing gate.
+and pseudo-terminal lifecycle tests. Use `pnpm build` to verify bundled ESM and
+declarations, `pnpm test:package` when changing composition or packaging, and
+`pnpm bench` when changing renderer performance. Source TypeScript imports must
+remain extensionless; `tsdown` owns runtime ESM generation. Do not weaken or
+bypass a failing gate.
 
 ## Architecture decisions
 

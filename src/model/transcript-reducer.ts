@@ -1,6 +1,6 @@
 import type {} from '@deepseek-ai/dsh-compaction/types'
 import type {} from '@deepseek-ai/dsh-commands/types'
-import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import { KNOWN_SESSION_EVENT_TYPES, type SessionEvent } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-tools/types'
 import type {} from '@deepseek-ai/dsh-user-approval/types'
 
@@ -698,6 +698,7 @@ export function reduceTranscript(
         readonly seq: number
         readonly type: string
       }
+      if (KNOWN_SESSION_EVENT_TYPES.has(unknown.type)) break
       if (unknown.ignorable !== true) {
         throw new UnsupportedSessionEventError(unknown.type, unknown.seq)
       }

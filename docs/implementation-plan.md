@@ -8,7 +8,8 @@
 - Do not modify DeepSeek Harness core from this repository.
 - When a missing public seam is proven, propose the smallest upstream change
   separately and keep a documented compatibility fallback or minimum version.
-- Do not enable `dsh.bundle` or remove `private: true` until Milestone 3 exits.
+- Keep `dsh.bundle` and publishability gated by Milestone 3's package and
+  teardown tests.
 
 ## Milestone 0 — design baseline
 
@@ -58,19 +59,11 @@ Exit criteria:
 
 ## Milestone 2 — durable transcript vertical slice
 
-Status: **in progress**. Loader settlement, default-model setup, create/resume,
+Status: **complete**. Loader settlement, default-model setup, create/resume,
 exact `AgentHandle` ownership, listener-first replay/live handoff, sequence-gap
-validation, bounded event batches, quiescent teardown, and the bounded durable
-transcript reducer are implemented. The final application composition remains.
-The transcript controller coalesces repaint
-notifications, exposes a race-free external store, and feeds fixed-size Ink
-snapshots. The input controller routes exact identified follow-up/steering
-messages, rejects every unresolved slash command, executes known commands
-through `ctx.commands`, and owns command/agent cancellation separately.
-Tool definitions now resolve in the exact live-agent scope and project generic,
-terminal, diff, search, read, and Web intents into bounded framework-neutral
-cards while retaining durable raw fallbacks. Approval and user-question seams
-share one bounded, abort-aware scheduler and one framework-neutral modal store.
+validation, bounded event batches, quiescent teardown, the durable transcript
+reducer, controller, fixed-size renderer, input routing, and tool presentation
+are implemented and composed in the runtime application.
 
 Goal: create or resume one agent and render a correct text/tool transcript.
 
@@ -92,11 +85,13 @@ Exit criteria:
 - long-output tests remain within defined memory/render budgets;
 - agent disposal reaches quiescence.
 
-MVP progress after the tool-presentation and human-interaction slice: **90%**.
-Percentages track the reviewable production plan agreed for this repository;
-they are not inferred from file or line counts.
-
 ## Milestone 3 — safe interactive MVP
+
+Status: **complete for the release candidate**. The
+bundle metadata, startup/runtime entries, approval and question adapters,
+interactive Ink application, diagnostics, clean-profile tarball smoke, and
+fresh/resume PTY paths are implemented. Publication remains a separate,
+explicit release action.
 
 Goal: cover every human-blocking seam and become installable.
 

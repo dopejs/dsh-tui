@@ -1,20 +1,19 @@
 # dsh-tui
 
-`dsh-tui` is a planned terminal user interface for
-[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). It will be
-distributed as an out-of-tree Harness bundle and run in the same process as the
-agent runtime.
+`dsh-tui` is a terminal user interface for
+[DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). It is
+distributed as an out-of-tree Harness bundle and runs in the same process as
+the agent runtime.
 
 > [!IMPORTANT]
-> This repository has completed Milestone 1. It contains a tested terminal
-> lifecycle shell plus a loader-aware, create/resume-capable Agent runtime. It
-> does not yet contain the complete transcript and interaction surfaces or an
-> installable TUI bundle. The package remains private until the end-to-end
-> vertical slice is usable.
+> This repository contains the `0.1.0-rc.1` release candidate. Its tarball is
+> installable into a clean `dsh` profile and has automated fresh-session,
+> resume, interaction, teardown, and terminal-restoration coverage. It has not
+> been published to npm from this repository yet.
 
-## Direction
+## Capabilities
 
-The TUI will:
+The TUI:
 
 - create and resume agents through `ctx.agents`;
 - render the durable `session/event` log without depending on Web client code;
@@ -28,6 +27,30 @@ The TUI will:
 The initial architecture is deliberately same-process. A remote transport can
 be considered later as a separate adapter and product mode, not mixed into the
 first implementation.
+
+## Install from this checkout
+
+Prerequisites are Node.js `^22.19.0 || >=24.0.0` and pnpm `11.7.0`.
+
+```bash
+pnpm install --frozen-lockfile
+pnpm check
+npm pack --pack-destination /tmp
+pnpm dlx @deepseek-ai/dsh@0.1.0-rc.6 plugin --profile tui add \
+  /tmp/dopejs-dsh-tui-0.1.0-rc.1.tgz
+pnpm dlx @deepseek-ai/dsh@0.1.0-rc.6 --profile tui
+```
+
+Start a persisted session again with:
+
+```bash
+pnpm dlx @deepseek-ai/dsh@0.1.0-rc.6 --profile tui --resume <session-id>
+```
+
+Press Enter to submit, Ctrl-S to steer, and Ctrl-C to clear or cancel according
+to the current state. Use `/exit` for a graceful, durable shutdown. Approval
+prompts accept `y` or `n`; structured questions use arrows, Space, Tab, and
+Enter.
 
 ## Documentation
 
@@ -54,10 +77,13 @@ pnpm build
 pnpm bench
 ```
 
-The check verifies documentation links, lint, TypeScript types, unit tests,
-fixed-size rendering snapshots, and PTY lifecycle tests. The benchmark compares
-the selected Ink adapter with the low-level Terminal Kit spike; its local timing
-is diagnostic and is not yet a portable CI budget.
+The check verifies documentation links, extensionless local TypeScript imports,
+lint, TypeScript types, unit tests, fixed-size rendering snapshots, and PTY
+lifecycle tests. `pnpm test:package` additionally builds and installs the actual
+tarball into a clean temporary profile, then exercises fresh and resumed PTY
+sessions. The benchmark compares the selected Ink adapter with the low-level
+Terminal Kit spike; its local timing remains diagnostic rather than a portable
+CI budget.
 
 CI runs the blocking check on Linux, macOS, and Windows, and covers both the
 minimum Node 22 baseline and the current Node 24 line. POSIX process-signal PTY

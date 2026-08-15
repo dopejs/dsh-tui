@@ -1,13 +1,39 @@
 {
   "name": "@dopejs/dsh-tui",
-  "version": "0.0.0",
+  "version": "0.1.0-rc.1",
   "description": "A plugin-native terminal user interface for DeepSeek Harness",
-  "private": true,
   "type": "module",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "git+ssh://git@github.com/dopejs/dsh-tui.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./startup": {
+      "types": "./lib/startup.d.ts",
+      "default": "./lib/startup.js"
+    },
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/index.*",
+    "lib/startup.*",
+    "cordis.patch.yml"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
   },
   "engines": {
     "node": "^22.19.0 || >=24.0.0"
@@ -15,15 +41,21 @@
   "packageManager": "pnpm@11.7.0",
   "scripts": {
     "bench": "vitest bench --run",
-    "build": "tsc -p tsconfig.build.json",
+    "build": "tsdown",
     "check": "pnpm check:docs && pnpm check:imports && pnpm lint && pnpm typecheck && pnpm test",
     "check:docs": "node scripts/check-docs.mjs",
     "check:imports": "node scripts/check-source-imports.mjs",
     "lint": "eslint . --max-warnings=0",
+    "prepack": "pnpm check",
+    "prepare": "pnpm build",
     "test": "vitest run",
+    "test:package": "node scripts/test-clean-profile.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@deepseek-ai/dsh-cmdline": "0.1.0-rc.6",
+    "@deepseek-ai/dsh-code-runtime-worker-thread": "0.1.0-rc.6",
+    "commander": "15.0.0",
     "ink": "7.1.1",
     "react": "19.2.8"
   },
@@ -60,6 +92,7 @@
     "eslint": "10.8.1",
     "terminal-kit": "3.1.4",
     "tsx": "4.23.12",
+    "tsdown": "0.22.14",
     "typescript": "6.0.3",
     "typescript-eslint": "8.67.0",
     "vitest": "4.1.10"

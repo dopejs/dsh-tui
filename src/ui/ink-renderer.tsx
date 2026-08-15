@@ -28,9 +28,14 @@ const ROW_STATUS: Record<NonNullable<ScreenModel['rows'][number]['status']>, str
 export function Frame({ columns, model }: FrameProps) {
   return (
     <Box flexDirection="column" width={columns}>
-      <Text bold>
+      <Text bold wrap="truncate-end">
         dsh-tui · {model.sessionId} · {model.status}
       </Text>
+      {model.modelLabel === undefined && model.workspace === undefined ? null : (
+        <Text dimColor wrap="truncate-end">
+          {[model.modelLabel, model.workspace].filter(Boolean).join(' · ')}
+        </Text>
+      )}
       <Text dimColor>
         {model.visibleRange === undefined
           ? 'transcript empty'
@@ -68,9 +73,11 @@ interface TranscriptFrameProps {
   readonly columns: number
   readonly controller: TranscriptStore
   readonly interaction?: InteractionStore
+  readonly modelLabel?: string
   readonly sessionId: string
   readonly status: ScreenModel['status']
   readonly terminalRows: number
+  readonly workspace?: string
 }
 
 const EMPTY_INTERACTION_STORE: InteractionStore = {
@@ -108,9 +115,11 @@ export function TranscriptFrame({
   columns,
   controller,
   interaction = EMPTY_INTERACTION_STORE,
+  modelLabel,
   sessionId,
   status,
   terminalRows,
+  workspace,
 }: TranscriptFrameProps) {
   const transcript = useSyncExternalStore(
     controller.subscribe,
@@ -122,14 +131,24 @@ export function TranscriptFrame({
     interaction.getSnapshot,
     interaction.getSnapshot,
   )
+  const modal = interactionModal(pendingInteraction)
 
   return (
     <Frame
       columns={columns}
       model={createScreenModel(
         transcript.rows,
-        { sessionId, status, terminalRows },
-        interactionModal(pendingInteraction),
+        {
+          ...(modal === undefined
+            ? {}
+            : { modalRows: modal.message.split('\n').length + 2 }),
+          ...(modelLabel === undefined ? {} : { modelLabel }),
+          sessionId,
+          status,
+          terminalRows,
+          ...(workspace === undefined ? {} : { workspace }),
+        },
+        modal,
       )}
     />
   )

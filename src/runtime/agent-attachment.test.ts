@@ -231,6 +231,28 @@ describe('attachAgent', () => {
     await ctx.fiber.dispose()
   })
 
+  it('exposes the exact attached agent after listener registration and before replay', async () => {
+    const ctx = new Context()
+    const fixture = createAgentFixture([event(0)])
+    provideAgentServices(ctx, fixture)
+    const abort = new AbortController()
+    const order: string[] = []
+
+    const attachment = await attachAgent(ctx, {
+      ...createOptions(abort.signal, () => {
+        order.push('replay')
+      }),
+      onAttached: (agent) => {
+        expect(agent).toBe(fixture.agent)
+        order.push('attached')
+      },
+    })
+
+    expect(order).toEqual(['attached', 'replay'])
+    await attachment.dispose()
+    await ctx.fiber.dispose()
+  })
+
   it('bounds replay batches', async () => {
     const ctx = new Context()
     const fixture = createAgentFixture([event(0), event(1), event(2), event(3), event(4)])
@@ -288,6 +310,20 @@ describe('attachAgent', () => {
     await expect(attachAgent(ctx, createOptions(abort.signal, onEvents)))
       .rejects.toThrow('reducer failed')
     expect(onEvents).toHaveBeenCalledOnce()
+    expect(fixture.disposeHandle).toHaveBeenCalledOnce()
+    await ctx.fiber.dispose()
+  })
+
+  it('rolls back the listener and handle when attached setup fails', async () => {
+    const ctx = new Context()
+    const fixture = createAgentFixture()
+    provideAgentServices(ctx, fixture)
+    const failure = new Error('attached setup failed')
+
+    await expect(attachAgent(ctx, {
+      ...createOptions(new AbortController().signal, vi.fn()),
+      onAttached: () => { throw failure },
+    })).rejects.toBe(failure)
     expect(fixture.disposeHandle).toHaveBeenCalledOnce()
     await ctx.fiber.dispose()
   })

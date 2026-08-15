@@ -1,0 +1,28 @@
+# Interactive terminal surface over @deepseek-ai/dsh-base. This bundle mounts
+# no Host, HTTP server, Web runtime, or browser rows.
+
+- id: system-prompt
+  config:
+    persona: >-
+      You are a coding agent powered by the {{model}} model. Your working directory is {{cwd}}.
+
+# The shared module reload row is not terminal-lifecycle aware yet.
+- id: hmr
+  disabled: true
+
+- id: tools
+  config:
+    mode: !!js process.env.DSH_TOOLS_MODE
+
+- insert:
+    - id: code-runtime
+      name: '@deepseek-ai/dsh-code-runtime-worker-thread'
+
+    # Parses this surface's app arguments and publishes tuiStartup. On --help
+    # it publishes nothing, so the runtime row remains pending and no TTY opens.
+    - id: tui-startup
+      name: '@dopejs/dsh-tui/startup'
+
+    - id: tui-runtime
+      name: '@dopejs/dsh-tui'
+      inject: [tuiStartup]

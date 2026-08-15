@@ -35,3 +35,5 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
+      - if: matrix.os == 'ubuntu-latest' && matrix.node == '22.19.0'
+        run: pnpm test:package

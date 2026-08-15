@@ -415,6 +415,19 @@ describe('transcript reducer', () => {
       .toBe('Skipped informational event: future/informational')
   })
 
+  it('accepts Harness-known domain events owned by separate projections', () => {
+    const permissionEvent = {
+      data: { preset: 'workspace-write' },
+      seq: 0,
+      time: 0,
+      type: 'permission/preset',
+    } as unknown as SessionEvent
+    const state = reduceTranscript(createTranscriptState(), permissionEvent)
+
+    expect(state.nextSeq).toBe(1)
+    expect(state.rows).toEqual([])
+  })
+
   it('evicts old rows and their pending correlations within configured bounds', () => {
     const callId = 'evicted-call' as CallId
     const state = reduceTranscriptBatch(createTranscriptState({ maxRows: 2 }), [

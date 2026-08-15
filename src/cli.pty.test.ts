@@ -49,7 +49,7 @@ function startCli(
 
 async function waitForScreen(child: IPty, output: () => string): Promise<void> {
   const deadline = Date.now() + 5_000
-  while (!output().includes('Milestone 1 lifecycle shell')) {
+  while (!output().includes('Standalone terminal lifecycle fixture')) {
     if (Date.now() >= deadline) {
       child.kill()
       throw new Error(`TUI did not render before timeout. Output: ${output()}`)

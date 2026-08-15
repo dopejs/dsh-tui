@@ -10,6 +10,7 @@ import { createRuntimePlugin, type RuntimeErrorReporter } from './cordis-runtime
 
 export interface AgentRuntimePluginOptions {
   readonly eventBatchSize?: number
+  readonly onAttached?: AgentAttachmentOptions['onAttached']
   readonly onError?: RuntimeErrorReporter
   readonly onEvents: (
     batch: SessionEventBatch,
@@ -31,6 +32,7 @@ export function createAgentRuntimePlugin(
         ...(options.onError === undefined
           ? {}
           : { onError: (error: unknown) => options.onError?.(ctx, error) }),
+        ...(options.onAttached === undefined ? {} : { onAttached: options.onAttached }),
         onEvents: options.onEvents,
         request: options.request,
         signal,

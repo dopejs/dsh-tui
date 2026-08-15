@@ -23,11 +23,11 @@ export function Shell({ crashAfterRender = false, onQuit, resumeSessionId }: She
   return (
     <Box flexDirection="column">
       <Text bold>dsh-tui</Text>
-      <Text>Milestone 1 lifecycle shell</Text>
+      <Text>Standalone terminal lifecycle fixture</Text>
       <Text dimColor>
         {resumeSessionId === undefined
-          ? 'new session (agent attachment not implemented)'
-          : `resume ${resumeSessionId} (agent attachment not implemented)`}
+          ? 'fresh-session terminal path'
+          : `resume ${resumeSessionId} terminal path`}
       </Text>
       <Text dimColor>Press q or Ctrl-C to exit.</Text>
     </Box>

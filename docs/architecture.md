@@ -99,7 +99,7 @@ The runtime may consume documented package exports providing:
 
 ## Bundle composition
 
-At the first usable milestone, the package will add this distribution metadata:
+The package publishes this distribution metadata:
 
 ```json
 {
@@ -111,7 +111,7 @@ At the first usable milestone, the package will add this distribution metadata:
 }
 ```
 
-The patch should add only terminal-specific rows:
+The patch adds only terminal-specific rows:
 
 1. `tui-startup`, which injects `cmdlineArgs`, parses application arguments, and
    provides immutable startup values.

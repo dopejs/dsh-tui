@@ -31,6 +31,7 @@ export interface SessionEventBatch {
 
 export interface AgentAttachmentOptions {
   readonly eventBatchSize?: number
+  readonly onAttached?: (agent: Agent) => void
   readonly onError?: (error: unknown) => Promise<void> | void
   readonly onEvents: (
     batch: SessionEventBatch,
@@ -312,6 +313,7 @@ export async function attachAgent(
     }
     const eventPump = new SessionEventPump(ctx, handle.agent, pumpOptions, batchSize)
     owner.own('session event pump', () => eventPump.dispose())
+    options.onAttached?.(handle.agent)
     owner.own('attachment abort signal', () => {
       options.signal.removeEventListener('abort', forwardAbort)
       lifecycleAbort.abort()

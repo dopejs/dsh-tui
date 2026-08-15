@@ -32,7 +32,7 @@ async function run(): Promise<void> {
   try {
     term.moveTo(1, 1)
     term.bold('dsh-tui\n')
-    term('Milestone 1 lifecycle shell\n')
+    term('Standalone terminal lifecycle fixture\n')
     term.dim('Terminal Kit candidate\n')
     term.dim('Press q or Ctrl-C to exit.')
     if (process.argv.includes('--crash')) {
