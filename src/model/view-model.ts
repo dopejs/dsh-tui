@@ -1,10 +1,18 @@
 export type TranscriptRowKind = 'assistant' | 'system' | 'tool' | 'user'
 
+export interface ToolCardModel {
+  readonly card: 'diff' | 'generic' | 'read' | 'search' | 'terminal' | 'web'
+  readonly lines: readonly string[]
+  readonly title: string
+  readonly truncated?: true
+}
+
 export interface TranscriptRow {
   readonly content: string
   readonly id: string
   readonly kind: TranscriptRowKind
   readonly status?: 'complete' | 'error' | 'pending' | 'streaming'
+  readonly toolCard?: ToolCardModel
   readonly truncated?: true
 }
 

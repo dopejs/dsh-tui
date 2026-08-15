@@ -16,9 +16,15 @@ export interface RepaintScheduler {
 
 export interface TranscriptControllerOptions {
   readonly limits?: TranscriptLimits
+  readonly projectBatch?: TranscriptBatchProjector
   readonly reportError?: TranscriptErrorReporter
   readonly scheduler?: RepaintScheduler
 }
+
+export type TranscriptBatchProjector = (
+  state: TranscriptState,
+  events: readonly SessionEvent[],
+) => TranscriptState
 
 export interface TranscriptStore {
   readonly getSnapshot: () => TranscriptState
@@ -51,6 +57,7 @@ export class TranscriptController implements TranscriptStore {
   readonly #failures: unknown[] = []
   readonly #reports = new Set<Promise<void>>()
   readonly #scheduler: RepaintScheduler
+  readonly #projectBatch: TranscriptBatchProjector
   #cancelRepaint: (() => void) | undefined
   #disposed = false
   #disposing: Promise<void> | undefined
@@ -58,6 +65,7 @@ export class TranscriptController implements TranscriptStore {
 
   constructor(options: TranscriptControllerOptions = {}) {
     this.#state = createTranscriptState(options.limits)
+    this.#projectBatch = options.projectBatch ?? reduceTranscriptBatch
     this.#reportError = options.reportError ?? ((error) => {
       this.#failures.push(
         new Error('Transcript listener failed without an error reporter', { cause: error }),
@@ -86,7 +94,7 @@ export class TranscriptController implements TranscriptStore {
     if (this.#disposed) throw disposedError()
     if (signal?.aborted === true) throw abortError(signal.reason)
 
-    const next = reduceTranscriptBatch(this.#state, events)
+    const next = this.#projectBatch(this.#state, events)
     if (next === this.#state) return
     this.#state = next
     this.#scheduleRepaint()

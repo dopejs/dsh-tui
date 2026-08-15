@@ -1,6 +1,7 @@
 import type {} from '@deepseek-ai/dsh-compaction/types'
 import { CommandId } from '@deepseek-ai/dsh-commands'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import { ApprovalRequestId } from '@deepseek-ai/dsh-user-approval'
 import { describe, expect, it } from 'vitest'
 
 import {
@@ -335,6 +336,61 @@ describe('transcript reducer', () => {
       status: 'complete',
     }])
     expect(state.nextSeq).toBe(3)
+  })
+
+  it('renders nested code dispatches and durable approval audit pairs', () => {
+    const rootCallId = 'root-call' as CallId
+    const subCallId = 'sub-call' as CallId
+    const approvalId = ApprovalRequestId('approval-1')
+    const state = reduceTranscriptBatch(createTranscriptState(), [
+      event(0, 'tool/code-dispatch-start', {
+        arguments: { path: 'a.ts' },
+        name: 'read',
+        parentCallId: rootCallId,
+        rootCallId,
+        subCallId,
+      }),
+      event(1, 'tool/code-dispatch', {
+        arguments: { path: 'a.ts' },
+        content: [{ text: 'file content', type: 'text' }],
+        isError: false,
+        name: 'read',
+        parentCallId: rootCallId,
+        rootCallId,
+        subCallId,
+      }),
+      event(2, 'approval/asked', {
+        id: approvalId,
+        reason: 'outside sandbox',
+        toolName: 'bash',
+      }),
+      event(3, 'approval/decided', {
+        id: approvalId,
+        outcome: 'rejected',
+      }),
+      event(4, 'approval/policy', { policy: 'never' }),
+    ])
+
+    expect(state.rows).toEqual([
+      {
+        content: 'read {\n  "path": "a.ts"\n}\nfile content',
+        id: 'tool:sub-call',
+        kind: 'tool',
+        status: 'complete',
+      },
+      {
+        content: 'Approval requested for bash: outside sandbox\nApproval rejected',
+        id: 'approval:approval-1',
+        kind: 'system',
+        status: 'error',
+      },
+      {
+        content: 'Approval policy changed to never',
+        id: 'event:4',
+        kind: 'system',
+        status: 'complete',
+      },
+    ])
   })
 
   it('deduplicates replay overlap and refuses sequence gaps or unknown required events', () => {

@@ -205,6 +205,11 @@ widgets:
 Presentation is replay-time pure and may return `undefined`. Missing definitions,
 old arguments, or unsupported intents use a generic fallback derived from the
 durable event. Presentation failure must never prevent transcript replay.
+The projector retains at most 2,000 unresolved calls, 200 detail lines per card,
+and 1,000 UTF-16 code units per detail line by default. It resolves every tool in
+the exact attached-agent scope, applies the same rules to nested code-dispatch
+events, and preserves raw durable result content when a result presenter is
+missing or only supplies structural metadata.
 
 ## Live state
 
@@ -265,6 +270,13 @@ generic answer shape and observes the caller's signal.
 Switching sessions is forbidden while a modal owns terminal input in the MVP.
 Later multi-agent support must define an explicit queue and visible agent identity
 before relaxing that rule.
+
+The scheduler accepts at most 32 pending interactions by default and presents
+them serially. Caller and lifecycle aborts settle queued work promptly; disposal
+unregisters both Harness seams before aborting and awaiting owned work. Question
+answers are validated for exact ids, completeness, option membership,
+single/multi-select rules, duplicate selections, and non-empty custom text before
+they cross the provider boundary.
 
 ## Resource lifecycle
 

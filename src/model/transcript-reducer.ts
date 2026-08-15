@@ -1,6 +1,8 @@
 import type {} from '@deepseek-ai/dsh-compaction/types'
 import type {} from '@deepseek-ai/dsh-commands/types'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
+import type {} from '@deepseek-ai/dsh-tools/types'
+import type {} from '@deepseek-ai/dsh-user-approval/types'
 
 import type { TranscriptRow, TranscriptRowKind } from './view-model'
 
@@ -302,6 +304,14 @@ function toolResultContent(event: SessionEvent<'tool/result'>): string {
   return result === '' ? '[empty tool result]' : result
 }
 
+function renderJson(value: unknown): string {
+  try {
+    return JSON.stringify(value, undefined, 2) ?? '[empty arguments]'
+  } catch {
+    return '[unrenderable arguments]'
+  }
+}
+
 function pairedToolContent(call: string, result: string, maximum: number): BoundedText {
   const combined = `${call}\n${result}`
   if (combined.length <= maximum) return { text: combined, truncated: false }
@@ -495,6 +505,37 @@ export function reduceTranscript(
       fold.pendingTools = fold.pendingTools.filter(item => item.callId !== callId)
       break
     }
+    case 'tool/code-dispatch-start': {
+      const callId = String(event.data.subCallId)
+      const rowId = `tool:${callId}`
+      const content = `${event.data.name} ${renderJson(event.data.arguments)}`.trim()
+      const dispatchRow = row(rowId, 'tool', content, maximum, 'pending')
+      if (!updateRow(fold.rows, rowId, dispatchRow)) {
+        appendRow(fold, dispatchRow, state.limits)
+      }
+      break
+    }
+    case 'tool/code-dispatch': {
+      const callId = String(event.data.subCallId)
+      const rowId = `tool:${callId}`
+      const existing = fold.rows.find(candidate => candidate.id === rowId)
+      const outcome = projectContentBlocks(event.data.content) || '[empty tool result]'
+      const content = existing === undefined
+        ? { text: outcome, truncated: false }
+        : pairedToolContent(existing.content, outcome, maximum)
+      const dispatchRow = row(
+        rowId,
+        'tool',
+        content.text,
+        maximum,
+        event.data.isError ? 'error' : 'complete',
+        content.truncated,
+      )
+      if (!updateRow(fold.rows, rowId, dispatchRow)) {
+        appendRow(fold, dispatchRow, state.limits)
+      }
+      break
+    }
     case 'turn/end': {
       closePendingForTurn(fold, event.data.turn, maximum)
       const content = turnEndContent(event)
@@ -598,6 +639,50 @@ export function reduceTranscript(
       }
       break
     }
+    case 'approval/asked': {
+      const approvalId = String(event.data.id)
+      const rowId = `approval:${approvalId}`
+      const details = [
+        `Approval requested for ${event.data.toolName}`,
+        event.data.reason,
+      ].filter((value): value is string => value !== undefined && value !== '')
+      const approvalRow = row(rowId, 'system', details.join(': '), maximum, 'pending')
+      if (!updateRow(fold.rows, rowId, approvalRow)) {
+        appendRow(fold, approvalRow, state.limits)
+      }
+      break
+    }
+    case 'approval/decided': {
+      const approvalId = String(event.data.id)
+      const rowId = `approval:${approvalId}`
+      const existing = fold.rows.find(candidate => candidate.id === rowId)
+      const outcome = `Approval ${event.data.outcome}`
+      const content = existing === undefined ? outcome : `${existing.content}\n${outcome}`
+      const approvalRow = row(
+        rowId,
+        'system',
+        content,
+        maximum,
+        event.data.outcome === 'allowed-once' ? 'complete' : 'error',
+      )
+      if (!updateRow(fold.rows, rowId, approvalRow)) {
+        appendRow(fold, approvalRow, state.limits)
+      }
+      break
+    }
+    case 'approval/policy':
+      appendRow(
+        fold,
+        row(
+          `event:${String(event.seq)}`,
+          'system',
+          `Approval policy changed to ${event.data.policy}`,
+          maximum,
+          'complete',
+        ),
+        state.limits,
+      )
+      break
     case 'agent/inbox/spliced':
     case 'request/context':
     case 'request/header':

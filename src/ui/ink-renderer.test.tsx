@@ -1,8 +1,10 @@
+import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { SessionEvent } from '@deepseek-ai/dsh-session'
 import { renderToString } from 'ink'
 import { describe, expect, it } from 'vitest'
 
 import { TranscriptController } from '../model/transcript-controller'
+import { InteractionController } from '../model/interaction-controller'
 import { createScreenModel, type TranscriptRow } from '../model/view-model'
 import { renderInkFrame, TranscriptFrame } from './ink-renderer'
 
@@ -125,5 +127,76 @@ describe('renderInkFrame', () => {
       A done"
     `)
     await controller.dispose()
+  })
+
+  it('renders a fixed-size structured terminal card', () => {
+    const model = createScreenModel([{
+      content: 'raw fallback',
+      id: 'tool-card',
+      kind: 'tool',
+      status: 'complete',
+      toolCard: {
+        card: 'terminal',
+        lines: ['$ pnpm test', 'all tests passed', 'exit: 0'],
+        title: 'Run tests',
+      },
+    }], {
+      sessionId: 'tool-session',
+      status: 'idle',
+      terminalRows: 10,
+    })
+
+    expect(renderInkFrame(model, 44)).toMatchInlineSnapshot(`
+      "dsh-tui · tool-session · idle
+      transcript 1–1 of 1
+      T Run tests
+        $ pnpm test
+        all tests passed
+        exit: 0"
+    `)
+  })
+
+  it('renders an agent-labelled plan review from the interaction store', async () => {
+    const transcript = new TranscriptController()
+    const interaction = new InteractionController()
+    const abort = new AbortController()
+    const answering = interaction.askQuestions({
+      agent: { id: 'root-agent' } as unknown as Agent,
+      questions: [{
+        detail: '# Ship safely',
+        header: 'Plan',
+        id: 'review',
+        intent: { approve: 'Approve', kind: 'plan-review' },
+        options: [{ label: 'Approve' }, { label: 'Revise' }],
+        question: 'Proceed?',
+      }],
+    }, abort.signal)
+
+    expect(renderToString(
+      <TranscriptFrame
+        columns={48}
+        controller={transcript}
+        interaction={interaction}
+        sessionId="review-session"
+        status="idle"
+        terminalRows={12}
+      />,
+      { columns: 48 },
+    )).toMatchInlineSnapshot(`
+      "dsh-tui · review-session · idle
+      transcript empty
+      ╭──────────────────────────────────────────────╮
+      │ Plan review · agent root-agent               │
+      │ Plan                                         │
+      │ Proceed?                                     │
+      │ # Ship safely                                │
+      │ [ ] Approve                                  │
+      │ [ ] Revise                                   │
+      ╰──────────────────────────────────────────────╯"
+    `)
+    abort.abort(new Error('done'))
+    await expect(answering).rejects.toThrow('done')
+    interaction.dispose()
+    await transcript.dispose()
   })
 })

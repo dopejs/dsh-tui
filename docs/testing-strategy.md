@@ -36,6 +36,7 @@ Use real tool presentation types and fixture definitions to verify:
 - every known intent maps to a framework-neutral TUI model;
 - missing tools and `undefined` presenters use generic fallback;
 - presenter exceptions are contained;
+- a missing result presenter keeps durable raw result content visible;
 - relative cwd/path handling uses session workspace metadata;
 - truncated search/read/output state is visible;
 - model-facing content is never rewritten by presentation.
@@ -52,6 +53,7 @@ Use fixture Cordis services and fake agents to test:
   commands are refused until the owned request settles;
 - `whenIdle()` is treated as whole-agent quiescence;
 - question and approval aborts settle their promises;
+- modal work is serialized and bounded, and invalid question answers are rejected;
 - a request for another agent is delegated or refused, never displayed as the
   current agent's decision.
 

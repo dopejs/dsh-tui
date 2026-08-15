@@ -2,7 +2,8 @@ import { useSyncExternalStore } from 'react'
 import { Box, Text, renderToString } from 'ink'
 
 import type { TranscriptStore } from '../model/transcript-controller'
-import type { ScreenModel, TranscriptRowKind } from '../model/view-model'
+import type { InteractionSnapshot, InteractionStore } from '../model/interaction-controller'
+import type { InteractionModal, ScreenModel, TranscriptRowKind } from '../model/view-model'
 import { createScreenModel } from '../model/view-model'
 
 const ROW_PREFIX: Record<TranscriptRowKind, string> = {
@@ -37,10 +38,18 @@ export function Frame({ columns, model }: FrameProps) {
       </Text>
       <Box flexDirection="column">
         {model.rows.map((row) => (
-          <Text key={row.id} wrap="truncate-end">
-            {ROW_PREFIX[row.kind]} {row.content}
-            {row.status === undefined ? '' : ROW_STATUS[row.status]}
-          </Text>
+          <Box flexDirection="column" key={row.id}>
+            <Text wrap="truncate-end">
+              {ROW_PREFIX[row.kind]} {row.toolCard?.title ?? row.content}
+              {row.status === undefined ? '' : ROW_STATUS[row.status]}
+            </Text>
+            {row.toolCard?.lines.map((line, index) => (
+              <Text dimColor key={`${row.id}:detail:${String(index)}`} wrap="truncate-end">
+                {'  '}{line}
+              </Text>
+            ))}
+            {row.toolCard?.truncated === true ? <Text dimColor>  [card truncated]</Text> : null}
+          </Box>
         ))}
       </Box>
       {model.modal === undefined ? null : (
@@ -58,14 +67,47 @@ export function Frame({ columns, model }: FrameProps) {
 interface TranscriptFrameProps {
   readonly columns: number
   readonly controller: TranscriptStore
+  readonly interaction?: InteractionStore
   readonly sessionId: string
   readonly status: ScreenModel['status']
   readonly terminalRows: number
 }
 
+const EMPTY_INTERACTION_STORE: InteractionStore = {
+  getSnapshot: () => undefined,
+  subscribe: () => () => undefined,
+}
+
+function interactionModal(snapshot: InteractionSnapshot): InteractionModal | undefined {
+  if (snapshot === undefined) return undefined
+  if (snapshot.kind === 'approval') {
+    return {
+      agentLabel: snapshot.agentLabel,
+      message: [snapshot.toolName, snapshot.reason].filter(Boolean).join(' · '),
+      title: 'Approval',
+    }
+  }
+  return {
+    agentLabel: snapshot.agentLabel,
+    message: snapshot.questions.map(question => [
+      question.header ?? question.id,
+      question.question,
+      question.detail,
+      ...(question.options ?? []).map(option =>
+        option.description === undefined
+          ? `[ ] ${option.label}`
+          : `[ ] ${option.label} — ${option.description}`),
+    ].filter(Boolean).join('\n')).join('\n\n'),
+    title: snapshot.questions.some(question => question.intent?.kind === 'plan-review')
+      ? 'Plan review'
+      : 'Question',
+  }
+}
+
 export function TranscriptFrame({
   columns,
   controller,
+  interaction = EMPTY_INTERACTION_STORE,
   sessionId,
   status,
   terminalRows,
@@ -75,11 +117,20 @@ export function TranscriptFrame({
     controller.getSnapshot,
     controller.getSnapshot,
   )
+  const pendingInteraction = useSyncExternalStore(
+    interaction.subscribe,
+    interaction.getSnapshot,
+    interaction.getSnapshot,
+  )
 
   return (
     <Frame
       columns={columns}
-      model={createScreenModel(transcript.rows, { sessionId, status, terminalRows })}
+      model={createScreenModel(
+        transcript.rows,
+        { sessionId, status, terminalRows },
+        interactionModal(pendingInteraction),
+      )}
     />
   )
 }
