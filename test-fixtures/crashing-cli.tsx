@@ -1,4 +1,4 @@
-import { runCli } from '../src/cli.js'
+import { runCli } from '../src/cli'
 
 runCli([], { crashAfterRender: true }).catch((error: unknown) => {
   const message = error instanceof Error ? error.message : String(error)

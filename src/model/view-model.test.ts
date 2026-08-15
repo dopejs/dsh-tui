@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { createScreenModel, type TranscriptRow } from './view-model.js'
+import { createScreenModel, type TranscriptRow } from './view-model'
 
 const rows: TranscriptRow[] = Array.from({ length: 10_000 }, (_, index) => ({
   content: `row ${index}`,

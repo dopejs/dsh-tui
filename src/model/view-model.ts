@@ -4,6 +4,8 @@ export interface TranscriptRow {
   readonly content: string
   readonly id: string
   readonly kind: TranscriptRowKind
+  readonly status?: 'complete' | 'error' | 'pending' | 'streaming'
+  readonly truncated?: true
 }
 
 export interface InteractionModal {

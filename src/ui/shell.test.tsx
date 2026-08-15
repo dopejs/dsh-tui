@@ -1,7 +1,7 @@
 import { renderToString } from 'ink'
 import { describe, expect, it } from 'vitest'
 
-import { Shell } from './shell.js'
+import { Shell } from './shell'
 
 describe('Shell', () => {
   it('renders the fixed-size empty lifecycle shell', () => {

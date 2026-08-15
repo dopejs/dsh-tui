@@ -10,7 +10,7 @@ import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type { Session, SessionEvent } from '@deepseek-ai/dsh-session'
 import { describe, expect, it, vi } from 'vitest'
 
-import { attachAgent, type SessionEventBatch } from './agent-attachment.js'
+import { attachAgent, type SessionEventBatch } from './agent-attachment'
 
 interface Deferred<T> {
   readonly promise: Promise<T>

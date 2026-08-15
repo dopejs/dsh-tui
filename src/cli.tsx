@@ -1,9 +1,9 @@
 import { pathToFileURL } from 'node:url'
 import { render } from 'ink'
 
-import { ResourceOwner } from './runtime/resource-owner.js'
-import { formatHelp, parseStartupArguments } from './startup.js'
-import { Shell } from './ui/shell.js'
+import { ResourceOwner } from './runtime/resource-owner'
+import { formatHelp, parseStartupArguments } from './startup'
+import { Shell } from './ui/shell'
 
 const TERMINATION_SIGNALS = ['SIGINT', 'SIGTERM'] as const
 

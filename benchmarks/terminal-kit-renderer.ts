@@ -1,6 +1,6 @@
 import terminalKit from 'terminal-kit'
 
-import type { ScreenModel } from '../src/model/view-model.js'
+import type { ScreenModel } from '../src/model/view-model'
 
 function putLine(
   buffer: terminalKit.ScreenBuffer,

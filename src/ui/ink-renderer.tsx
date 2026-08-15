@@ -1,6 +1,6 @@
 import { Box, Text, renderToString } from 'ink'
 
-import type { ScreenModel, TranscriptRowKind } from '../model/view-model.js'
+import type { ScreenModel, TranscriptRowKind } from '../model/view-model'
 
 const ROW_PREFIX: Record<TranscriptRowKind, string> = {
   assistant: 'A',

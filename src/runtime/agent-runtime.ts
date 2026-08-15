@@ -5,8 +5,8 @@ import {
   type AgentAttachmentOptions,
   type AgentAttachmentRequest,
   type SessionEventBatch,
-} from './agent-attachment.js'
-import { createRuntimePlugin, type RuntimeErrorReporter } from './cordis-runtime.js'
+} from './agent-attachment'
+import { createRuntimePlugin, type RuntimeErrorReporter } from './cordis-runtime'
 
 export interface AgentRuntimePluginOptions {
   readonly eventBatchSize?: number

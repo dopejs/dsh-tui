@@ -2,7 +2,7 @@ import { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/cordis-plugin-loader'
 import { describe, expect, it, vi } from 'vitest'
 
-import { createRuntimePlugin } from './cordis-runtime.js'
+import { createRuntimePlugin } from './cordis-runtime'
 
 interface Deferred<T> {
   readonly promise: Promise<T>

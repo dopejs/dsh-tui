@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { createScreenModel, type TranscriptRow } from '../src/model/view-model.js'
-import { renderTerminalKitFrame } from './terminal-kit-renderer.js'
+import { createScreenModel, type TranscriptRow } from '../src/model/view-model'
+import { renderTerminalKitFrame } from './terminal-kit-renderer'
 
 describe('renderTerminalKitFrame', () => {
   it('renders a deterministic mixed-width candidate frame', () => {

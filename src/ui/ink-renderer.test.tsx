@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { createScreenModel, type TranscriptRow } from '../model/view-model.js'
-import { renderInkFrame } from './ink-renderer.js'
+import { createScreenModel, type TranscriptRow } from '../model/view-model'
+import { renderInkFrame } from './ink-renderer'
 
 describe('renderInkFrame', () => {
   it('renders deterministic mixed-width output and agent-scoped interaction', () => {

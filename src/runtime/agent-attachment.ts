@@ -8,7 +8,7 @@ import {
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 
-import { ResourceOwner } from './resource-owner.js'
+import { ResourceOwner } from './resource-owner'
 
 const DEFAULT_EVENT_BATCH_SIZE = 256
 const ATTACHMENT_LOGGER_NAME = 'tui-runtime'

@@ -10,7 +10,7 @@ import AgentDefaultModelConfig from '@deepseek-ai/dsh-agent-default-model'
 import type { Session } from '@deepseek-ai/dsh-session'
 import { describe, expect, it, vi } from 'vitest'
 
-import { createAgentRuntimePlugin } from './agent-runtime.js'
+import { createAgentRuntimePlugin } from './agent-runtime'
 
 interface Deferred<T> {
   readonly promise: Promise<T>

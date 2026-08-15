@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 
-import { ResourceOwner } from './resource-owner.js'
+import { ResourceOwner } from './resource-owner'
 
 describe('ResourceOwner', () => {
   it('disposes resources once in reverse acquisition order', async () => {

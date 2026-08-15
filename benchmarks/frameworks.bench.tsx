@@ -4,9 +4,9 @@ import {
   createScreenModel,
   type ScreenModel,
   type TranscriptRow,
-} from '../src/model/view-model.js'
-import { renderInkFrame } from '../src/ui/ink-renderer.js'
-import { renderTerminalKitFrame } from './terminal-kit-renderer.js'
+} from '../src/model/view-model'
+import { renderInkFrame } from '../src/ui/ink-renderer'
+import { renderTerminalKitFrame } from './terminal-kit-renderer'
 
 const COLUMNS = 100
 const TERMINAL_ROWS = 40

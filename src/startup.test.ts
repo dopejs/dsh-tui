@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { formatHelp, parseStartupArguments } from './startup.js'
+import { formatHelp, parseStartupArguments } from './startup'
 
 describe('parseStartupArguments', () => {
   it('parses help and resume', () => {
