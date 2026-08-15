@@ -1,6 +1,9 @@
+import { useSyncExternalStore } from 'react'
 import { Box, Text, renderToString } from 'ink'
 
+import type { TranscriptStore } from '../model/transcript-controller'
 import type { ScreenModel, TranscriptRowKind } from '../model/view-model'
+import { createScreenModel } from '../model/view-model'
 
 const ROW_PREFIX: Record<TranscriptRowKind, string> = {
   assistant: 'A',
@@ -14,7 +17,14 @@ interface FrameProps {
   readonly model: ScreenModel
 }
 
-function Frame({ columns, model }: FrameProps) {
+const ROW_STATUS: Record<NonNullable<ScreenModel['rows'][number]['status']>, string> = {
+  complete: '',
+  error: ' [error]',
+  pending: ' [pending]',
+  streaming: ' [streaming]',
+}
+
+export function Frame({ columns, model }: FrameProps) {
   return (
     <Box flexDirection="column" width={columns}>
       <Text bold>
@@ -29,6 +39,7 @@ function Frame({ columns, model }: FrameProps) {
         {model.rows.map((row) => (
           <Text key={row.id} wrap="truncate-end">
             {ROW_PREFIX[row.kind]} {row.content}
+            {row.status === undefined ? '' : ROW_STATUS[row.status]}
           </Text>
         ))}
       </Box>
@@ -41,6 +52,35 @@ function Frame({ columns, model }: FrameProps) {
         </Box>
       )}
     </Box>
+  )
+}
+
+interface TranscriptFrameProps {
+  readonly columns: number
+  readonly controller: TranscriptStore
+  readonly sessionId: string
+  readonly status: ScreenModel['status']
+  readonly terminalRows: number
+}
+
+export function TranscriptFrame({
+  columns,
+  controller,
+  sessionId,
+  status,
+  terminalRows,
+}: TranscriptFrameProps) {
+  const transcript = useSyncExternalStore(
+    controller.subscribe,
+    controller.getSnapshot,
+    controller.getSnapshot,
+  )
+
+  return (
+    <Frame
+      columns={columns}
+      model={createScreenModel(transcript.rows, { sessionId, status, terminalRows })}
+    />
   )
 }
 

@@ -138,9 +138,11 @@ settlement signals.
 
 Budgets will be measured and fixed during Milestone 2. They must include:
 
-- maximum retained expanded tool output per card;
-- maximum number of fully materialized transcript rows;
-- maximum repaint frequency during chunk streams;
+- maximum retained expanded tool output per card: 20,000 UTF-16 code units by
+  default, with explicit truncation state;
+- maximum number of fully materialized transcript rows: 2,000 by default;
+- maximum repaint frequency during chunk streams: one controller notification
+  per event-loop turn and no more than the renderer's configured 20 FPS;
 - cold replay time for representative long sessions;
 - resize/reflow latency for the visible window;
 - quiescent shutdown deadline before launcher escalation.

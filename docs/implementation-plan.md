@@ -62,7 +62,9 @@ Status: **in progress**. Loader settlement, default-model setup, create/resume,
 exact `AgentHandle` ownership, listener-first replay/live handoff, sequence-gap
 validation, bounded event batches, quiescent teardown, and the bounded durable
 transcript reducer are implemented. User-driving controls, tool-owned
-presentation, and renderer integration remain.
+presentation, and the final application composition remain. The transcript
+controller now coalesces repaint notifications, exposes a race-free external
+store, and feeds fixed-size Ink snapshots.
 
 Goal: create or resume one agent and render a correct text/tool transcript.
 
@@ -84,7 +86,7 @@ Exit criteria:
 - long-output tests remain within defined memory/render budgets;
 - agent disposal reaches quiescence.
 
-MVP progress after the durable transcript reducer slice: **55%**. Percentages track the
+MVP progress after the transcript controller/render slice: **68%**. Percentages track the
 reviewable production plan agreed for this repository; they are not inferred
 from file or line counts.
 

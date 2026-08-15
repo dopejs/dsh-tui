@@ -154,10 +154,20 @@ re-reads immutable log snapshots in batches of at most 256 events. The log,
 not an unbounded callback queue, remains the recovery source when several
 events arrive during one render update.
 
+A framework-neutral transcript controller folds each accepted batch
+synchronously, then schedules at most one subscriber notification for the next
+event-loop turn. React consumes its stable snapshot through the external-store
+contract, closing the read-before-subscribe race without moving framework types
+outside `src/ui/`. Disposal cancels a pending notification, unregisters every
+subscriber, and awaits owned asynchronous error reports.
+
 ## Durable transcript model
 
 The append-only session log is the source of truth. The transcript reducer is a
 pure function over ordered events and uses event sequence as stable identity.
+It retains at most 2,000 materialized rows and 20,000 UTF-16 code units per row
+by default; both limits are configurable within validated hard ceilings, and
+eviction/truncation remains visible in the projected state.
 
 The TUI must not equate the human transcript with `session.surface`. The surface
 is the current model-visible projection and can shadow earlier nodes after
