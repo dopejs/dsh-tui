@@ -56,7 +56,8 @@ src/
 ├── startup.ts                 application argv -> tuiStartup service
 ├── index.ts                   Cordis plugin entry and composition root
 ├── runtime/
-│   ├── owner.ts               AgentHandle and terminal lifecycle
+│   ├── resource-owner.ts      generic reverse-order async ownership
+│   ├── cordis-runtime.ts      loader settlement and runtime ownership
 │   ├── attach.ts              create/resume and event handoff
 │   └── interaction-scheduler.ts
 ├── model/
@@ -257,6 +258,13 @@ Shutdown stops new input, aborts pending UI operations, closes listeners so late
 callbacks are silent, disposes and awaits the agent handle, drains rendering,
 and finally restores terminal state. Every path, including startup failure, runs
 terminal restoration in `finally`.
+
+The Cordis mount registers its disposer synchronously and runs loader settlement
+behind an owned abortable task. It does not return loader settlement from the
+plugin callback: doing so would make disposal wait for a loader promise that may
+only settle after the same tree finishes unloading. On unload, the mount aborts
+settlement/startup, joins the task, and disposes any runtime that completed in
+the race exactly once.
 
 ## Boundedness and backpressure
 

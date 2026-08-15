@@ -32,8 +32,9 @@ Exit criteria:
 
 Status: **in progress**. The TypeScript gates, Ink selection, startup parser,
 framework-neutral resource owner, lifecycle shell, deterministic empty-screen
-rendering, and initial PTY teardown matrix are implemented. Cordis fixture
-mounting and the remaining platform coverage are not complete.
+rendering, PTY teardown matrix, loader-aware Cordis fixture mounting, and
+cross-platform CI definition are implemented. Agent create/resume attachment is
+the next vertical slice.
 
 Goal: prove terminal ownership and Cordis application startup without driving a
 model turn.

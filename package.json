@@ -26,7 +26,13 @@
     "ink": "7.1.1",
     "react": "19.2.8"
   },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/cordis-plugin-loader": "1.0.2"
+  },
   "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.1",
+    "@deepseek-ai/cordis-plugin-loader": "1.0.2",
     "@eslint/js": "10.0.1",
     "@lydell/node-pty": "1.2.0-beta.15",
     "@types/node": "22.19.20",

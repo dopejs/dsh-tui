@@ -13,6 +13,8 @@ interface PtyResult {
   readonly output: string
 }
 
+const itWithPosixSignals = process.platform === 'win32' ? it.skip : it
+
 function startCli(
   entry = cli,
   measureTerminalState = false,
@@ -98,7 +100,7 @@ describe('CLI terminal lifecycle', () => {
     expect(result.output).toContain('\u001B[?1049l')
   })
 
-  it.each(['SIGINT', 'SIGTERM'] as const)(
+  itWithPosixSignals.each(['SIGINT', 'SIGTERM'] as const)(
     'restores the alternate screen after %s',
     async (signal) => {
       const result = await exerciseExit((child) => {
@@ -142,7 +144,7 @@ describe('Terminal Kit candidate lifecycle', () => {
     }
   })
 
-  it.each(['SIGINT', 'SIGTERM'] as const)(
+  itWithPosixSignals.each(['SIGINT', 'SIGTERM'] as const)(
     'restores the alternate screen after %s',
     async (signal) => {
       const running = startCli(terminalKitCli)

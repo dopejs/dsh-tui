@@ -7,9 +7,10 @@ agent runtime.
 
 > [!IMPORTANT]
 > This repository is in Milestone 1 development. It contains a tested terminal
-> lifecycle shell but not an installable TUI bundle or agent integration. The
-> package remains private until the first end-to-end vertical slice is usable,
-> so `dsh plugin` cannot mistake the shell for a working application.
+> lifecycle shell and a loader-aware Cordis runtime mount, but not an
+> installable TUI bundle or agent integration. The package remains private
+> until the first end-to-end vertical slice is usable, so `dsh plugin` cannot
+> mistake the shell for a working application.
 
 ## Direction
 
@@ -56,6 +57,11 @@ The check verifies documentation links, lint, TypeScript types, unit tests,
 fixed-size rendering snapshots, and PTY lifecycle tests. The benchmark compares
 the selected Ink adapter with the low-level Terminal Kit spike; its local timing
 is diagnostic and is not yet a portable CI budget.
+
+CI runs the blocking check on Linux, macOS, and Windows, and covers both the
+minimum Node 22 baseline and the current Node 24 line. POSIX process-signal PTY
+cases run on Linux and macOS; Windows runs the interactive Ctrl-C and supported
+terminal lifecycle paths.
 
 ## License
 

@@ -122,7 +122,10 @@ Before publishing:
 | Windows | Unit, snapshots, terminal adapter and lifecycle paths supported by the chosen framework |
 
 Node versions follow the tested Harness engine range. At minimum, CI covers the
-lowest supported Node 22 release and the current supported release line.
+lowest supported Node 22 release and the current supported release line. POSIX
+`SIGINT`/`SIGTERM` delivery is asserted on Linux and macOS; Windows asserts
+interactive Ctrl-C plus normal and failure cleanup because its pseudo-terminal
+process API does not provide equivalent POSIX signal delivery.
 
 ## Determinism
 

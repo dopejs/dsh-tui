@@ -12,6 +12,8 @@ The initial design was inspected against DeepSeek Harness:
 | Inspection date | 2026-08-14 |
 | Node engine | `^22.19.0 || >=24.0.0` |
 | Package manager | `pnpm@11.7.0` |
+| Cordis | `4.0.1` |
+| Cordis loader | `1.0.2` |
 
 Harness is a developer preview. The runtime package must pin or declare a narrow
 tested peer range; semver compatibility is not assumed across release candidates.
@@ -49,7 +51,7 @@ tested peer range; semver compatibility is not assumed across release candidates
 
 | dsh-tui | Harness | Status | Notes |
 | --- | --- | --- | --- |
-| design only | `47f9438` / `0.1.0-rc.5` | Architecture inspected | No runtime package yet. |
+| `0.0.0` fixture | `47f9438` / `0.1.0-rc.5` | Cordis lifecycle verified | Exact Cordis/loader peers; agent services not integrated yet. |
 
 ## Upgrade procedure
 
