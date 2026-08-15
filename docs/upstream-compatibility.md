@@ -8,15 +8,21 @@ The initial design was inspected against DeepSeek Harness:
 | --- | --- |
 | Repository | `deepseek-ai/deepseek-harness` |
 | Commit | `47f943859bef60e4160492346772ded9b24f765a` |
-| Package version | `0.1.0-rc.5` |
-| Inspection date | 2026-08-14 |
+| Source manifest version | `0.1.0-rc.5` |
+| Published package baseline | `0.1.0-rc.6` |
+| Source inspection date | 2026-08-14 |
+| Artifact verification date | 2026-08-15 |
 | Node engine | `^22.19.0 || >=24.0.0` |
 | Package manager | `pnpm@11.7.0` |
 | Cordis | `4.0.1` |
 | Cordis loader | `1.0.2` |
 
-Harness is a developer preview. The runtime package must pin or declare a narrow
-tested peer range; semver compatibility is not assumed across release candidates.
+The fixed source commit carries `rc.5` package manifests, but npm does not
+publish that version; the installable artifacts are `rc.6`. The relevant Agent,
+Session, default-model, and Cordis declarations were checked from the installed
+artifacts and exercised through their public entry points. Harness is a
+developer preview, so the runtime package pins exact tested peers and does not
+assume compatibility across release candidates.
 
 ## Public contracts the TUI expects
 
@@ -51,7 +57,7 @@ tested peer range; semver compatibility is not assumed across release candidates
 
 | dsh-tui | Harness | Status | Notes |
 | --- | --- | --- | --- |
-| `0.0.0` fixture | `47f9438` / `0.1.0-rc.5` | Cordis lifecycle verified | Exact Cordis/loader peers; agent services not integrated yet. |
+| `0.0.0` fixture | `47f9438` / npm `0.1.0-rc.6` | Agent lifecycle verified | Exact peers; real AgentRegistry/default-model fixture; transcript semantics in progress. |
 
 ## Upgrade procedure
 

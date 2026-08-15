@@ -6,11 +6,11 @@ distributed as an out-of-tree Harness bundle and run in the same process as the
 agent runtime.
 
 > [!IMPORTANT]
-> This repository is in Milestone 1 development. It contains a tested terminal
-> lifecycle shell and a loader-aware Cordis runtime mount, but not an
-> installable TUI bundle or agent integration. The package remains private
-> until the first end-to-end vertical slice is usable, so `dsh plugin` cannot
-> mistake the shell for a working application.
+> This repository has completed Milestone 1. It contains a tested terminal
+> lifecycle shell plus a loader-aware, create/resume-capable Agent runtime. It
+> does not yet contain the complete transcript and interaction surfaces or an
+> installable TUI bundle. The package remains private until the end-to-end
+> vertical slice is usable.
 
 ## Direction
 
@@ -42,8 +42,9 @@ first implementation.
 
 The design was validated against DeepSeek Harness commit
 [`47f943859bef60e4160492346772ded9b24f765a`](https://github.com/deepseek-ai/deepseek-harness/commit/47f943859bef60e4160492346772ded9b24f765a)
-(`0.1.0-rc.5`). Harness is still a developer preview, so compatibility is
-tracked explicitly rather than assumed.
+and the installable `0.1.0-rc.6` package artifacts published from that source
+baseline. Harness is still a developer preview, so compatibility is tracked
+explicitly rather than assumed.
 
 ## Development
 

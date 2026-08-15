@@ -30,11 +30,11 @@ Exit criteria:
 
 ## Milestone 1 — framework spike and lifecycle shell
 
-Status: **in progress**. The TypeScript gates, Ink selection, startup parser,
+Status: **complete**. The TypeScript gates, Ink selection, startup parser,
 framework-neutral resource owner, lifecycle shell, deterministic empty-screen
 rendering, PTY teardown matrix, loader-aware Cordis fixture mounting, and
-cross-platform CI definition are implemented. Agent create/resume attachment is
-the next vertical slice.
+cross-platform CI definition are implemented and pass the blocking platform
+matrix.
 
 Goal: prove terminal ownership and Cordis application startup without driving a
 model turn.
@@ -58,6 +58,11 @@ Exit criteria:
 
 ## Milestone 2 — durable transcript vertical slice
 
+Status: **in progress**. Loader settlement, default-model setup, create/resume,
+exact `AgentHandle` ownership, listener-first replay/live handoff, sequence-gap
+validation, bounded event batches, and quiescent teardown are implemented. The
+durable transcript reducer and user-driving controls remain.
+
 Goal: create or resume one agent and render a correct text/tool transcript.
 
 Work:
@@ -77,6 +82,10 @@ Exit criteria:
 - assistant chunk/final reconciliation never duplicates content;
 - long-output tests remain within defined memory/render budgets;
 - agent disposal reaches quiescence.
+
+MVP progress after the Agent attachment slice: **40%**. Percentages track the
+reviewable production plan agreed for this repository; they are not inferred
+from file or line counts.
 
 ## Milestone 3 — safe interactive MVP
 

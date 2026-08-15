@@ -58,7 +58,8 @@ src/
 ├── runtime/
 │   ├── resource-owner.ts      generic reverse-order async ownership
 │   ├── cordis-runtime.ts      loader settlement and runtime ownership
-│   ├── attach.ts              create/resume and event handoff
+│   ├── agent-attachment.ts    create/resume and event handoff
+│   ├── agent-runtime.ts       Cordis-to-Agent composition
 │   └── interaction-scheduler.ts
 ├── model/
 │   ├── transcript-reducer.ts  pure durable-event fold
@@ -146,6 +147,12 @@ After attachment:
 
 Listener-first prevents gaps. Sequence deduplication makes duplicate delivery
 from the snapshot harmless.
+
+The live listener never executes rendering work inside the synchronous
+`session/event` dispatcher. It marks the session dirty and an owned serial pump
+re-reads immutable log snapshots in batches of at most 256 events. The log,
+not an unbounded callback queue, remains the recovery source when several
+events arrive during one render update.
 
 ## Durable transcript model
 
