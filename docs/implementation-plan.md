@@ -260,6 +260,15 @@ projections, malformed values, and disposal are tested states.
 
 ### M3.2 Background jobs (+4)
 
+Status: **complete**. The job panel projects the bounded visible set, ownership,
+lifecycle status, and bounded completion notices from `ctx.jobs`, and cancels
+owned live work behind a two-step confirmation. Output is reported as
+unavailable rather than consumed: the registry's only output seam advances the
+job's read cursor and marks the record reported, which would suppress the
+owning agent's completion notice ([ADR-0006](decisions/0006-observe-background-jobs-without-consuming-them.md)).
+Selection is anchored to a job id, and completion, cancellation, refresh, and
+disposal races are tested.
+
 - adapt jobs list/status/output/control operations;
 - add attach/detach, bounded log tail, cancel confirmation, and completion
   notices;

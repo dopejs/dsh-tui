@@ -11,6 +11,7 @@ import { InteractionController } from '../model/interaction-controller'
 import { OverlayController } from '../model/overlay-controller'
 import { PreferencesController } from '../model/preferences-controller'
 import { PermissionController } from '../model/permission-controller'
+import { JobsController } from '../model/jobs-controller'
 import { ProjectionHubController } from '../model/projection-hub-controller'
 import { RecoveryController } from '../model/recovery-controller'
 import { SessionCenterController } from '../model/session-center-controller'
@@ -60,6 +61,7 @@ function renderApp(
   const preferences = new PreferencesController()
   const permission = new PermissionController({} as Agent)
   const projections = new ProjectionHubController({} as Agent['session'])
+  const jobs = new JobsController({} as Agent)
   const recovery = new RecoveryController({
     operations: {
       flush: async () => true,
@@ -92,6 +94,7 @@ function renderApp(
         overlay={overlay}
         palette={palette}
         preferences={preferences}
+        jobs={jobs}
         projections={projections}
         recovery={recovery}
         permission={permission}
@@ -112,6 +115,7 @@ function renderApp(
     void sessionCenter.dispose()
     runtimeStatus.dispose()
     permission.dispose()
+    jobs.dispose()
     projections.dispose()
     void recovery.dispose()
     palette.dispose()

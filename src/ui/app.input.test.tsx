@@ -10,6 +10,7 @@ import { InteractionController } from '../model/interaction-controller'
 import { OverlayController } from '../model/overlay-controller'
 import { PreferencesController } from '../model/preferences-controller'
 import { PermissionController } from '../model/permission-controller'
+import { JobsController } from '../model/jobs-controller'
 import { ProjectionHubController } from '../model/projection-hub-controller'
 import { RecoveryController } from '../model/recovery-controller'
 import { SessionCenterController } from '../model/session-center-controller'
@@ -124,6 +125,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
     const preferences = new PreferencesController()
     const permission = new PermissionController({} as Agent)
     const projections = new ProjectionHubController({} as Agent['session'])
+    const jobs = new JobsController({} as Agent)
     const recovery = new RecoveryController({
       operations: {
         flush: async () => true,
@@ -213,6 +215,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
         overlay={overlay}
         palette={palette}
         preferences={preferences}
+        jobs={jobs}
         projections={projections}
         recovery={recovery}
         permission={permission}
@@ -374,6 +377,22 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
 
       stdin.write('\u001B[112;5u')
       await eventually(() => expect(overlay.getSnapshot().active).toBe('command-palette'))
+      stdin.write('open jobs')
+      await eventually(() => expect(palette.getSnapshot().query).toBe('open jobs'))
+      stdin.write('\r')
+      await eventually(() => expect(overlay.getSnapshot().active).toBe('jobs'))
+      // Without a registry the panel states the boundary instead of an empty list.
+      await eventually(() => expect(output).toContain('Jobs · unavailable'))
+      await eventually(() => expect(output).toContain('Output stays with the agent'))
+      stdin.write('k')
+      await eventually(() => expect(output).toContain('Only a live job owned by this session'))
+      stdin.write('r')
+      await eventually(() => expect(output).toContain('The job registry is unavailable'))
+      stdin.write('\u001B[27u')
+      await eventually(() => expect(overlay.getSnapshot().active).toBeUndefined())
+
+      stdin.write('\u001B[112;5u')
+      await eventually(() => expect(overlay.getSnapshot().active).toBe('command-palette'))
       stdin.write('open recovery')
       await eventually(() => expect(palette.getSnapshot().query).toBe('open recovery'))
       stdin.write('\r')
@@ -416,6 +435,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       await sessionCenter.dispose()
       runtimeStatus.dispose()
       permission.dispose()
+      jobs.dispose()
       projections.dispose()
       await recovery.dispose()
       palette.dispose()

@@ -3,6 +3,7 @@ import { Box, Text, renderToString } from 'ink'
 import type { ChangeIndexSnapshot, IndexedChange } from '../model/change-index-controller'
 import type { CommandPaletteSnapshot } from '../model/command-palette-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
+import type { JobsSnapshot } from '../model/jobs-controller'
 import type { OverlayKind } from '../model/overlay-controller'
 import type { PermissionSnapshot } from '../model/permission-controller'
 import type { ProjectionHubSnapshot } from '../model/projection-hub-controller'
@@ -32,6 +33,7 @@ interface OverlayPanelProps {
   readonly changes: ChangeIndexSnapshot
   readonly columns: number
   readonly completion: CompletionSnapshot
+  readonly jobs: JobsSnapshot
   readonly maxRows: number
   readonly palette: CommandPaletteSnapshot
   readonly permissions: PermissionSnapshot
@@ -45,6 +47,7 @@ export function OverlayPanel({
   changes,
   columns,
   completion,
+  jobs,
   maxRows,
   palette,
   permissions,
@@ -52,6 +55,66 @@ export function OverlayPanel({
   recovery,
   sessions,
 }: OverlayPanelProps) {
+  if (active === 'jobs') {
+    const window = selectedWindow(jobs.jobs, jobs.selectedIndex, maxRows - 5)
+    const confirming = jobs.jobs.find(job => job.id === jobs.confirmingCancelId)
+    return (
+      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+        <Text bold wrap="truncate-end">
+          Jobs · {jobs.status} · {String(jobs.runningCount)} running
+          {jobs.truncated ? ' · truncated' : ''}
+        </Text>
+        {jobs.error === undefined ? null : (
+          <Text color="red" wrap="truncate-end">{jobs.error}</Text>
+        )}
+        {jobs.notices.length === 0 && jobs.droppedNotices === 0 ? null : (
+          <Text color="cyan" wrap="truncate-end">
+            {jobs.notices.map(notice => `${String(notice.id)} ${notice.status}`).join(' · ')}
+            {jobs.droppedNotices > 0 ? ` · +${String(jobs.droppedNotices)} more` : ''}
+            {' · A acknowledge'}
+          </Text>
+        )}
+        {window.rows.map((job, index) => {
+          const absolute = window.start + index
+          const selected = absolute === jobs.selectedIndex
+          const color = job.status === 'failed'
+            ? 'red'
+            : job.status === 'completed'
+              ? 'green'
+              : job.status === 'killed' ? 'yellow' : undefined
+          return (
+            <Box flexDirection="column" key={String(job.id)}>
+              <Text
+                {...(color === undefined ? {} : { color })}
+                inverse={selected}
+                wrap="truncate-end"
+              >
+                {selected ? '›' : ' '} {String(job.id)} · {job.status}
+                {job.owned ? '' : ' · unowned'} · {job.label}
+              </Text>
+              {selected && job.detail !== undefined ? (
+                <Text dimColor wrap="truncate-end">  {job.detail}</Text>
+              ) : null}
+            </Box>
+          )
+        })}
+        {confirming === undefined ? null : (
+          <Text color="yellow" wrap="truncate-end">
+            Cancel {String(confirming.id)}? Enter confirm · Esc dismiss
+          </Text>
+        )}
+        <Text dimColor wrap="truncate-end">
+          {/* The registry's only output seam consumes the owning agent's notice. */}
+          Output stays with the agent · {jobs.jobs.length === 0
+            ? 'R refresh · Esc close'
+            : `${String((jobs.selectedIndex ?? 0) + 1)}/${String(jobs.jobs.length)} · ↑/↓ select · K cancel · R refresh · Esc close`}
+          {window.start > 0 ? ` · ${String(window.start)} above` : ''}
+          {window.end < jobs.jobs.length ? ` · ${String(jobs.jobs.length - window.end)} below` : ''}
+        </Text>
+      </Box>
+    )
+  }
+
   if (active === 'projections') {
     const window = selectedWindow(projections.rows, projections.selectedIndex, maxRows - 4)
     return (
@@ -405,10 +468,21 @@ function textLines(value: string | null): readonly string[] {
 }
 
 export function renderOverlayPanel(
-  props: Omit<OverlayPanelProps, 'projections'> & {
+  props: Omit<OverlayPanelProps, 'jobs' | 'projections'> & {
+    readonly jobs?: JobsSnapshot
     readonly projections?: ProjectionHubSnapshot
   },
 ): string {
+  const jobs: JobsSnapshot = props.jobs ?? {
+    droppedNotices: 0,
+    jobs: [],
+    notices: [],
+    outputCapability: 'unsupported-consuming-read',
+    revision: 0,
+    runningCount: 0,
+    status: 'unavailable',
+    truncated: false,
+  }
   const projections: ProjectionHubSnapshot = props.projections ?? {
     capabilities: {
       goal: 'unavailable', plan: 'unavailable', todos: 'unavailable', usage: 'unavailable',
@@ -421,7 +495,7 @@ export function renderOverlayPanel(
     status: 'unavailable',
   }
   return renderToString(
-    <OverlayPanel {...props} projections={projections} />,
+    <OverlayPanel {...props} jobs={jobs} projections={projections} />,
     { columns: props.columns },
   )
 }

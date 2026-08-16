@@ -1,5 +1,16 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
+exports[`OverlayPanel (M1.3) > degrades the job panel at 40 columns 1`] = `
+"╭──────────────────────────────────────╮
+│Jobs · ready · 2 running              │
+│  bash-1 · running · pnpm test --watch│
+│› bash-2 · failed · pnpm build        │
+│  exit code: 3                        │
+│  subagent-1 · running · unowned · au…│
+│Output stays with the agent · 2/3 · ↑…│
+╰──────────────────────────────────────╯"
+`;
+
 exports[`OverlayPanel (M1.3) > renders a bounded narrow command palette 1`] = `
 "╭──────────────────────────────────────╮
 │Command palette                       │
@@ -42,6 +53,19 @@ exports[`OverlayPanel (M1.3) > renders a wide command palette without losing inp
 │› /review <path> · Review current workspace changes before committing         │
 │  Search transcript · Search the retained transcript window                   │
 │1/2 · Enter select · Esc close                                                │
+╰──────────────────────────────────────────────────────────────────────────────╯"
+`;
+
+exports[`OverlayPanel (M1.3) > renders an armed cancellation and bounded completion notices 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│Jobs · confirming · 2 running                                                 │
+│bash-2 failed · +2 more · A acknowledge                                       │
+│  bash-1 · running · pnpm test --watch                                        │
+│› bash-2 · failed · pnpm build                                                │
+│  exit code: 3                                                                │
+│  subagent-1 · running · unowned · audit the change index                     │
+│Cancel bash-1? Enter confirm · Esc dismiss                                    │
+│Output stays with the agent · 2/3 · ↑/↓ select · K cancel · R refresh · Esc c…│
 ╰──────────────────────────────────────────────────────────────────────────────╯"
 `;
 
@@ -93,6 +117,17 @@ exports[`OverlayPanel (M1.3) > renders file-grouped change review with bounded e
 ╰──────────────────────────────────────────────────────────────╯"
 `;
 
+exports[`OverlayPanel (M1.3) > renders jobs with ownership, status, and the output boundary at 80 columns 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│Jobs · ready · 2 running                                                      │
+│  bash-1 · running · pnpm test --watch                                        │
+│› bash-2 · failed · pnpm build                                                │
+│  exit code: 3                                                                │
+│  subagent-1 · running · unowned · audit the change index                     │
+│Output stays with the agent · 2/3 · ↑/↓ select · K cancel · R refresh · Esc c…│
+╰──────────────────────────────────────────────────────────────────────────────╯"
+`;
+
 exports[`OverlayPanel (M1.3) > renders permission consequences and dangerous typed confirmation 1`] = `
 "╭──────────────────────────────────────────────────────────────────────────────╮
 │Permissions · confirming                                                      │
@@ -110,5 +145,12 @@ exports[`OverlayPanel (M1.3) > renders permission consequences and dangerous typ
 │  Confine writes to the workspace and ask when needed.                        │
 │  ○ Danger full access · sandbox danger-full-access · approval never          │
 │Enter select · Esc close                                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯"
+`;
+
+exports[`OverlayPanel (M1.3) > states that the registry is unavailable rather than showing an empty list 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│Jobs · unavailable · 0 running                                                │
+│Output stays with the agent · R refresh · Esc close                           │
 ╰──────────────────────────────────────────────────────────────────────────────╯"
 `;

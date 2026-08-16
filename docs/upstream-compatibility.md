@@ -49,6 +49,9 @@ is required by this bundle.
 - `ctx.sessionPersistence.list()` / `inspect()` where session browsing needs
   them; resume itself remains owned by `ctx.agents.resume()`.
 - `ctx.sessionProjections.snapshot()` / `onChanged()` for optional domain views.
+- `ctx.jobs.list()` / `get()` / `kill()` / `onJobsChanged()` / `onJobDone()` for
+  background-job observation and owned cancellation; the consuming `read()` and
+  the admitting `attachController()` are deliberately not consumed.
 
 ## Production-roadmap capability map
 
@@ -68,7 +71,7 @@ exports.
 | Permission modes | `@deepseek-ai/dsh-permission-presets` / `ctx.permissionPresets` | Available in `dsh-base` |
 | Sandbox enforcement | `@deepseek-ai/dsh-sandbox-policy` and selected sandbox provider | Available in `dsh-base`; enforcement stays upstream-owned |
 | Todo/goal/plan/usage/subagent read models | `@deepseek-ai/dsh-session-projection` / `ctx.sessionProjections` and registered projection units | Registry available; individual views are capability-gated |
-| Background jobs | `@deepseek-ai/dsh-jobs` / `ctx.jobs` | Local provider available in `dsh-base` |
+| Background jobs | `@deepseek-ai/dsh-jobs` / `ctx.jobs` | Local provider available in `dsh-base`; `read()` and `attachController()` are consuming/admitting and stay unused (ADR-0006) |
 | Subagents | `@deepseek-ai/dsh-subagent` plus registered providers and projections | Available in `dsh-base` |
 | Settings | `@deepseek-ai/dsh-settings` / `ctx.settings` | File-backed provider available in `dsh-base` |
 | Skills | `@deepseek-ai/dsh-skill` / `ctx.skills` | Filesystem provider available in `dsh-base` |

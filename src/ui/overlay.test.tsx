@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { CommandPaletteSnapshot } from '../model/command-palette-controller'
 import type { ChangeIndexSnapshot } from '../model/change-index-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
+import type { JobsSnapshot } from '../model/jobs-controller'
 import type { SessionCenterSnapshot } from '../model/session-center-controller'
 import type { PermissionSnapshot } from '../model/permission-controller'
 import type { ProjectionHubSnapshot } from '../model/projection-hub-controller'
@@ -431,6 +432,91 @@ describe('OverlayPanel (M1.3)', () => {
       projections,
       recovery: emptyRecovery,
       sessions: emptySessions,
+    })).toMatchSnapshot()
+  })
+
+  const jobRows: JobsSnapshot['jobs'] = [{
+    id: 'bash-1' as JobsSnapshot['jobs'][number]['id'],
+    kind: 'bash',
+    label: 'pnpm test --watch',
+    owned: true,
+    reported: false,
+    startedAt: 1,
+    status: 'running',
+  }, {
+    detail: 'exit code: 3',
+    finishedAt: 9,
+    id: 'bash-2' as JobsSnapshot['jobs'][number]['id'],
+    kind: 'bash',
+    label: 'pnpm build',
+    owned: true,
+    reported: true,
+    startedAt: 2,
+    status: 'failed',
+  }, {
+    id: 'subagent-1' as JobsSnapshot['jobs'][number]['id'],
+    kind: 'subagent',
+    label: 'audit the change index',
+    owned: false,
+    reported: false,
+    startedAt: 3,
+    status: 'running',
+  }]
+
+  function renderJobs(columns: number, overrides: Partial<JobsSnapshot> = {}): string {
+    return renderOverlayPanel({
+      active: 'jobs',
+      changes: emptyChanges,
+      columns,
+      completion: emptyCompletion,
+      jobs: {
+        droppedNotices: 0,
+        jobs: jobRows,
+        notices: [],
+        outputCapability: 'unsupported-consuming-read',
+        revision: 4,
+        runningCount: 2,
+        status: 'ready',
+        truncated: false,
+        ...overrides,
+      },
+      maxRows: 10,
+      palette: {
+        catalogTruncated: false, items: [], query: '', revision: 0, totalMatches: 0,
+      },
+      permissions: emptyPermissions,
+      recovery: emptyRecovery,
+      sessions: emptySessions,
+    })
+  }
+
+  it('renders jobs with ownership, status, and the output boundary at 80 columns', () => {
+    expect(renderJobs(80, { selectedIndex: 1 })).toMatchSnapshot()
+  })
+
+  it('degrades the job panel at 40 columns', () => {
+    expect(renderJobs(40, { selectedIndex: 1 })).toMatchSnapshot()
+  })
+
+  it('renders an armed cancellation and bounded completion notices', () => {
+    expect(renderJobs(80, {
+      confirmingCancelId: 'bash-1' as JobsSnapshot['jobs'][number]['id'],
+      selectedIndex: 1,
+      droppedNotices: 2,
+      notices: [{
+        id: 'bash-2' as JobsSnapshot['jobs'][number]['id'],
+        label: 'pnpm build',
+        status: 'failed',
+      }],
+      status: 'confirming',
+    })).toMatchSnapshot()
+  })
+
+  it('states that the registry is unavailable rather than showing an empty list', () => {
+    expect(renderJobs(80, {
+      jobs: [],
+      runningCount: 0,
+      status: 'unavailable',
     })).toMatchSnapshot()
   })
 })

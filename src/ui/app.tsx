@@ -24,6 +24,7 @@ import type { RuntimeStatusController } from '../model/runtime-status-controller
 import type { RecoveryController } from '../model/recovery-controller'
 import type { PreferencesController } from '../model/preferences-controller'
 import type { PermissionController } from '../model/permission-controller'
+import type { JobsController } from '../model/jobs-controller'
 import type { ProjectionHubController } from '../model/projection-hub-controller'
 import type {
   TranscriptViewportController,
@@ -52,6 +53,7 @@ export interface InteractiveTuiProps {
   readonly input: InputController
   readonly initialNotice?: string
   readonly interaction: InteractionController
+  readonly jobs: JobsController
   readonly modelLabel: string
   readonly onQuit: (code: number) => void
   readonly overlay: OverlayController
@@ -175,6 +177,7 @@ export function InteractiveTui({
   input,
   initialNotice,
   interaction,
+  jobs,
   modelLabel,
   onQuit,
   overlay,
@@ -275,6 +278,11 @@ export function InteractiveTui({
     projections.subscribe,
     projections.getSnapshot,
     projections.getSnapshot,
+  )
+  const jobsSnapshot = useSyncExternalStore(
+    jobs.subscribe,
+    jobs.getSnapshot,
+    jobs.getSnapshot,
   )
 
   useEffect(() => {
@@ -377,6 +385,11 @@ export function InteractiveTui({
         return
       case 'composer.clear':
         setNotice(editor.clear() ? 'Composer cleared.' : 'Composer is already empty.')
+        return
+      case 'jobs.center':
+        jobs.refresh()
+        overlay.open('jobs')
+        setNotice('Jobs opened.')
         return
       case 'permission.center':
         overlay.open('permissions')
@@ -686,6 +699,15 @@ export function InteractiveTui({
         setNotice('Recovery cancellation requested.')
         return
       }
+      if (
+        activeOverlay === 'jobs'
+        && jobs.getSnapshot().status === 'confirming'
+        && (key.escape || (key.ctrl && typed.toLowerCase() === 'c'))
+      ) {
+        jobs.dismissCancel()
+        setNotice('Job cancellation dismissed.')
+        return
+      }
       if (key.escape || (key.ctrl && typed.toLowerCase() === 'c')) {
         if (activeOverlay === 'completion') completion.cancel()
         overlay.close()
@@ -791,6 +813,35 @@ export function InteractiveTui({
           } else {
             setNotice('The linked transcript row is outside the retained window.')
           }
+        }
+        return
+      }
+      if (activeOverlay === 'jobs') {
+        if (jobs.getSnapshot().status === 'confirming') {
+          if (key.return) {
+            const outcome = jobs.confirmCancel()
+            setNotice(outcome === 'requested'
+              ? 'Job cancellation requested.'
+              : outcome === 'already-finished'
+                ? 'That job had already finished.'
+                : 'Job cancellation failed.')
+          }
+          return
+        }
+        if (key.upArrow) jobs.move('up')
+        else if (key.downArrow || key.tab) jobs.move('down')
+        else if (!key.ctrl && typed.toLowerCase() === 'k') {
+          setNotice(jobs.requestCancel()
+            ? 'Confirm cancellation with Enter.'
+            : 'Only a live job owned by this session can be cancelled.')
+        } else if (!key.ctrl && typed.toLowerCase() === 'a') {
+          setNotice(jobs.acknowledgeNotices()
+            ? 'Completion notices acknowledged.'
+            : 'No completion notices to acknowledge.')
+        } else if (!key.ctrl && typed.toLowerCase() === 'r') {
+          setNotice(jobs.refresh()
+            ? 'Job list refreshed.'
+            : 'The job registry is unavailable or refresh failed.')
         }
         return
       }
@@ -1101,6 +1152,7 @@ export function InteractiveTui({
       maxRows={overlayMaxRows}
       palette={paletteSnapshot}
       permissions={permissionSnapshot}
+      jobs={jobsSnapshot}
       projections={projectionSnapshot}
       recovery={recoverySnapshot}
       sessions={sessionCenterSnapshot}
@@ -1119,6 +1171,7 @@ export function InteractiveTui({
           maxRows={overlayMaxRows}
           palette={paletteSnapshot}
           permissions={permissionSnapshot}
+          jobs={jobsSnapshot}
           projections={projectionSnapshot}
           recovery={recoverySnapshot}
           sessions={sessionCenterSnapshot}

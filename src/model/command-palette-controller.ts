@@ -10,6 +10,7 @@ type Listener = () => void
 export type TuiActionId =
   | 'changes.center'
   | 'composer.clear'
+  | 'jobs.center'
   | 'permission.center'
   | 'projection.center'
   | 'recovery.center'
@@ -77,6 +78,12 @@ export const DEFAULT_TUI_ACTIONS: readonly TuiActionDescriptor[] = Object.freeze
     id: 'composer.clear',
     keywords: Object.freeze(['draft', 'input']),
     title: 'Clear composer',
+  }),
+  Object.freeze({
+    description: 'Inspect and cancel background jobs owned by this session',
+    id: 'jobs.center',
+    keywords: Object.freeze(['background', 'cancel', 'jobs', 'kill', 'tasks']),
+    title: 'Open jobs',
   }),
   Object.freeze({
     description: 'Inspect and change the exact session permission preset',

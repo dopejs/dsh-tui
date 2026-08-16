@@ -1,4 +1,4 @@
-export type OverlayKind = 'changes' | 'command-palette' | 'completion' | 'permissions' | 'projections' | 'recovery' | 'session-center'
+export type OverlayKind = 'changes' | 'command-palette' | 'completion' | 'jobs' | 'permissions' | 'projections' | 'recovery' | 'session-center'
 export type InputSurface = 'composer' | 'interaction' | 'overlay' | 'transcript-search'
 
 type Listener = () => void

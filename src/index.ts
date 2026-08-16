@@ -4,6 +4,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import type { ModelSelection } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-commands'
+import type {} from '@deepseek-ai/dsh-jobs'
 import type {} from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-permission-presets'
 import { SessionId } from '@deepseek-ai/dsh-session'
@@ -18,6 +19,7 @@ import { CommandPaletteController } from './model/command-palette-controller'
 import { CompletionController } from './model/completion-controller'
 import { EditorController } from './model/editor-controller'
 import { InteractionController } from './model/interaction-controller'
+import { JobsController } from './model/jobs-controller'
 import { OverlayController } from './model/overlay-controller'
 import { PreferencesController } from './model/preferences-controller'
 import { PermissionController } from './model/permission-controller'
@@ -180,6 +182,7 @@ export async function startTuiRuntime(
   const llm = ctx.get('llm')
   const permissionPresets = ctx.get('permissionPresets')
   const sessionPersistence = ctx.get('sessionPersistence')
+  const jobs = ctx.get('jobs')
   const sessionProjections = ctx.get('sessionProjections')
   const sessions = ctx.get('sessions')
   const tools = ctx.get('tools')
@@ -300,6 +303,10 @@ export async function startTuiRuntime(
         bindingOwner.own('agent status controller', () => status.dispose())
         const permission = new PermissionController(attachment.agent, permissionPresets)
         bindingOwner.own('permission controller', () => permission.dispose())
+        const jobsPanel = new JobsController(attachment.agent, jobs, {
+          reportError: diagnostics.report,
+        })
+        bindingOwner.own('jobs controller', () => jobsPanel.dispose())
         const projections = new ProjectionHubController(
           attachment.agent.session,
           sessionProjections,
@@ -436,6 +443,7 @@ export async function startTuiRuntime(
               .filter((value): value is string => value !== undefined && value !== '')
               .join('/'),
             overlay,
+            jobs: jobsPanel,
             palette,
             permission,
             preferences,
