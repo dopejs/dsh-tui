@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 import { Box, Text, useInput, usePaste, useStdout } from 'ink'
 import type { AskUserQuestionAnswer } from '@deepseek-ai/dsh-user-questions'
 
+import type { ActivityCenterController } from '../model/activity-center-controller'
 import type { AgentStatusStore } from '../model/agent-status-controller'
 import type { ChangeIndexController } from '../model/change-index-controller'
 import type {
@@ -47,6 +48,7 @@ interface QuestionDraft {
 
 export interface InteractiveTuiProps {
   readonly acceptsInput?: () => boolean
+  readonly activity: ActivityCenterController
   readonly changes: ChangeIndexController
   readonly columns?: number
   readonly completion: CompletionController
@@ -172,6 +174,7 @@ function searchStatus(search: TranscriptViewportSnapshot['search']): string {
 
 export function InteractiveTui({
   acceptsInput = () => true,
+  activity,
   changes,
   columns: fixedColumns,
   completion,
@@ -292,6 +295,11 @@ export function InteractiveTui({
     subagents.getSnapshot,
     subagents.getSnapshot,
   )
+  const activitySnapshot = useSyncExternalStore(
+    activity.subscribe,
+    activity.getSnapshot,
+    activity.getSnapshot,
+  )
 
   useEffect(() => {
     if (fixedColumns !== undefined && fixedRows !== undefined) return
@@ -398,6 +406,11 @@ export function InteractiveTui({
         jobs.refresh()
         overlay.open('jobs')
         setNotice('Jobs opened.')
+        return
+      case 'activity.center':
+        activity.refresh()
+        overlay.open('activity')
+        setNotice('Activity opened.')
         return
       case 'subagent.center':
         void subagents.refresh()
@@ -838,6 +851,28 @@ export function InteractiveTui({
         }
         return
       }
+      if (activeOverlay === 'activity') {
+        if (key.upArrow) activity.move('up')
+        else if (key.downArrow || key.tab) activity.move('down')
+        else if (key.return) {
+          const target = activity.selectedTarget()
+          if (target === undefined) setNotice('Nothing pending.')
+          else {
+            // Opening the answering panel is what acknowledges the notification.
+            activity.acknowledgeSelected()
+            if (target === 'jobs') jobs.refresh()
+            else if (target === 'subagents') void subagents.refresh()
+            else if (target === 'projections') projections.refresh()
+            overlay.open(target)
+            setNotice(`Opened ${target}.`)
+          }
+        } else if (!key.ctrl && typed.toLowerCase() === 'd') {
+          setNotice(activity.acknowledgeSelected() ? 'Notification dismissed.' : 'Nothing pending.')
+        } else if (!key.ctrl && typed.toLowerCase() === 'c') {
+          setNotice(activity.acknowledgeAll() ? 'All notifications cleared.' : 'Nothing pending.')
+        }
+        return
+      }
       if (activeOverlay === 'subagents') {
         const subagentStatus = subagents.getSnapshot().status
         if (subagentStatus === 'followup-input') {
@@ -1179,6 +1214,7 @@ export function InteractiveTui({
   const screen = createScreenModel(
     projectedRows,
     {
+      activityCount: activitySnapshot.totalActivity,
       droppedRows: transcriptSnapshot.droppedRows,
       ...(viewportSnapshot.focusedRowId === undefined
         ? {}
@@ -1216,6 +1252,7 @@ export function InteractiveTui({
       maxRows={overlayMaxRows}
       palette={paletteSnapshot}
       permissions={permissionSnapshot}
+      activity={activitySnapshot}
       jobs={jobsSnapshot}
       projections={projectionSnapshot}
       subagents={subagentSnapshot}
@@ -1236,6 +1273,7 @@ export function InteractiveTui({
           maxRows={overlayMaxRows}
           palette={paletteSnapshot}
           permissions={permissionSnapshot}
+          activity={activitySnapshot}
           jobs={jobsSnapshot}
           projections={projectionSnapshot}
           subagents={subagentSnapshot}

@@ -14,6 +14,7 @@ import type {} from '@deepseek-ai/dsh-subagent'
 import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-user-questions'
 
+import { ActivityCenterController } from './model/activity-center-controller'
 import { AgentStatusController } from './model/agent-status-controller'
 import { ChangeIndexController } from './model/change-index-controller'
 import { CommandPaletteController } from './model/command-palette-controller'
@@ -335,6 +336,11 @@ export async function startTuiRuntime(
           { reportError: diagnostics.report },
         )
         bindingOwner.own('projection hub controller', () => projections.dispose())
+        const activity = new ActivityCenterController(
+          { jobs: jobsPanel, projections, subagents },
+          { reportError: diagnostics.report },
+        )
+        bindingOwner.own('activity center controller', () => activity.dispose())
         const editor = new EditorController()
         bindingOwner.own('editor controller', () => editor.dispose())
         const input = new InputController({ agent: attachment.agent, commands })
@@ -465,6 +471,7 @@ export async function startTuiRuntime(
               .filter((value): value is string => value !== undefined && value !== '')
               .join('/'),
             overlay,
+            activity,
             jobs: jobsPanel,
             palette,
             permission,

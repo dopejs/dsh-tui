@@ -1,5 +1,6 @@
 import { Box, Text, renderToString } from 'ink'
 
+import type { ActivityCenterSnapshot } from '../model/activity-center-controller'
 import type { ChangeIndexSnapshot, IndexedChange } from '../model/change-index-controller'
 import type { CommandPaletteSnapshot } from '../model/command-palette-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
@@ -31,6 +32,7 @@ function selectedWindow<T>(
 
 interface OverlayPanelProps {
   readonly active: OverlayKind
+  readonly activity: ActivityCenterSnapshot
   readonly changes: ChangeIndexSnapshot
   readonly columns: number
   readonly completion: CompletionSnapshot
@@ -46,6 +48,7 @@ interface OverlayPanelProps {
 
 export function OverlayPanel({
   active,
+  activity,
   changes,
   columns,
   completion,
@@ -58,6 +61,45 @@ export function OverlayPanel({
   sessions,
   subagents,
 }: OverlayPanelProps) {
+  if (active === 'activity') {
+    const window = selectedWindow(activity.rows, activity.selectedIndex, maxRows - 4)
+    return (
+      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+        <Text bold wrap="truncate-end">
+          Activity · {String(activity.counts.jobsRunning)} jobs running
+          {' · '}{String(activity.counts.subagentsUnread)} subagent updates
+          {' · '}{String(activity.counts.todosOpen)} todos open
+        </Text>
+        {window.rows.map((row, index) => {
+          const absolute = window.start + index
+          const selected = absolute === activity.selectedIndex
+          return (
+            <Box flexDirection="column" key={row.key}>
+              <Text inverse={selected} wrap="truncate-end">
+                {selected ? '›' : ' '} [{row.source}] {row.label}
+              </Text>
+              {selected && row.detail !== undefined ? (
+                <Text dimColor wrap="truncate-end">  {row.detail}</Text>
+              ) : null}
+            </Box>
+          )
+        })}
+        <Text dimColor wrap="truncate-end">
+          {activity.rows.length === 0
+            ? 'Nothing pending · Esc close'
+            : `${String((activity.selectedIndex ?? 0) + 1)}/${String(activity.rows.length)} · ↑/↓ select · Enter open · D dismiss · C clear all · Esc close`}
+          {activity.droppedNotifications > 0
+            ? ` · ${String(activity.droppedNotifications)} dropped`
+            : ''}
+          {window.start > 0 ? ` · ${String(window.start)} above` : ''}
+          {window.end < activity.rows.length
+            ? ` · ${String(activity.rows.length - window.end)} below`
+            : ''}
+        </Text>
+      </Box>
+    )
+  }
+
   if (active === 'subagents') {
     const window = selectedWindow(subagents.rows, subagents.selectedIndex, maxRows - 5)
     const selected = subagents.rows[subagents.selectedIndex ?? -1]
@@ -530,12 +572,21 @@ function textLines(value: string | null): readonly string[] {
 }
 
 export function renderOverlayPanel(
-  props: Omit<OverlayPanelProps, 'jobs' | 'projections' | 'subagents'> & {
+  props: Omit<OverlayPanelProps, 'activity' | 'jobs' | 'projections' | 'subagents'> & {
+    readonly activity?: ActivityCenterSnapshot
     readonly jobs?: JobsSnapshot
     readonly projections?: ProjectionHubSnapshot
     readonly subagents?: SubagentTreeSnapshot
   },
 ): string {
+  const activity: ActivityCenterSnapshot = props.activity ?? {
+    counts: { jobsRunning: 0, subagentsUnread: 0, todosOpen: 0 },
+    droppedNotifications: 0,
+    notifications: [],
+    revision: 0,
+    rows: [],
+    totalActivity: 0,
+  }
   const subagents: SubagentTreeSnapshot = props.subagents ?? {
     busy: false,
     followupText: '',
@@ -568,7 +619,13 @@ export function renderOverlayPanel(
     status: 'unavailable',
   }
   return renderToString(
-    <OverlayPanel {...props} jobs={jobs} projections={projections} subagents={subagents} />,
+    <OverlayPanel
+      {...props}
+      activity={activity}
+      jobs={jobs}
+      projections={projections}
+      subagents={subagents}
+    />,
     { columns: props.columns },
   )
 }

@@ -294,6 +294,14 @@ disappearing agents, unread updates, root switch, and disposal are tested.
 
 ### M3.4 Unified activity center (+3)
 
+Status: **complete**. One derived aggregator folds the plan, job, and subagent
+snapshots into a bounded, coalesced notification list, status counts, and
+navigation that opens the panel answering each notification. It owns no domain
+state, so a notification cannot disagree with the panel it navigates to. A
+still-true activity re-fires as a count bump rather than a new row, overflow is
+counted rather than silently dropped, and every source is unsubscribed on
+disposal with no update after it.
+
 - combine plans, jobs, and agents into bounded notifications and navigation;
 - add command-palette actions and status counts;
 - test notification coalescing and no update-after-disposal behavior.
@@ -303,6 +311,11 @@ M3 exit gate:
 - a user can inspect and control every publicly observable local activity
   without leaving the TUI;
 - total progress becomes **78%** after four pushed slices and green CI.
+
+Status: **complete**. All four slices are pushed. Two capability boundaries are
+carried forward rather than papered over: job output stays with the owning
+agent ([ADR-0006](decisions/0006-observe-background-jobs-without-consuming-them.md)),
+and subagent follow-up reaches only this session's direct children.
 
 ## M4 — Extension Workbench (78% → 90%)
 

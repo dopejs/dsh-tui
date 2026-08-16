@@ -31,10 +31,19 @@ function metadata(model: ScreenModel, columns: number): readonly string[] {
     : `permission ${model.permissionPreset}`
   const usage = model.totalTokens === undefined ? undefined : `tokens ${String(model.totalTokens)}`
   const context = model.contextWindow === undefined ? undefined : `ctx ${String(model.contextWindow)}`
-  if (columns < 60) return [model.modelLabel, permission].filter((value): value is string => value !== undefined)
-  if (columns < 100) return [model.modelLabel, permission, usage, context]
-    .filter((value): value is string => value !== undefined)
-  return [model.modelLabel, permission, usage, context, model.workspace]
+  // Pending activity outranks usage and workspace: it is the only actionable count.
+  const activity = model.activityCount === undefined
+    ? undefined
+    : `activity ${String(model.activityCount)}`
+  if (columns < 60) {
+    return [model.modelLabel, activity, permission]
+      .filter((value): value is string => value !== undefined)
+  }
+  if (columns < 100) {
+    return [model.modelLabel, activity, permission, usage, context]
+      .filter((value): value is string => value !== undefined)
+  }
+  return [model.modelLabel, activity, permission, usage, context, model.workspace]
     .filter((value): value is string => value !== undefined)
 }
 

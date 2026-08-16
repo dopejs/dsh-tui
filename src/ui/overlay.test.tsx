@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
+import type { ActivityCenterSnapshot } from '../model/activity-center-controller'
 import type { CommandPaletteSnapshot } from '../model/command-palette-controller'
 import type { ChangeIndexSnapshot } from '../model/change-index-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
@@ -588,6 +589,70 @@ describe('OverlayPanel (M1.3)', () => {
   it('states that the subagent runtime is unavailable rather than showing an empty tree', () => {
     expect(renderSubagents(80, { rows: [], status: 'unavailable', unreadCount: 0 }))
       .toMatchSnapshot()
+  })
+
+  function renderActivity(
+    columns: number,
+    overrides: Partial<ActivityCenterSnapshot> = {},
+  ): string {
+    return renderOverlayPanel({
+      active: 'activity',
+      activity: {
+        counts: { jobsRunning: 2, subagentsUnread: 3, todosOpen: 4 },
+        droppedNotifications: 0,
+        notifications: [],
+        revision: 7,
+        rows: [{
+          count: 1,
+          detail: 'exit code: 3',
+          key: 'jobs:bash-2',
+          label: 'bash-2 failed: pnpm build',
+          source: 'jobs',
+          target: 'jobs',
+        }, {
+          count: 4,
+          key: 'subagents:unread',
+          label: '3 subagent updates (×4)',
+          source: 'subagents',
+          target: 'subagents',
+        }, {
+          count: 1,
+          key: 'plan:pending',
+          label: 'A plan is awaiting review',
+          source: 'plan',
+          target: 'projections',
+        }],
+        selectedIndex: 0,
+        totalActivity: 8,
+        ...overrides,
+      },
+      changes: emptyChanges,
+      columns,
+      completion: emptyCompletion,
+      maxRows: 10,
+      palette: {
+        catalogTruncated: false, items: [], query: '', revision: 0, totalMatches: 0,
+      },
+      permissions: emptyPermissions,
+      recovery: emptyRecovery,
+      sessions: emptySessions,
+    })
+  }
+
+  it('renders coalesced activity from all three sources at 80 columns', () => {
+    expect(renderActivity(80)).toMatchSnapshot()
+  })
+
+  it('degrades the activity center at 40 columns', () => {
+    expect(renderActivity(40)).toMatchSnapshot()
+  })
+
+  it('renders an empty activity center without implying a failure', () => {
+    expect(renderActivity(80, {
+      counts: { jobsRunning: 0, subagentsUnread: 0, todosOpen: 0 },
+      rows: [],
+      totalActivity: 0,
+    })).toMatchSnapshot()
   })
 
   it('states that the registry is unavailable rather than showing an empty list', () => {

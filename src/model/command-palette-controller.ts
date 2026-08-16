@@ -8,6 +8,7 @@ const MAX_METADATA_CODE_UNITS = 500
 type Listener = () => void
 
 export type TuiActionId =
+  | 'activity.center'
   | 'changes.center'
   | 'composer.clear'
   | 'jobs.center'
@@ -68,6 +69,12 @@ export interface CommandPaletteSnapshot {
 }
 
 export const DEFAULT_TUI_ACTIONS: readonly TuiActionDescriptor[] = Object.freeze([
+  Object.freeze({
+    description: 'Review plan, job, and subagent activity in one bounded list',
+    id: 'activity.center',
+    keywords: Object.freeze(['alerts', 'activity', 'notifications', 'updates']),
+    title: 'Open activity',
+  }),
   Object.freeze({
     description: 'Review durable tool-presented file changes',
     id: 'changes.center',

@@ -23,6 +23,8 @@ export interface InteractionModal {
 }
 
 export interface ScreenModel {
+  /** Pending plan, job, and subagent activity awaiting the user's attention. */
+  readonly activityCount?: number
   readonly droppedRows?: number
   readonly focusedRowId?: string
   readonly modelLabel?: string
@@ -44,6 +46,7 @@ export interface ScreenModel {
 }
 
 export interface WindowOptions {
+  readonly activityCount?: number
   readonly droppedRows?: number
   readonly focusedRowId?: string
   readonly modelLabel?: string
@@ -115,6 +118,9 @@ export function createScreenModel(
     ...(options.unseenRows === undefined || options.unseenRows === 0
       ? {}
       : { unseenRows: options.unseenRows }),
+    ...(options.activityCount === undefined || options.activityCount === 0
+      ? {}
+      : { activityCount: options.activityCount }),
     ...(options.totalTokens === undefined ? {} : { totalTokens: options.totalTokens }),
     ...(options.workspace === undefined ? {} : { workspace: options.workspace }),
     ...(end === start ? {} : { visibleRange: { end, start: start + 1 } }),

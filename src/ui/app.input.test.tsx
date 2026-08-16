@@ -10,6 +10,7 @@ import { InteractionController } from '../model/interaction-controller'
 import { OverlayController } from '../model/overlay-controller'
 import { PreferencesController } from '../model/preferences-controller'
 import { PermissionController } from '../model/permission-controller'
+import { ActivityCenterController } from '../model/activity-center-controller'
 import { JobsController } from '../model/jobs-controller'
 import { SubagentTreeController } from '../model/subagent-tree-controller'
 import { ProjectionHubController } from '../model/projection-hub-controller'
@@ -128,6 +129,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
     const projections = new ProjectionHubController({} as Agent['session'])
     const jobs = new JobsController({} as Agent)
     const subagents = new SubagentTreeController({} as Agent)
+    const activity = new ActivityCenterController({ jobs, projections, subagents })
     const recovery = new RecoveryController({
       operations: {
         flush: async () => true,
@@ -217,6 +219,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
         overlay={overlay}
         palette={palette}
         preferences={preferences}
+        activity={activity}
         jobs={jobs}
         subagents={subagents}
         projections={projections}
@@ -380,6 +383,19 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
 
       stdin.write('\u001B[112;5u')
       await eventually(() => expect(overlay.getSnapshot().active).toBe('command-palette'))
+      stdin.write('open activity')
+      await eventually(() => expect(palette.getSnapshot().query).toBe('open activity'))
+      stdin.write('\r')
+      await eventually(() => expect(overlay.getSnapshot().active).toBe('activity'))
+      // Nothing is pending, so the center says so instead of implying a failure.
+      await eventually(() => expect(output).toContain('Nothing pending'))
+      stdin.write('c')
+      await eventually(() => expect(output).toContain('Nothing pending.'))
+      stdin.write('\u001B[27u')
+      await eventually(() => expect(overlay.getSnapshot().active).toBeUndefined())
+
+      stdin.write('\u001B[112;5u')
+      await eventually(() => expect(overlay.getSnapshot().active).toBe('command-palette'))
       stdin.write('open jobs')
       await eventually(() => expect(palette.getSnapshot().query).toBe('open jobs'))
       stdin.write('\r')
@@ -438,7 +454,8 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       await sessionCenter.dispose()
       runtimeStatus.dispose()
       permission.dispose()
-      jobs.dispose()
+      activity.dispose()
+    jobs.dispose()
     subagents.dispose()
       projections.dispose()
       await recovery.dispose()
