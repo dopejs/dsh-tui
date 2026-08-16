@@ -24,6 +24,7 @@ import type { RuntimeStatusController } from '../model/runtime-status-controller
 import type { RecoveryController } from '../model/recovery-controller'
 import type { PreferencesController } from '../model/preferences-controller'
 import type { PermissionController } from '../model/permission-controller'
+import type { ProjectionHubController } from '../model/projection-hub-controller'
 import type {
   TranscriptViewportController,
   TranscriptViewportSnapshot,
@@ -57,6 +58,7 @@ export interface InteractiveTuiProps {
   readonly palette: CommandPaletteController
   readonly permission: PermissionController
   readonly preferences: PreferencesController
+  readonly projections: ProjectionHubController
   readonly recovery: RecoveryController
   readonly sessionId: string
   readonly sessionCenter: SessionCenterController
@@ -179,6 +181,7 @@ export function InteractiveTui({
   palette,
   permission,
   preferences,
+  projections,
   recovery,
   sessionId,
   sessionCenter,
@@ -267,6 +270,11 @@ export function InteractiveTui({
     recovery.subscribe,
     recovery.getSnapshot,
     recovery.getSnapshot,
+  )
+  const projectionSnapshot = useSyncExternalStore(
+    projections.subscribe,
+    projections.getSnapshot,
+    projections.getSnapshot,
   )
 
   useEffect(() => {
@@ -373,6 +381,10 @@ export function InteractiveTui({
       case 'permission.center':
         overlay.open('permissions')
         setNotice('Permissions opened.')
+        return
+      case 'projection.center':
+        overlay.open('projections')
+        setNotice('Projections opened.')
         return
       case 'recovery.center':
         overlay.open('recovery')
@@ -782,6 +794,16 @@ export function InteractiveTui({
         }
         return
       }
+      if (activeOverlay === 'projections') {
+        if (key.upArrow) projections.move('up')
+        else if (key.downArrow || key.tab) projections.move('down')
+        else if (!key.ctrl && typed.toLowerCase() === 'r') {
+          setNotice(projections.refresh()
+            ? 'Projection snapshot refreshed.'
+            : 'Projection registry is unavailable or refresh failed.')
+        }
+        return
+      }
       if (key.upArrow) {
         completion.move('up')
         return
@@ -1051,9 +1073,9 @@ export function InteractiveTui({
       ...(runtimeStatusSnapshot.approvalPolicy === undefined
         ? {}
         : { approvalPolicy: runtimeStatusSnapshot.approvalPolicy }),
-      ...(runtimeStatusSnapshot.contextWindow === undefined
+      ...(projectionSnapshot.usage?.contextWindow === undefined
         ? {}
-        : { contextWindow: runtimeStatusSnapshot.contextWindow }),
+        : { contextWindow: projectionSnapshot.usage.contextWindow }),
       ...(runtimeStatusSnapshot.permissionPreset === undefined
         ? {}
         : { permissionPreset: runtimeStatusSnapshot.permissionPreset }),
@@ -1061,9 +1083,9 @@ export function InteractiveTui({
       scrollOffset: viewportSnapshot.scrollOffset,
       status: agentStatus === 'running' ? 'busy' : 'idle',
       terminalRows: screenRows,
-      ...(runtimeStatusSnapshot.totalTokens === undefined
+      ...(projectionSnapshot.usage?.totalTokens === undefined
         ? {}
-        : { totalTokens: runtimeStatusSnapshot.totalTokens }),
+        : { totalTokens: projectionSnapshot.usage.totalTokens }),
       unseenRows: viewportSnapshot.unseenRows,
       workspace,
     },
@@ -1079,6 +1101,7 @@ export function InteractiveTui({
       maxRows={overlayMaxRows}
       palette={paletteSnapshot}
       permissions={permissionSnapshot}
+      projections={projectionSnapshot}
       recovery={recoverySnapshot}
       sessions={sessionCenterSnapshot}
     />
@@ -1096,6 +1119,7 @@ export function InteractiveTui({
           maxRows={overlayMaxRows}
           palette={paletteSnapshot}
           permissions={permissionSnapshot}
+          projections={projectionSnapshot}
           recovery={recoverySnapshot}
           sessions={sessionCenterSnapshot}
         />

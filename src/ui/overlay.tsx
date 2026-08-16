@@ -5,6 +5,7 @@ import type { CommandPaletteSnapshot } from '../model/command-palette-controller
 import type { CompletionSnapshot } from '../model/completion-controller'
 import type { OverlayKind } from '../model/overlay-controller'
 import type { PermissionSnapshot } from '../model/permission-controller'
+import type { ProjectionHubSnapshot } from '../model/projection-hub-controller'
 import type { RecoverySnapshot } from '../model/recovery-controller'
 import type { SessionCenterSnapshot } from '../model/session-center-controller'
 
@@ -34,6 +35,7 @@ interface OverlayPanelProps {
   readonly maxRows: number
   readonly palette: CommandPaletteSnapshot
   readonly permissions: PermissionSnapshot
+  readonly projections: ProjectionHubSnapshot
   readonly recovery: RecoverySnapshot
   readonly sessions: SessionCenterSnapshot
 }
@@ -46,9 +48,58 @@ export function OverlayPanel({
   maxRows,
   palette,
   permissions,
+  projections,
   recovery,
   sessions,
 }: OverlayPanelProps) {
+  if (active === 'projections') {
+    const window = selectedWindow(projections.rows, projections.selectedIndex, maxRows - 4)
+    return (
+      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+        <Text bold wrap="truncate-end">
+          Projections · {projections.status}
+          {projections.asOfSeq === undefined ? '' : ` · seq ${String(projections.asOfSeq)}`}
+        </Text>
+        {projections.error === undefined ? null : (
+          <Text color="red" wrap="truncate-end">{projections.error}</Text>
+        )}
+        {window.rows.map((row, index) => {
+          const absolute = window.start + index
+          const selected = absolute === projections.selectedIndex
+          const color = row.tone === 'negative'
+            ? 'red'
+            : row.tone === 'positive'
+              ? 'green'
+              : row.tone === 'warning' ? 'yellow' : undefined
+          return (
+            <Box flexDirection="column" key={row.id}>
+              <Text
+                {...(color === undefined ? {} : { color })}
+                dimColor={row.tone === 'dim'}
+                inverse={selected}
+                wrap="truncate-end"
+              >
+                {selected ? '›' : ' '} {row.label}
+              </Text>
+              {selected && row.detail !== undefined ? (
+                <Text dimColor wrap="truncate-end">  {row.detail}</Text>
+              ) : null}
+            </Box>
+          )
+        })}
+        <Text dimColor wrap="truncate-end">
+          {projections.rows.length === 0
+            ? 'R refresh · Esc close'
+            : `${String((projections.selectedIndex ?? 0) + 1)}/${String(projections.rows.length)} · ↑/↓ inspect · R refresh · Esc close`}
+          {window.start > 0 ? ` · ${String(window.start)} above` : ''}
+          {window.end < projections.rows.length
+            ? ` · ${String(projections.rows.length - window.end)} below`
+            : ''}
+        </Text>
+      </Box>
+    )
+  }
+
   if (active === 'recovery') {
     const window = selectedWindow(
       recovery.capabilities,
@@ -354,7 +405,23 @@ function textLines(value: string | null): readonly string[] {
 }
 
 export function renderOverlayPanel(
-  props: OverlayPanelProps,
+  props: Omit<OverlayPanelProps, 'projections'> & {
+    readonly projections?: ProjectionHubSnapshot
+  },
 ): string {
-  return renderToString(<OverlayPanel {...props} />, { columns: props.columns })
+  const projections: ProjectionHubSnapshot = props.projections ?? {
+    capabilities: {
+      goal: 'unavailable', plan: 'unavailable', todos: 'unavailable', usage: 'unavailable',
+    },
+    diagnostics: [],
+    droppedDiagnostics: 0,
+    droppedTodos: 0,
+    revision: 0,
+    rows: [],
+    status: 'unavailable',
+  }
+  return renderToString(
+    <OverlayPanel {...props} projections={projections} />,
+    { columns: props.columns },
+  )
 }

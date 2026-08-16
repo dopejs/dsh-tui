@@ -33,12 +33,14 @@ interface RuntimeFixture {
   readonly mounted: InkApplicationOptions[]
   readonly order: string[]
   readonly permissionSet: ReturnType<typeof vi.fn>
+  readonly projectionSnapshot: ReturnType<typeof vi.fn>
   readonly questionProvider: () => UserQuestionProvider | undefined
   readonly readRaw: ReturnType<typeof vi.fn>
   readonly resume: ReturnType<typeof vi.fn>
   readonly resolveModel: ReturnType<typeof vi.fn>
   readonly session: FixtureSession
   readonly unregisterQuestions: ReturnType<typeof vi.fn>
+  readonly unregisterProjections: ReturnType<typeof vi.fn>
 }
 
 class FixtureSession {
@@ -145,6 +147,7 @@ function runtimeFixture(options: { readonly rawArtifacts?: boolean } = {}): Runt
     return true
   })
   const unregisterQuestions = vi.fn()
+  const unregisterProjections = vi.fn()
   const unregisterCommand = vi.fn()
   ctx.provide('agents', { create, resume } as never)
   ctx.provide('agentDefaultModel', {
@@ -174,6 +177,17 @@ function runtimeFixture(options: { readonly rawArtifacts?: boolean } = {}): Runt
       ? { approval: 'never', sandbox: 'danger-full-access' }
       : { approval: 'ask', sandbox: 'workspace-write' }),
     set: permissionSet,
+  } as never)
+  const projectionSnapshot = vi.fn((target: Session) => ({
+    asOfSeq: target.events.at(-1)?.seq ?? -1,
+    values: {
+      plan: { active: true, pending: false },
+      todos: null,
+    },
+  }))
+  ctx.provide('sessionProjections', {
+    onChanged: vi.fn(() => unregisterProjections),
+    snapshot: projectionSnapshot,
   } as never)
   const inspectSession = vi.fn(async (id) => ({
       events: session.events,
@@ -225,12 +239,14 @@ function runtimeFixture(options: { readonly rawArtifacts?: boolean } = {}): Runt
     mounted,
     order,
     permissionSet,
+    projectionSnapshot,
     questionProvider: () => questionProvider,
     readRaw,
     resume,
     resolveModel,
     session,
     unregisterQuestions,
+    unregisterProjections,
   }
 }
 
@@ -294,6 +310,7 @@ describe('startTuiRuntime', () => {
     const completion = currentApplication(fixture)?.completion
     const permission = currentApplication(fixture)?.permission
     const recovery = currentApplication(fixture)?.recovery
+    const projections = currentApplication(fixture)?.projections
     if (
       editor === undefined
       || overlay === undefined
@@ -301,6 +318,7 @@ describe('startTuiRuntime', () => {
       || completion === undefined
       || permission === undefined
       || recovery === undefined
+      || projections === undefined
     ) {
       throw new Error('interactive controllers were not mounted')
     }
@@ -313,9 +331,12 @@ describe('startTuiRuntime', () => {
     expect(() => completion.request('/late', 5)).toThrow('disposed')
     expect(() => permission.requestSelected()).toThrow('disposed')
     expect(() => recovery.activateSelected()).toThrow('disposed')
+    expect(() => projections.refresh()).toThrow('disposed')
+    expect(fixture.projectionSnapshot).toHaveBeenCalledWith(fixture.agent.session)
     expect(fixture.flush).toHaveBeenCalledWith(fixture.agent.session)
     expect(fixture.disposeHandle).toHaveBeenCalledOnce()
     expect(fixture.unregisterQuestions).toHaveBeenCalledOnce()
+    expect(fixture.unregisterProjections).toHaveBeenCalledOnce()
     expect(fixture.order).toEqual(['flush', 'handle'])
     await fixture.ctx.fiber.dispose()
   })

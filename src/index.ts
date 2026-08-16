@@ -8,6 +8,7 @@ import type {} from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-permission-presets'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
+import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-user-questions'
 
@@ -20,6 +21,7 @@ import { InteractionController } from './model/interaction-controller'
 import { OverlayController } from './model/overlay-controller'
 import { PreferencesController } from './model/preferences-controller'
 import { PermissionController } from './model/permission-controller'
+import { ProjectionHubController } from './model/projection-hub-controller'
 import { RecoveryController } from './model/recovery-controller'
 import { SessionCenterController } from './model/session-center-controller'
 import { RuntimeStatusController } from './model/runtime-status-controller'
@@ -178,6 +180,7 @@ export async function startTuiRuntime(
   const llm = ctx.get('llm')
   const permissionPresets = ctx.get('permissionPresets')
   const sessionPersistence = ctx.get('sessionPersistence')
+  const sessionProjections = ctx.get('sessionProjections')
   const sessions = ctx.get('sessions')
   const tools = ctx.get('tools')
   const userQuestions = ctx.get('userQuestions')
@@ -297,6 +300,12 @@ export async function startTuiRuntime(
         bindingOwner.own('agent status controller', () => status.dispose())
         const permission = new PermissionController(attachment.agent, permissionPresets)
         bindingOwner.own('permission controller', () => permission.dispose())
+        const projections = new ProjectionHubController(
+          attachment.agent.session,
+          sessionProjections,
+          { reportError: diagnostics.report },
+        )
+        bindingOwner.own('projection hub controller', () => projections.dispose())
         const editor = new EditorController()
         bindingOwner.own('editor controller', () => editor.dispose())
         const input = new InputController({ agent: attachment.agent, commands })
@@ -430,6 +439,7 @@ export async function startTuiRuntime(
             palette,
             permission,
             preferences,
+            projections,
             recovery,
             sessionId,
             runtimeStatus,

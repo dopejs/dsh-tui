@@ -5,40 +5,20 @@ type Listener = () => void
 
 export interface RuntimeStatusSnapshot {
   readonly approvalPolicy?: 'ask' | 'never'
-  readonly contextWindow?: number
   readonly model?: string
   readonly permissionPreset?: string
   readonly revision: number
-  readonly totalTokens?: number
-}
-
-function boundedSum(left: number, right: unknown): number {
-  if (typeof right !== 'number' || !Number.isFinite(right) || right < 0) return left
-  return Math.min(Number.MAX_SAFE_INTEGER, left + Math.floor(right))
-}
-
-function usageTotal(event: SessionEvent<'assistant/message'>): number {
-  const usage = event.data.usage
-  if (usage === undefined) return 0
-  return [
-    usage.inputTokens,
-    usage.outputTokens,
-    usage.cacheReadTokens,
-    usage.cacheWriteTokens,
-  ].reduce(boundedSum, 0)
 }
 
 export class RuntimeStatusController {
   readonly #listeners = new Set<Listener>()
   #approvalPolicy: RuntimeStatusSnapshot['approvalPolicy']
-  #contextWindow: number | undefined
   #disposed = false
   #model: string | undefined
   #nextSeq = 0
   #permissionPreset: string | undefined
   #revision = 0
   #snapshot: RuntimeStatusSnapshot
-  #totalTokens = 0
 
   constructor(model?: { readonly model?: string, readonly provider?: string }) {
     this.#model = this.#modelLabel(model)
@@ -84,14 +64,7 @@ export class RuntimeStatusController {
         changed = true
       } else if (event.type === 'request/context') {
         this.#model = `${event.data.provider}/${event.data.model}`
-        this.#contextWindow = event.data.contextWindow
         changed = true
-      } else if (event.type === 'assistant/message') {
-        const addition = usageTotal(event)
-        if (addition > 0) {
-          this.#totalTokens = boundedSum(this.#totalTokens, addition)
-          changed = true
-        }
       }
     }
     if (changed) this.#publish()
@@ -106,11 +79,9 @@ export class RuntimeStatusController {
   #createSnapshot(): RuntimeStatusSnapshot {
     return Object.freeze({
       ...(this.#approvalPolicy === undefined ? {} : { approvalPolicy: this.#approvalPolicy }),
-      ...(this.#contextWindow === undefined ? {} : { contextWindow: this.#contextWindow }),
       ...(this.#model === undefined ? {} : { model: this.#model }),
       ...(this.#permissionPreset === undefined ? {} : { permissionPreset: this.#permissionPreset }),
       revision: this.#revision,
-      ...(this.#totalTokens === 0 ? {} : { totalTokens: this.#totalTokens }),
     })
   }
 

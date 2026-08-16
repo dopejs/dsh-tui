@@ -11,6 +11,7 @@ export type TuiActionId =
   | 'changes.center'
   | 'composer.clear'
   | 'permission.center'
+  | 'projection.center'
   | 'recovery.center'
   | 'session.center'
   | 'transcript.compact-tools'
@@ -82,6 +83,12 @@ export const DEFAULT_TUI_ACTIONS: readonly TuiActionDescriptor[] = Object.freeze
     id: 'permission.center',
     keywords: Object.freeze(['approval', 'sandbox', 'safety']),
     title: 'Open permissions',
+  }),
+  Object.freeze({
+    description: 'Inspect plan, todo, goal, usage, and bounded projection diagnostics',
+    id: 'projection.center',
+    keywords: Object.freeze(['activity', 'context', 'goal', 'plan', 'todo', 'usage']),
+    title: 'Open projections',
   }),
   Object.freeze({
     description: 'Flush, export, fork, and inspect recovery boundaries',

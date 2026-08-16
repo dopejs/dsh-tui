@@ -11,6 +11,7 @@ exports[`InteractiveTui > renders a narrow command palette as a full-screen excl
 │  Go to transcript end · Return to the live trans…│
 │  Copy visible transcript · Request terminal clip…│
 │  Open permissions · Inspect and change the exact…│
-│1/7 · Enter select · Esc close                    │
+│  Open projections · Inspect plan, todo, goal, us…│
+│1/8 · Enter select · Esc close                    │
 ╰──────────────────────────────────────────────────╯"
 `;

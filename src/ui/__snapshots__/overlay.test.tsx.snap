@@ -12,6 +12,18 @@ exports[`OverlayPanel (M1.3) > renders a bounded narrow command palette 1`] = `
 ╰──────────────────────────────────────╯"
 `;
 
+exports[`OverlayPanel (M1.3) > renders a bounded projection hub with diagnostics and selected detail 1`] = `
+"╭──────────────────────────────────────────────────────────────╮
+│Projections · degraded · seq 42                               │
+│  Plan · active                                               │
+│  ● Add projection panel                                      │
+│› Goal · active · Ship orchestration                          │
+│  rounds 2/8 · revision 3                                     │
+│  Usage · 1000 cumulative tokens                              │
+│3/5 · ↑/↓ inspect · R refresh · Esc close · 1 below           │
+╰──────────────────────────────────────────────────────────────╯"
+`;
+
 exports[`OverlayPanel (M1.3) > renders a bounded session list and durable preview metadata 1`] = `
 "╭──────────────────────────────────────────────────────────────────────────────╮
 │Session center · ready                                                        │

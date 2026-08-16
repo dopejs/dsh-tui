@@ -5,6 +5,7 @@ import type { ChangeIndexSnapshot } from '../model/change-index-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
 import type { SessionCenterSnapshot } from '../model/session-center-controller'
 import type { PermissionSnapshot } from '../model/permission-controller'
+import type { ProjectionHubSnapshot } from '../model/projection-hub-controller'
 import type { RecoverySnapshot } from '../model/recovery-controller'
 import { renderOverlayPanel } from './overlay'
 
@@ -377,6 +378,57 @@ describe('OverlayPanel (M1.3)', () => {
         status: 'ready',
         truncated: false,
       },
+      recovery: emptyRecovery,
+      sessions: emptySessions,
+    })).toMatchSnapshot()
+  })
+
+  it('renders a bounded projection hub with diagnostics and selected detail', () => {
+    const projections: ProjectionHubSnapshot = {
+      asOfSeq: 42,
+      capabilities: {
+        goal: 'available', plan: 'available', todos: 'available', usage: 'available',
+      },
+      diagnostics: [{ key: 'plugin.custom', kind: 'unknown', summary: '{"state": "ready"}' }],
+      droppedDiagnostics: 3,
+      droppedTodos: 7,
+      revision: 5,
+      rows: [{
+        id: 'plan:current', label: 'Plan · active', section: 'plan', tone: 'positive',
+      }, {
+        id: 'todos:0', label: '● Add projection panel', section: 'todos', tone: 'warning',
+      }, {
+        detail: 'rounds 2/8 · revision 3',
+        id: 'goal:current',
+        label: 'Goal · active · Ship orchestration',
+        section: 'goal',
+        tone: 'warning',
+      }, {
+        detail: 'input 900 · output 100 · cache read 0 · write 0',
+        id: 'usage:tokens',
+        label: 'Usage · 1000 cumulative tokens',
+        section: 'usage',
+      }, {
+        detail: '{"state": "ready"}',
+        id: 'diagnostic:unknown:plugin.custom',
+        label: 'Unknown projection · plugin.custom',
+        section: 'diagnostics',
+        tone: 'warning',
+      }],
+      selectedIndex: 2,
+      status: 'degraded',
+    }
+    expect(renderOverlayPanel({
+      active: 'projections',
+      changes: emptyChanges,
+      columns: 64,
+      completion: emptyCompletion,
+      maxRows: 8,
+      palette: {
+        catalogTruncated: false, items: [], query: '', revision: 0, totalMatches: 0,
+      },
+      permissions: emptyPermissions,
+      projections,
       recovery: emptyRecovery,
       sessions: emptySessions,
     })).toMatchSnapshot()
