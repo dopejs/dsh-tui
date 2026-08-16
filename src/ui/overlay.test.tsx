@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import type { CommandPaletteSnapshot } from '../model/command-palette-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
 import type { SessionCenterSnapshot } from '../model/session-center-controller'
+import type { PermissionSnapshot } from '../model/permission-controller'
 import { renderOverlayPanel } from './overlay'
 
 const emptyCompletion: CompletionSnapshot = {
@@ -20,6 +21,14 @@ const emptySessions: SessionCenterSnapshot = {
   revision: 0,
   status: 'idle',
   totalMatches: 0,
+}
+
+const emptyPermissions: PermissionSnapshot = {
+  confirmationText: '',
+  items: [],
+  revision: 0,
+  status: 'unavailable',
+  truncated: false,
 }
 
 describe('OverlayPanel (M1.3)', () => {
@@ -45,6 +54,7 @@ describe('OverlayPanel (M1.3)', () => {
       completion: emptyCompletion,
       maxRows: 9,
       palette,
+      permissions: emptyPermissions,
       sessions: emptySessions,
     })).toMatchSnapshot()
   })
@@ -81,6 +91,7 @@ describe('OverlayPanel (M1.3)', () => {
       completion,
       maxRows: 8,
       palette,
+      permissions: emptyPermissions,
       sessions: emptySessions,
     })).toMatchSnapshot()
   })
@@ -114,6 +125,7 @@ describe('OverlayPanel (M1.3)', () => {
       completion: emptyCompletion,
       maxRows: 10,
       palette,
+      permissions: emptyPermissions,
       sessions: emptySessions,
     })).toMatchSnapshot()
   })
@@ -156,7 +168,71 @@ describe('OverlayPanel (M1.3)', () => {
       completion: emptyCompletion,
       maxRows: 10,
       palette,
+      permissions: emptyPermissions,
       sessions,
+    })).toMatchSnapshot()
+  })
+
+  it('renders permission consequences and dangerous typed confirmation', () => {
+    const palette: CommandPaletteSnapshot = {
+      catalogTruncated: false, items: [], query: '', revision: 0, totalMatches: 0,
+    }
+    const permissions: PermissionSnapshot = {
+      confirmationPhrase: 'enable danger-full-access',
+      confirmationTarget: 'danger-full-access',
+      confirmationText: 'enable danger',
+      items: [{
+        approval: 'never',
+        dangerous: true,
+        name: 'Danger full access',
+        sandbox: 'danger-full-access',
+        selected: false,
+        value: 'danger-full-access',
+      }],
+      revision: 2,
+      status: 'confirming',
+      truncated: false,
+    }
+    expect(renderOverlayPanel({
+      active: 'permissions',
+      columns: 80,
+      completion: emptyCompletion,
+      maxRows: 10,
+      palette,
+      permissions,
+      sessions: emptySessions,
+    })).toMatchSnapshot()
+
+    expect(renderOverlayPanel({
+      active: 'permissions',
+      columns: 80,
+      completion: emptyCompletion,
+      maxRows: 10,
+      palette,
+      permissions: {
+        confirmationText: '',
+        items: [{
+          approval: 'ask',
+          dangerous: false,
+          description: 'Confine writes to the workspace and ask when needed.',
+          name: 'Workspace write',
+          sandbox: 'workspace-write',
+          selected: true,
+          value: 'workspace-write',
+        }, {
+          approval: 'never',
+          dangerous: true,
+          name: 'Danger full access',
+          sandbox: 'danger-full-access',
+          selected: false,
+          value: 'danger-full-access',
+        }],
+        revision: 1,
+        selectedIndex: 0,
+        status: 'ready',
+        truncated: false,
+      },
+      sessions: emptySessions,
     })).toMatchSnapshot()
   })
 })

@@ -346,6 +346,22 @@ theme names and global action chords. Invalid startup input falls back to the
 documented defaults; a collision rejects the entire replacement. Persistent
 settings registration and user-editable themes/keymaps remain owned by M4.1.
 
+### Permission transition ownership
+
+The permission panel reads `ctx.permissionPresets.names`, `optionOf()`,
+`resolve()`, and `current(session.events)` from the public package root. It
+shows sandbox and approval consequences together, but never writes either knob
+itself. A safe selection calls `permissionPresets.set()` with the exact attached
+`Session`; the upstream service owns validation, durable events, and enforcement.
+
+Any preset resolving to `danger-full-access` enters a local confirmation state
+and requires the exact phrase `enable <preset>`. No cycling shortcut applies it.
+The upstream slash command remains an explicitly typed alternative. During a
+local write, intermediate synchronous knob events are coalesced and the panel
+re-reads the durable effective state once. A failure preserves the upstream
+state and remains visible. Events for another session never refresh or retarget
+the controller. An absent permission service produces an unavailable view.
+
 ## Human interaction
 
 The interaction scheduler serializes terminal ownership across the composer,

@@ -130,6 +130,8 @@ Post-MVP fixtures also cover:
 - session list/inspect and exact-handle attachment replacement;
 - preflight input blocking, no-overlap A → B switching, old-session recovery,
   and fail-closed double-resume failure;
+- exact-session permission writes, missing services, typed dangerous-mode
+  confirmation/cancellation, external changes, and failed knob writes;
 - model/default selection and permission-preset transitions;
 - exact startup-model preflight, 40/80/120-column status degradation, missing
   status facts, and atomic preference collision/fallback behavior;

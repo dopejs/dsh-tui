@@ -8,6 +8,7 @@ exports[`InteractiveTui > renders a narrow command palette as a full-screen excl
 │  Exit TUI · Gracefully close the interactive TUI │
 │  Go to transcript end · Return to the live trans…│
 │  Copy visible transcript · Request terminal clip…│
-│1/4 · Enter select · Esc close                    │
+│  Open permissions · Inspect and change the exact…│
+│1/5 · Enter select · Esc close                    │
 ╰──────────────────────────────────────────────────╯"
 `;

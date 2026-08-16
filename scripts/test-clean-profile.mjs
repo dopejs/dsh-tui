@@ -181,7 +181,38 @@ async function exerciseMultilineComposer(running) {
   running.child.write('\u001B')
   await waitForOutputSince(running, offset, 'Overlay closed.', 'close the session center')
 
+  offset = running.output().length
+  running.child.write('\u0010')
+  await waitForOutputSince(running, offset, 'Command palette', 'open permissions discovery')
+  running.child.write('open permissions')
+  await waitForOutputSince(running, offset, 'Open permissions', 'discover permissions')
+  offset = running.output().length
+  running.child.write('\r')
+  await waitForOutputSince(running, offset, 'Permissions · ready', 'open permissions')
+  offset = running.output().length
+  running.child.write('\u001B[B')
+  running.child.write('\r')
+  await waitForOutputSince(
+    running,
+    offset,
+    'Type enable danger-full-access',
+    'require dangerous permission confirmation',
+  )
+  offset = running.output().length
+  running.child.write('\u001B')
+  await waitForOutputSince(
+    running,
+    offset,
+    'Dangerous permission change cancelled.',
+    'cancel dangerous permission confirmation',
+  )
+  offset = running.output().length
+  running.child.write('\u001B')
+  await waitForOutputSince(running, offset, 'Overlay closed.', 'close permissions')
+
+  offset = running.output().length
   running.child.write('/ex')
+  await waitForOutputSince(running, offset, '/ex', 'render the command completion query')
   offset = running.output().length
   running.child.write('\t')
   await waitForOutputSince(running, offset, 'Command completion · ex', 'open command completion')

@@ -5,6 +5,7 @@ import type { ModelSelection } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-commands'
 import type {} from '@deepseek-ai/dsh-llm'
+import type {} from '@deepseek-ai/dsh-permission-presets'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import type {} from '@deepseek-ai/dsh-tools'
@@ -17,6 +18,7 @@ import { EditorController } from './model/editor-controller'
 import { InteractionController } from './model/interaction-controller'
 import { OverlayController } from './model/overlay-controller'
 import { PreferencesController } from './model/preferences-controller'
+import { PermissionController } from './model/permission-controller'
 import { SessionCenterController } from './model/session-center-controller'
 import { RuntimeStatusController } from './model/runtime-status-controller'
 import { TranscriptController } from './model/transcript-controller'
@@ -171,6 +173,7 @@ export async function startTuiRuntime(
   const appExit = ctx.get('appExit')
   const commands = ctx.get('commands')
   const llm = ctx.get('llm')
+  const permissionPresets = ctx.get('permissionPresets')
   const sessionPersistence = ctx.get('sessionPersistence')
   const sessions = ctx.get('sessions')
   const tools = ctx.get('tools')
@@ -285,6 +288,8 @@ export async function startTuiRuntime(
         )
         const status = new AgentStatusController(attachment.agent, diagnostics.report)
         bindingOwner.own('agent status controller', () => status.dispose())
+        const permission = new PermissionController(attachment.agent, permissionPresets)
+        bindingOwner.own('permission controller', () => permission.dispose())
         const editor = new EditorController()
         bindingOwner.own('editor controller', () => editor.dispose())
         const input = new InputController({ agent: attachment.agent, commands })
@@ -325,6 +330,7 @@ export async function startTuiRuntime(
               .join('/'),
             overlay,
             palette,
+            permission,
             preferences,
             sessionId,
             runtimeStatus,

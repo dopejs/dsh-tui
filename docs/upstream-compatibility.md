@@ -42,6 +42,8 @@ is required by this bundle.
 - `ctx.commands.list()` / `execute()`.
 - `ctx.llm.resolveModelInfo()` and `ctx.agentDefaultModel.currentSelection()`
   for pre-creation model selection and fallback.
+- `ctx.permissionPresets` for preset discovery, consequence preview, effective
+  state, and exact-session writes.
 - `approval/request` answerer waterfall.
 - `ctx.userQuestions.registerProvider()`.
 - `ctx.sessionPersistence.list()` / `inspect()` where session browsing needs

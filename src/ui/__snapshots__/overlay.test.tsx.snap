@@ -40,3 +40,23 @@ exports[`OverlayPanel (M1.3) > renders command/path completion states 1`] = `
 │1/1 · Enter apply · Esc close                             │
 ╰──────────────────────────────────────────────────────────╯"
 `;
+
+exports[`OverlayPanel (M1.3) > renders permission consequences and dangerous typed confirmation 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│Permissions · confirming                                                      │
+│Danger: sandbox danger-full-access · approval never.                          │
+│Type enable danger-full-access                                                │
+│> enable danger█                                                              │
+│Enter confirm · Esc cancel                                                    │
+╰──────────────────────────────────────────────────────────────────────────────╯"
+`;
+
+exports[`OverlayPanel (M1.3) > renders permission consequences and dangerous typed confirmation 2`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│Permissions · ready                                                           │
+│› ● Workspace write · sandbox workspace-write · approval ask                  │
+│  Confine writes to the workspace and ask when needed.                        │
+│  ○ Danger full access · sandbox danger-full-access · approval never          │
+│Enter select · Esc close                                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯"
+`;

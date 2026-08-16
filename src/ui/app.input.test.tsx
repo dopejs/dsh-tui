@@ -1,4 +1,5 @@
 import { PassThrough } from 'node:stream'
+import type { Agent } from '@deepseek-ai/dsh-agent'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 import type { AgentStatusStore } from '../model/agent-status-controller'
 import { CommandPaletteController } from '../model/command-palette-controller'
@@ -7,6 +8,7 @@ import { EditorController } from '../model/editor-controller'
 import { InteractionController } from '../model/interaction-controller'
 import { OverlayController } from '../model/overlay-controller'
 import { PreferencesController } from '../model/preferences-controller'
+import { PermissionController } from '../model/permission-controller'
 import { SessionCenterController } from '../model/session-center-controller'
 import { RuntimeStatusController } from '../model/runtime-status-controller'
 import { TranscriptController } from '../model/transcript-controller'
@@ -108,6 +110,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       subscribe: () => () => undefined,
     })
     const preferences = new PreferencesController()
+    const permission = new PermissionController({} as Agent)
     const completion = new CompletionController({
       complete: async request => request.kind === 'command'
         ? [{
@@ -176,6 +179,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
         overlay={overlay}
         palette={palette}
         preferences={preferences}
+        permission={permission}
         sessionId="input-session"
         sessionCenter={sessionCenter}
         runtimeStatus={runtimeStatus}
@@ -321,6 +325,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       await completion.dispose()
       await sessionCenter.dispose()
       runtimeStatus.dispose()
+      permission.dispose()
       palette.dispose()
       overlay.dispose()
       viewport.dispose()

@@ -29,6 +29,7 @@ interface RuntimeFixture {
   readonly listSessions: ReturnType<typeof vi.fn>
   readonly mounted: InkApplicationOptions[]
   readonly order: string[]
+  readonly permissionSet: ReturnType<typeof vi.fn>
   readonly questionProvider: () => UserQuestionProvider | undefined
   readonly resume: ReturnType<typeof vi.fn>
   readonly resolveModel: ReturnType<typeof vi.fn>
@@ -133,6 +134,20 @@ function runtimeFixture(): RuntimeFixture {
     provider,
   }))
   ctx.provide('llm', { resolveModelInfo: resolveModel } as never)
+  let permissionCurrent = 'workspace-write'
+  const permissionSet = vi.fn((target: Session, value: string) => {
+    void target
+    permissionCurrent = value
+  })
+  ctx.provide('permissionPresets', {
+    current: vi.fn(() => permissionCurrent),
+    names: ['workspace-write', 'danger-full-access'],
+    optionOf: vi.fn((value: string) => ({ name: value, value })),
+    resolve: vi.fn((value: string) => value === 'danger-full-access'
+      ? { approval: 'never', sandbox: 'danger-full-access' }
+      : { approval: 'ask', sandbox: 'workspace-write' }),
+    set: permissionSet,
+  } as never)
   const inspectSession = vi.fn(async (id) => ({
       events: session.events,
       meta: { createdAt: 0, cwd: '/fixture/workspace', id, version: 0 },
@@ -170,6 +185,7 @@ function runtimeFixture(): RuntimeFixture {
     listSessions,
     mounted,
     order,
+    permissionSet,
     questionProvider: () => questionProvider,
     resume,
     resolveModel,
@@ -236,11 +252,13 @@ describe('startTuiRuntime', () => {
     const overlay = currentApplication(fixture)?.overlay
     const palette = currentApplication(fixture)?.palette
     const completion = currentApplication(fixture)?.completion
+    const permission = currentApplication(fixture)?.permission
     if (
       editor === undefined
       || overlay === undefined
       || palette === undefined
       || completion === undefined
+      || permission === undefined
     ) {
       throw new Error('interactive controllers were not mounted')
     }
@@ -251,6 +269,7 @@ describe('startTuiRuntime', () => {
     expect(() => overlay.open('command-palette')).toThrow('disposed')
     expect(() => palette.insertQuery('late')).toThrow('disposed')
     expect(() => completion.request('/late', 5)).toThrow('disposed')
+    expect(() => permission.requestSelected()).toThrow('disposed')
     expect(fixture.flush).toHaveBeenCalledWith(fixture.agent.session)
     expect(fixture.disposeHandle).toHaveBeenCalledOnce()
     expect(fixture.unregisterQuestions).toHaveBeenCalledOnce()
@@ -441,6 +460,30 @@ describe('startTuiRuntime', () => {
     const answer = { answers: [{ id: 'continue', selected: ['Yes'] }] }
     application.interaction.answerQuestions(answer)
     await expect(question).resolves.toEqual(answer)
+
+    await dispose()
+    await fixture.ctx.fiber.dispose()
+  })
+
+  it('routes a confirmed permission change to the exact attached session', async () => {
+    const fixture = runtimeFixture()
+    const dispose = await startTuiRuntime(
+      fixture.ctx,
+      {},
+      new AbortController().signal,
+      dependencies(fixture),
+    )
+    const permission = currentApplication(fixture)?.permission
+    if (permission === undefined) throw new Error('permission controller was not mounted')
+
+    permission.move('down')
+    expect(permission.requestSelected()).toBe('confirmation-required')
+    permission.insertConfirmation('enable danger-full-access')
+    expect(permission.confirm()).toBe(true)
+    expect(fixture.permissionSet).toHaveBeenCalledWith(
+      fixture.agent.session,
+      'danger-full-access',
+    )
 
     await dispose()
     await fixture.ctx.fiber.dispose()

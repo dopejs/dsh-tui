@@ -179,6 +179,12 @@ M1 exit gate:
 
 ### M2.1 Permission presets and sandbox visibility (+5)
 
+Status: **complete**. The exact-session permission panel projects public preset
+metadata and consequences, applies safe modes through the owning service, and
+requires a full typed phrase before unrestricted access. Missing services,
+write failures, external changes, cancellation, and bounded catalogs are
+fail-closed.
+
 - adapt the public permission-preset service;
 - preview sandbox/approval consequences;
 - apply safe modes atomically and require typed/explicit confirmation for

@@ -3,6 +3,7 @@ import { Box, Text, renderToString } from 'ink'
 import type { CommandPaletteSnapshot } from '../model/command-palette-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
 import type { OverlayKind } from '../model/overlay-controller'
+import type { PermissionSnapshot } from '../model/permission-controller'
 import type { SessionCenterSnapshot } from '../model/session-center-controller'
 
 interface OverlayWindow<T> {
@@ -29,6 +30,7 @@ interface OverlayPanelProps {
   readonly completion: CompletionSnapshot
   readonly maxRows: number
   readonly palette: CommandPaletteSnapshot
+  readonly permissions: PermissionSnapshot
   readonly sessions: SessionCenterSnapshot
 }
 
@@ -38,6 +40,7 @@ export function OverlayPanel({
   completion,
   maxRows,
   palette,
+  permissions,
   sessions,
 }: OverlayPanelProps) {
   if (active === 'command-palette') {
@@ -115,6 +118,56 @@ export function OverlayPanel({
             ? 'R refresh · Esc close'
             : `${String((sessions.selectedIndex ?? 0) + 1)}/${String(sessions.totalMatches)} · Enter resume · Space preview · R refresh`}
           {sessions.catalogTruncated ? ' · catalog truncated' : ''}
+        </Text>
+      </Box>
+    )
+  }
+
+  if (active === 'permissions') {
+    const window = selectedWindow(permissions.items, permissions.selectedIndex, maxRows - 6)
+    const confirmation = permissions.items.find(
+      item => item.value === permissions.confirmationTarget,
+    )
+    return (
+      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+        <Text bold wrap="truncate-end">Permissions · {permissions.status}</Text>
+        {permissions.status === 'confirming' ? (
+          <>
+            <Text color="red" wrap="truncate-end">
+              Danger: sandbox {confirmation?.sandbox ?? 'unrestricted'} · approval{' '}
+              {confirmation?.approval ?? 'unknown'}.
+            </Text>
+            <Text wrap="truncate-end">Type {permissions.confirmationPhrase}</Text>
+            <Text wrap="truncate-end">&gt; {permissions.confirmationText}<Text inverse>█</Text></Text>
+          </>
+        ) : window.rows.map((item, index) => {
+          const absolute = window.start + index
+          const selected = absolute === permissions.selectedIndex
+          return (
+            <Box flexDirection="column" key={item.value}>
+              <Text inverse={selected} wrap="truncate-end">
+                {selected ? '›' : ' '} {item.selected ? '●' : '○'} {item.name}
+                {' · sandbox '}{item.sandbox}{' · approval '}{item.approval}
+              </Text>
+              {selected && item.description !== undefined
+                ? <Text dimColor wrap="truncate-end">  {item.description}</Text>
+                : null}
+            </Box>
+          )
+        })}
+        {permissions.status === 'unavailable' ? (
+          <Text dimColor>Permission preset service unavailable</Text>
+        ) : null}
+        {permissions.error === undefined ? null : (
+          <Text color="red" wrap="truncate-end">{permissions.error}</Text>
+        )}
+        <Text dimColor wrap="truncate-end">
+          {permissions.status === 'confirming'
+            ? 'Enter confirm · Esc cancel'
+            : permissions.items.length === 0
+              ? 'Esc close'
+              : 'Enter select · Esc close'}
+          {permissions.truncated ? ' · presets truncated' : ''}
         </Text>
       </Box>
     )

@@ -9,6 +9,7 @@ import { EditorController } from '../model/editor-controller'
 import { InteractionController } from '../model/interaction-controller'
 import { OverlayController } from '../model/overlay-controller'
 import { PreferencesController } from '../model/preferences-controller'
+import { PermissionController } from '../model/permission-controller'
 import { SessionCenterController } from '../model/session-center-controller'
 import { RuntimeStatusController } from '../model/runtime-status-controller'
 import { TranscriptController } from '../model/transcript-controller'
@@ -52,6 +53,7 @@ function renderApp(
     subscribe: () => () => undefined,
   })
   const preferences = new PreferencesController()
+  const permission = new PermissionController({} as Agent)
   const completion = new CompletionController({ complete: async () => [] })
   const sessionCenter = new SessionCenterController({
     inspect: async () => { throw new Error('not configured') },
@@ -75,6 +77,7 @@ function renderApp(
         overlay={overlay}
         palette={palette}
         preferences={preferences}
+        permission={permission}
         sessionId="session-app"
         sessionCenter={sessionCenter}
         runtimeStatus={runtimeStatus}
@@ -90,6 +93,7 @@ function renderApp(
     void completion.dispose()
     void sessionCenter.dispose()
     runtimeStatus.dispose()
+    permission.dispose()
     palette.dispose()
     overlay.dispose()
     viewport.dispose()

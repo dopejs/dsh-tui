@@ -21,6 +21,7 @@ import { resolveInputSurface } from '../model/overlay-controller'
 import type { SessionCenterController } from '../model/session-center-controller'
 import type { RuntimeStatusController } from '../model/runtime-status-controller'
 import type { PreferencesController } from '../model/preferences-controller'
+import type { PermissionController } from '../model/permission-controller'
 import type {
   TranscriptViewportController,
   TranscriptViewportSnapshot,
@@ -51,6 +52,7 @@ export interface InteractiveTuiProps {
   readonly onQuit: (code: number) => void
   readonly overlay: OverlayController
   readonly palette: CommandPaletteController
+  readonly permission: PermissionController
   readonly preferences: PreferencesController
   readonly sessionId: string
   readonly sessionCenter: SessionCenterController
@@ -165,6 +167,7 @@ export function InteractiveTui({
   onQuit,
   overlay,
   palette,
+  permission,
   preferences,
   sessionId,
   sessionCenter,
@@ -233,6 +236,11 @@ export function InteractiveTui({
     sessionCenter.subscribe,
     sessionCenter.getSnapshot,
     sessionCenter.getSnapshot,
+  )
+  const permissionSnapshot = useSyncExternalStore(
+    permission.subscribe,
+    permission.getSnapshot,
+    permission.getSnapshot,
   )
   const runtimeStatusSnapshot = useSyncExternalStore(
     runtimeStatus.subscribe,
@@ -336,6 +344,10 @@ export function InteractiveTui({
     switch (action) {
       case 'composer.clear':
         setNotice(editor.clear() ? 'Composer cleared.' : 'Composer is already empty.')
+        return
+      case 'permission.center':
+        overlay.open('permissions')
+        setNotice('Permissions opened.')
         return
       case 'session.center':
         sessionCenter.resetQuery()
@@ -450,6 +462,13 @@ export function InteractiveTui({
       if (overlay.getSnapshot().active === 'session-center') {
         if (sessionCenter.insertQuery(normalized.replaceAll('\n', ' ')) === 'limit-exceeded') {
           setNotice('Session filter is too long.')
+        }
+        return
+      }
+      if (overlay.getSnapshot().active === 'permissions') {
+        if (permission.getSnapshot().status !== 'confirming') return
+        if (permission.insertConfirmation(normalized) === 'limit-exceeded') {
+          setNotice('Permission confirmation is too long.')
         }
         return
       }
@@ -591,6 +610,15 @@ export function InteractiveTui({
     })
     if (inputSurface === 'overlay') {
       const activeOverlay = overlay.getSnapshot().active
+      if (
+        activeOverlay === 'permissions'
+        && permission.getSnapshot().status === 'confirming'
+        && (key.escape || (key.ctrl && typed.toLowerCase() === 'c'))
+      ) {
+        permission.cancelConfirmation()
+        setNotice('Dangerous permission change cancelled.')
+        return
+      }
       if (key.escape || (key.ctrl && typed.toLowerCase() === 'c')) {
         if (activeOverlay === 'completion') completion.cancel()
         overlay.close()
@@ -631,6 +659,32 @@ export function InteractiveTui({
           if (sessionCenter.insertQuery(typed) === 'limit-exceeded') {
             setNotice('Session filter is too long.')
           }
+        }
+        return
+      }
+      if (activeOverlay === 'permissions') {
+        if (permission.getSnapshot().status === 'confirming') {
+          if (key.return) {
+            setNotice(permission.confirm()
+              ? 'Permission preset changed.'
+              : 'Confirmation did not match; permission unchanged.')
+          } else if (key.backspace || key.delete) permission.backspaceConfirmation()
+          else if (!key.ctrl && !key.meta && !key.super && typed !== '') {
+            if (permission.insertConfirmation(typed) === 'limit-exceeded') {
+              setNotice('Permission confirmation is too long.')
+            }
+          }
+        } else if (key.upArrow) permission.move('up')
+        else if (key.downArrow || key.tab) permission.move('down')
+        else if (key.return) {
+          const result = permission.requestSelected()
+          setNotice(result === 'applied'
+            ? 'Permission preset changed.'
+            : result === 'confirmation-required'
+              ? 'Type the displayed phrase to enable dangerous access.'
+              : result === 'unavailable'
+                ? 'Permission preset service is unavailable.'
+                : 'Permission preset is already active or could not be changed.')
         }
         return
       }
@@ -929,6 +983,7 @@ export function InteractiveTui({
       completion={completionSnapshot}
       maxRows={overlayMaxRows}
       palette={paletteSnapshot}
+      permissions={permissionSnapshot}
       sessions={sessionCenterSnapshot}
     />
   }
@@ -943,6 +998,7 @@ export function InteractiveTui({
           completion={completionSnapshot}
           maxRows={overlayMaxRows}
           palette={paletteSnapshot}
+          permissions={permissionSnapshot}
           sessions={sessionCenterSnapshot}
         />
       )}

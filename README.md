@@ -96,6 +96,14 @@ refresh, and Enter to switch. Switching is allowed only with an idle agent and
 empty composer; the old attachment is fully flushed and disposed before the
 selected session resumes.
 
+Open the command palette and choose **Open permissions** to inspect every
+Harness-provided preset before changing it. Each row shows the resulting
+sandbox mode and approval policy. Safe presets apply directly to the exact
+attached session; `danger-full-access` requires typing
+`enable danger-full-access` in full. Escape cancels confirmation without
+changing either permission knob. Typing the upstream
+`/permission danger-full-access` command is also treated as explicit selection.
+
 ## Documentation
 
 - [Product requirements](docs/product-requirements.md)
