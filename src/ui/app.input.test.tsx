@@ -11,6 +11,7 @@ import { OverlayController } from '../model/overlay-controller'
 import { PreferencesController } from '../model/preferences-controller'
 import { PermissionController } from '../model/permission-controller'
 import { JobsController } from '../model/jobs-controller'
+import { SubagentTreeController } from '../model/subagent-tree-controller'
 import { ProjectionHubController } from '../model/projection-hub-controller'
 import { RecoveryController } from '../model/recovery-controller'
 import { SessionCenterController } from '../model/session-center-controller'
@@ -126,6 +127,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
     const permission = new PermissionController({} as Agent)
     const projections = new ProjectionHubController({} as Agent['session'])
     const jobs = new JobsController({} as Agent)
+    const subagents = new SubagentTreeController({} as Agent)
     const recovery = new RecoveryController({
       operations: {
         flush: async () => true,
@@ -216,6 +218,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
         palette={palette}
         preferences={preferences}
         jobs={jobs}
+        subagents={subagents}
         projections={projections}
         recovery={recovery}
         permission={permission}
@@ -436,6 +439,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       runtimeStatus.dispose()
       permission.dispose()
       jobs.dispose()
+    subagents.dispose()
       projections.dispose()
       await recovery.dispose()
       palette.dispose()

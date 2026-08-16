@@ -26,6 +26,7 @@ import type { PreferencesController } from '../model/preferences-controller'
 import type { PermissionController } from '../model/permission-controller'
 import type { JobsController } from '../model/jobs-controller'
 import type { ProjectionHubController } from '../model/projection-hub-controller'
+import type { SubagentTreeController } from '../model/subagent-tree-controller'
 import type {
   TranscriptViewportController,
   TranscriptViewportSnapshot,
@@ -66,6 +67,7 @@ export interface InteractiveTuiProps {
   readonly sessionCenter: SessionCenterController
   readonly runtimeStatus: RuntimeStatusController
   readonly status: AgentStatusStore
+  readonly subagents: SubagentTreeController
   readonly terminalRows?: number
   readonly transcript: TranscriptStore
   readonly viewport: TranscriptViewportController
@@ -190,6 +192,7 @@ export function InteractiveTui({
   sessionCenter,
   runtimeStatus,
   status,
+  subagents,
   terminalRows: fixedRows,
   transcript,
   viewport,
@@ -283,6 +286,11 @@ export function InteractiveTui({
     jobs.subscribe,
     jobs.getSnapshot,
     jobs.getSnapshot,
+  )
+  const subagentSnapshot = useSyncExternalStore(
+    subagents.subscribe,
+    subagents.getSnapshot,
+    subagents.getSnapshot,
   )
 
   useEffect(() => {
@@ -390,6 +398,11 @@ export function InteractiveTui({
         jobs.refresh()
         overlay.open('jobs')
         setNotice('Jobs opened.')
+        return
+      case 'subagent.center':
+        void subagents.refresh()
+        overlay.open('subagents')
+        setNotice('Subagents opened.')
         return
       case 'permission.center':
         overlay.open('permissions')
@@ -700,6 +713,15 @@ export function InteractiveTui({
         return
       }
       if (
+        activeOverlay === 'subagents'
+        && subagents.getSnapshot().status === 'followup-input'
+        && (key.escape || (key.ctrl && typed.toLowerCase() === 'c'))
+      ) {
+        subagents.cancelFollowup()
+        setNotice('Subagent follow-up cancelled.')
+        return
+      }
+      if (
         activeOverlay === 'jobs'
         && jobs.getSnapshot().status === 'confirming'
         && (key.escape || (key.ctrl && typed.toLowerCase() === 'c'))
@@ -813,6 +835,48 @@ export function InteractiveTui({
           } else {
             setNotice('The linked transcript row is outside the retained window.')
           }
+        }
+        return
+      }
+      if (activeOverlay === 'subagents') {
+        const subagentStatus = subagents.getSnapshot().status
+        if (subagentStatus === 'followup-input') {
+          if (key.return) {
+            void subagents.followup().then((outcome) => {
+              setNotice(outcome === 'delivered'
+                ? 'Follow-up delivered to the child inbox.'
+                : outcome === 'refused'
+                  ? 'That child cannot accept a follow-up from this session.'
+                  : 'Follow-up delivery failed.')
+            })
+          } else if (key.backspace || key.delete) {
+            const current = subagents.getSnapshot().followupText
+            subagents.setFollowupText(removeLastCharacter(current))
+          } else if (!key.ctrl && !key.meta && !key.super && typed !== '') {
+            subagents.setFollowupText(subagents.getSnapshot().followupText + typed)
+          }
+          return
+        }
+        if (key.upArrow) subagents.move('up')
+        else if (key.downArrow || key.tab) subagents.move('down')
+        else if (!key.ctrl && typed.toLowerCase() === 'f') {
+          setNotice(subagents.beginFollowup()
+            ? 'Type a follow-up, then Enter.'
+            : 'Only a direct continuable child can be followed up from this session.')
+        } else if (!key.ctrl && typed.toLowerCase() === 'i') {
+          setNotice(subagents.interrupt()
+            ? 'Interrupt signalled; the child stops when it observes it.'
+            : 'Only a live continuable child can be interrupted.')
+        } else if (!key.ctrl && typed.toLowerCase() === 'a') {
+          setNotice(subagents.attach()
+            ? 'Attaching to the selected child session.'
+            : 'That row has no attachable child session.')
+        } else if (!key.ctrl && typed.toLowerCase() === 'm') {
+          setNotice(subagents.acknowledge() ? 'Subagent updates marked read.' : 'Nothing unread.')
+        } else if (!key.ctrl && typed.toLowerCase() === 'r') {
+          void subagents.refresh().then((ok) => {
+            setNotice(ok ? 'Subagent tree refreshed.' : 'The subagent runtime is unavailable.')
+          })
         }
         return
       }
@@ -1154,6 +1218,7 @@ export function InteractiveTui({
       permissions={permissionSnapshot}
       jobs={jobsSnapshot}
       projections={projectionSnapshot}
+      subagents={subagentSnapshot}
       recovery={recoverySnapshot}
       sessions={sessionCenterSnapshot}
     />
@@ -1173,6 +1238,7 @@ export function InteractiveTui({
           permissions={permissionSnapshot}
           jobs={jobsSnapshot}
           projections={projectionSnapshot}
+          subagents={subagentSnapshot}
           recovery={recoverySnapshot}
           sessions={sessionCenterSnapshot}
         />

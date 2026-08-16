@@ -11,6 +11,16 @@ exports[`OverlayPanel (M1.3) > degrades the job panel at 40 columns 1`] = `
 ╰──────────────────────────────────────╯"
 `;
 
+exports[`OverlayPanel (M1.3) > degrades the subagent tree at 40 columns 1`] = `
+"╭──────────────────────────────────────╮
+│Subagents · ready · 1 unread          │
+│› •audit the change index · continuab…│
+│     summarize findings · one-shot · …│
+│  child-bad · unreadable (corrupt)    │
+│1/3 · ↑/↓ select · F follow up · I in…│
+╰──────────────────────────────────────╯"
+`;
+
 exports[`OverlayPanel (M1.3) > renders a bounded narrow command palette 1`] = `
 "╭──────────────────────────────────────╮
 │Command palette                       │
@@ -66,6 +76,17 @@ exports[`OverlayPanel (M1.3) > renders an armed cancellation and bounded complet
 │  subagent-1 · running · unowned · audit the change index                     │
 │Cancel bash-1? Enter confirm · Esc dismiss                                    │
 │Output stays with the agent · 2/3 · ↑/↓ select · K cancel · R refresh · Esc c…│
+╰──────────────────────────────────────────────────────────────────────────────╯"
+`;
+
+exports[`OverlayPanel (M1.3) > renders an armed subagent follow-up draft 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│Subagents · followup-input · 1 unread                                         │
+│› •audit the change index · continuable · running · has children              │
+│     summarize findings · one-shot · inactive                                 │
+│  child-bad · unreadable (corrupt)                                            │
+│Follow up: check the truncation path too█ · Enter send · Esc cancel           │
+│1/3 · ↑/↓ select · F follow up · I interrupt · A attach · M mark read · R ref…│
 ╰──────────────────────────────────────────────────────────────────────────────╯"
 `;
 
@@ -148,9 +169,26 @@ exports[`OverlayPanel (M1.3) > renders permission consequences and dangerous typ
 ╰──────────────────────────────────────────────────────────────────────────────╯"
 `;
 
+exports[`OverlayPanel (M1.3) > renders the subagent tree with depth, unread marks, and diagnostics at 80 columns 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│Subagents · ready · 1 unread                                                  │
+│› •audit the change index · continuable · running · has children              │
+│     summarize findings · one-shot · inactive                                 │
+│  child-bad · unreadable (corrupt)                                            │
+│1/3 · ↑/↓ select · F follow up · I interrupt · A attach · M mark read · R ref…│
+╰──────────────────────────────────────────────────────────────────────────────╯"
+`;
+
 exports[`OverlayPanel (M1.3) > states that the registry is unavailable rather than showing an empty list 1`] = `
 "╭──────────────────────────────────────────────────────────────────────────────╮
 │Jobs · unavailable · 0 running                                                │
 │Output stays with the agent · R refresh · Esc close                           │
+╰──────────────────────────────────────────────────────────────────────────────╯"
+`;
+
+exports[`OverlayPanel (M1.3) > states that the subagent runtime is unavailable rather than showing an empty tree 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│Subagents · unavailable                                                       │
+│R refresh · Esc close                                                         │
 ╰──────────────────────────────────────────────────────────────────────────────╯"
 `;

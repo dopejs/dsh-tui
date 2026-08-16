@@ -10,6 +10,7 @@ import type {} from '@deepseek-ai/dsh-permission-presets'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import type {} from '@deepseek-ai/dsh-session-projection'
+import type {} from '@deepseek-ai/dsh-subagent'
 import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-user-questions'
 
@@ -26,6 +27,7 @@ import { PermissionController } from './model/permission-controller'
 import { ProjectionHubController } from './model/projection-hub-controller'
 import { RecoveryController } from './model/recovery-controller'
 import { SessionCenterController } from './model/session-center-controller'
+import { SubagentTreeController } from './model/subagent-tree-controller'
 import { RuntimeStatusController } from './model/runtime-status-controller'
 import { TranscriptController } from './model/transcript-controller'
 import { reduceTranscriptBatch } from './model/transcript-reducer'
@@ -183,6 +185,7 @@ export async function startTuiRuntime(
   const permissionPresets = ctx.get('permissionPresets')
   const sessionPersistence = ctx.get('sessionPersistence')
   const jobs = ctx.get('jobs')
+  const subagentRuntime = ctx.get('subagents')
   const sessionProjections = ctx.get('sessionProjections')
   const sessions = ctx.get('sessions')
   const tools = ctx.get('tools')
@@ -307,6 +310,25 @@ export async function startTuiRuntime(
           reportError: diagnostics.report,
         })
         bindingOwner.own('jobs controller', () => jobsPanel.dispose())
+        const subagentAttachments = new AbortController()
+        bindingOwner.own('subagent attachment requests', () => subagentAttachments.abort())
+        const subagents = new SubagentTreeController(attachment.agent, subagentRuntime, {
+          // Attachment stays owned by the coordinator; this panel only names a target.
+          attach: (childId) => {
+            const activeCoordinator = coordinatorRef.current
+            if (activeCoordinator === undefined) {
+              throw new Error('Session transition coordinator is not ready')
+            }
+            if (activeCoordinator.getSnapshot().status !== 'attached') {
+              throw new Error('Another session transition is already running')
+            }
+            void activeCoordinator
+              .switchSession(String(childId), subagentAttachments.signal)
+              .catch(diagnostics.report)
+          },
+          reportError: diagnostics.report,
+        })
+        bindingOwner.own('subagent tree controller', () => subagents.dispose())
         const projections = new ProjectionHubController(
           attachment.agent.session,
           sessionProjections,
@@ -451,6 +473,7 @@ export async function startTuiRuntime(
             recovery,
             sessionId,
             runtimeStatus,
+            subagents,
             status,
             transcript,
             viewport,

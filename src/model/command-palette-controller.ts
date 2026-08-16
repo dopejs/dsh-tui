@@ -15,6 +15,7 @@ export type TuiActionId =
   | 'projection.center'
   | 'recovery.center'
   | 'session.center'
+  | 'subagent.center'
   | 'transcript.compact-tools'
   | 'transcript.copy-visible'
   | 'transcript.search'
@@ -108,6 +109,12 @@ export const DEFAULT_TUI_ACTIONS: readonly TuiActionDescriptor[] = Object.freeze
     id: 'session.center',
     keywords: Object.freeze(['open', 'resume', 'switch']),
     title: 'Open session center',
+  }),
+  Object.freeze({
+    description: 'Inspect the subagent tree, follow up, interrupt, and attach',
+    id: 'subagent.center',
+    keywords: Object.freeze(['agents', 'children', 'delegation', 'subagent', 'tree']),
+    title: 'Open subagents',
   }),
   Object.freeze({
     description: 'Fold or expand all retained tool result cards',

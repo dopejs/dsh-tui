@@ -52,6 +52,9 @@ is required by this bundle.
 - `ctx.jobs.list()` / `get()` / `kill()` / `onJobsChanged()` / `onJobDone()` for
   background-job observation and owned cancellation; the consuming `read()` and
   the admitting `attachController()` are deliberately not consumed.
+- `ctx.subagents.listDescendants()` / `followup()` / `interrupt()` for the
+  subagent tree and its controls; child attachment stays owned by the session
+  attachment coordinator.
 
 ## Production-roadmap capability map
 
@@ -72,7 +75,7 @@ exports.
 | Sandbox enforcement | `@deepseek-ai/dsh-sandbox-policy` and selected sandbox provider | Available in `dsh-base`; enforcement stays upstream-owned |
 | Todo/goal/plan/usage/subagent read models | `@deepseek-ai/dsh-session-projection` / `ctx.sessionProjections` and registered projection units | Registry available; individual views are capability-gated |
 | Background jobs | `@deepseek-ai/dsh-jobs` / `ctx.jobs` | Local provider available in `dsh-base`; `read()` and `attachController()` are consuming/admitting and stay unused (ADR-0006) |
-| Subagents | `@deepseek-ai/dsh-subagent` plus registered providers and projections | Available in `dsh-base` |
+| Subagents | `@deepseek-ai/dsh-subagent` plus registered providers and projections | Available in `dsh-base`; `followup()` requires the exact live direct parent, so the TUI addresses only its own direct children |
 | Settings | `@deepseek-ai/dsh-settings` / `ctx.settings` | File-backed provider available in `dsh-base` |
 | Skills | `@deepseek-ai/dsh-skill` / `ctx.skills` | Filesystem provider available in `dsh-base` |
 | MCP tools | `@deepseek-ai/dsh-mcp-client` registrations in `ctx.tools` | Optional per user profile; no server-health registry on the baseline |

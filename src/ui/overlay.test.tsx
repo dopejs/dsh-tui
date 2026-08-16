@@ -5,6 +5,7 @@ import type { ChangeIndexSnapshot } from '../model/change-index-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
 import type { JobsSnapshot } from '../model/jobs-controller'
 import type { SessionCenterSnapshot } from '../model/session-center-controller'
+import type { SubagentTreeSnapshot } from '../model/subagent-tree-controller'
 import type { PermissionSnapshot } from '../model/permission-controller'
 import type { ProjectionHubSnapshot } from '../model/projection-hub-controller'
 import type { RecoverySnapshot } from '../model/recovery-controller'
@@ -510,6 +511,83 @@ describe('OverlayPanel (M1.3)', () => {
       }],
       status: 'confirming',
     })).toMatchSnapshot()
+  })
+
+  const subagentRows: SubagentTreeSnapshot['rows'] = [{
+    activity: 'running',
+    depth: 1,
+    hasChildren: true,
+    id: 'child-a' as SubagentTreeSnapshot['rootSessionId'],
+    kind: 'child',
+    label: 'audit the change index',
+    mode: 'continuable',
+    parentId: 'root' as SubagentTreeSnapshot['rootSessionId'],
+    unread: true,
+  }, {
+    activity: 'inactive',
+    depth: 2,
+    hasChildren: false,
+    id: 'child-a1' as SubagentTreeSnapshot['rootSessionId'],
+    kind: 'child',
+    label: 'summarize findings',
+    mode: 'one-shot',
+    parentId: 'child-a' as SubagentTreeSnapshot['rootSessionId'],
+    unread: false,
+  }, {
+    depth: 1,
+    id: 'child-bad' as SubagentTreeSnapshot['rootSessionId'],
+    kind: 'diagnostic',
+    parentId: 'root' as SubagentTreeSnapshot['rootSessionId'],
+    reason: 'corrupt',
+    unread: false,
+  }]
+
+  function renderSubagents(columns: number, overrides: Partial<SubagentTreeSnapshot> = {}): string {
+    return renderOverlayPanel({
+      active: 'subagents',
+      changes: emptyChanges,
+      columns,
+      completion: emptyCompletion,
+      maxRows: 10,
+      palette: {
+        catalogTruncated: false, items: [], query: '', revision: 0, totalMatches: 0,
+      },
+      permissions: emptyPermissions,
+      recovery: emptyRecovery,
+      sessions: emptySessions,
+      subagents: {
+        busy: false,
+        followupText: '',
+        revision: 3,
+        rootSessionId: 'root' as SubagentTreeSnapshot['rootSessionId'],
+        rows: subagentRows,
+        status: 'ready',
+        truncated: false,
+        unreadCount: 1,
+        ...overrides,
+      },
+    })
+  }
+
+  it('renders the subagent tree with depth, unread marks, and diagnostics at 80 columns', () => {
+    expect(renderSubagents(80, { selectedIndex: 0 })).toMatchSnapshot()
+  })
+
+  it('degrades the subagent tree at 40 columns', () => {
+    expect(renderSubagents(40, { selectedIndex: 0 })).toMatchSnapshot()
+  })
+
+  it('renders an armed subagent follow-up draft', () => {
+    expect(renderSubagents(80, {
+      followupText: 'check the truncation path too',
+      selectedIndex: 0,
+      status: 'followup-input',
+    })).toMatchSnapshot()
+  })
+
+  it('states that the subagent runtime is unavailable rather than showing an empty tree', () => {
+    expect(renderSubagents(80, { rows: [], status: 'unavailable', unreadCount: 0 }))
+      .toMatchSnapshot()
   })
 
   it('states that the registry is unavailable rather than showing an empty list', () => {

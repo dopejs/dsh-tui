@@ -12,6 +12,7 @@ import { OverlayController } from '../model/overlay-controller'
 import { PreferencesController } from '../model/preferences-controller'
 import { PermissionController } from '../model/permission-controller'
 import { JobsController } from '../model/jobs-controller'
+import { SubagentTreeController } from '../model/subagent-tree-controller'
 import { ProjectionHubController } from '../model/projection-hub-controller'
 import { RecoveryController } from '../model/recovery-controller'
 import { SessionCenterController } from '../model/session-center-controller'
@@ -62,6 +63,7 @@ function renderApp(
   const permission = new PermissionController({} as Agent)
   const projections = new ProjectionHubController({} as Agent['session'])
   const jobs = new JobsController({} as Agent)
+  const subagents = new SubagentTreeController({} as Agent)
   const recovery = new RecoveryController({
     operations: {
       flush: async () => true,
@@ -95,6 +97,7 @@ function renderApp(
         palette={palette}
         preferences={preferences}
         jobs={jobs}
+        subagents={subagents}
         projections={projections}
         recovery={recovery}
         permission={permission}
@@ -116,6 +119,7 @@ function renderApp(
     runtimeStatus.dispose()
     permission.dispose()
     jobs.dispose()
+  subagents.dispose()
     projections.dispose()
     void recovery.dispose()
     palette.dispose()

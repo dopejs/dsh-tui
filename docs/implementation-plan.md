@@ -276,6 +276,17 @@ disposal races are tested.
 
 ### M3.3 Subagent tree and controls (+5)
 
+Status: **complete**. `listDescendants` is projected into a stable pre-order
+tree carrying durable lineage, depth, mode, activity, and per-child
+diagnostics; enumeration loads and resumes no Agent. Controls stay on public
+seams: `interrupt()` under this session's human parent address, `followup()`
+only for direct continuable children — deeper descendants fail closed because
+delivery requires the exact live direct parent, which this session is not —
+and attachment is delegated to the session coordinator by id. Listings are
+generation-guarded so a late one cannot overwrite fresher rows, selection and
+follow-up drafts are anchored to session ids, and parallel children,
+disappearing agents, unread updates, root switch, and disposal are tested.
+
 - project lineage/status into a stable tree;
 - expose only public message/follow-up/interrupt/cancel/attach controls;
 - retain exact-agent approval/question isolation;

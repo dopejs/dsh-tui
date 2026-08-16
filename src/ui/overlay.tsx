@@ -9,6 +9,7 @@ import type { PermissionSnapshot } from '../model/permission-controller'
 import type { ProjectionHubSnapshot } from '../model/projection-hub-controller'
 import type { RecoverySnapshot } from '../model/recovery-controller'
 import type { SessionCenterSnapshot } from '../model/session-center-controller'
+import type { SubagentTreeSnapshot } from '../model/subagent-tree-controller'
 
 interface OverlayWindow<T> {
   readonly end: number
@@ -40,6 +41,7 @@ interface OverlayPanelProps {
   readonly projections: ProjectionHubSnapshot
   readonly recovery: RecoverySnapshot
   readonly sessions: SessionCenterSnapshot
+  readonly subagents: SubagentTreeSnapshot
 }
 
 export function OverlayPanel({
@@ -54,7 +56,67 @@ export function OverlayPanel({
   projections,
   recovery,
   sessions,
+  subagents,
 }: OverlayPanelProps) {
+  if (active === 'subagents') {
+    const window = selectedWindow(subagents.rows, subagents.selectedIndex, maxRows - 5)
+    const selected = subagents.rows[subagents.selectedIndex ?? -1]
+    const canFollowup = selected?.kind === 'child'
+      && selected.mode === 'continuable'
+      && selected.depth === 1
+    return (
+      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+        <Text bold wrap="truncate-end">
+          Subagents · {subagents.status}
+          {subagents.unreadCount > 0 ? ` · ${String(subagents.unreadCount)} unread` : ''}
+          {subagents.truncated ? ' · truncated' : ''}
+        </Text>
+        {subagents.error === undefined ? null : (
+          <Text color="red" wrap="truncate-end">{subagents.error}</Text>
+        )}
+        {window.rows.map((row, index) => {
+          const absolute = window.start + index
+          const isSelected = absolute === subagents.selectedIndex
+          const indent = '  '.repeat(Math.max(0, row.depth - 1))
+          if (row.kind === 'diagnostic') {
+            return (
+              <Text color="red" inverse={isSelected} key={String(row.id)} wrap="truncate-end">
+                {isSelected ? '›' : ' '} {indent}{String(row.id)} · unreadable ({row.reason})
+              </Text>
+            )
+          }
+          return (
+            <Text
+              {...(row.activity === 'running' ? { color: 'green' } : {})}
+              dimColor={row.activity === 'inactive'}
+              inverse={isSelected}
+              key={String(row.id)}
+              wrap="truncate-end"
+            >
+              {isSelected ? '›' : ' '} {indent}{row.unread ? '•' : ' '}
+              {row.label ?? String(row.id)} · {row.mode} · {row.activity}
+              {row.hasChildren === true ? ' · has children' : ''}
+            </Text>
+          )
+        })}
+        {subagents.status === 'followup-input' ? (
+          <Text color="yellow" wrap="truncate-end">
+            Follow up: {subagents.followupText}█ · Enter send · Esc cancel
+          </Text>
+        ) : null}
+        <Text dimColor wrap="truncate-end">
+          {subagents.rows.length === 0
+            ? 'R refresh · Esc close'
+            : `${String((subagents.selectedIndex ?? 0) + 1)}/${String(subagents.rows.length)} · ↑/↓ select${canFollowup ? ' · F follow up' : ''} · I interrupt · A attach · M mark read · R refresh · Esc close`}
+          {window.start > 0 ? ` · ${String(window.start)} above` : ''}
+          {window.end < subagents.rows.length
+            ? ` · ${String(subagents.rows.length - window.end)} below`
+            : ''}
+        </Text>
+      </Box>
+    )
+  }
+
   if (active === 'jobs') {
     const window = selectedWindow(jobs.jobs, jobs.selectedIndex, maxRows - 5)
     const confirming = jobs.jobs.find(job => job.id === jobs.confirmingCancelId)
@@ -468,11 +530,22 @@ function textLines(value: string | null): readonly string[] {
 }
 
 export function renderOverlayPanel(
-  props: Omit<OverlayPanelProps, 'jobs' | 'projections'> & {
+  props: Omit<OverlayPanelProps, 'jobs' | 'projections' | 'subagents'> & {
     readonly jobs?: JobsSnapshot
     readonly projections?: ProjectionHubSnapshot
+    readonly subagents?: SubagentTreeSnapshot
   },
 ): string {
+  const subagents: SubagentTreeSnapshot = props.subagents ?? {
+    busy: false,
+    followupText: '',
+    revision: 0,
+    rootSessionId: 'root' as SubagentTreeSnapshot['rootSessionId'],
+    rows: [],
+    status: 'unavailable',
+    truncated: false,
+    unreadCount: 0,
+  }
   const jobs: JobsSnapshot = props.jobs ?? {
     droppedNotices: 0,
     jobs: [],
@@ -495,7 +568,7 @@ export function renderOverlayPanel(
     status: 'unavailable',
   }
   return renderToString(
-    <OverlayPanel {...props} jobs={jobs} projections={projections} />,
+    <OverlayPanel {...props} jobs={jobs} projections={projections} subagents={subagents} />,
     { columns: props.columns },
   )
 }
