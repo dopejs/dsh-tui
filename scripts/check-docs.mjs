@@ -9,6 +9,7 @@ const required = [
   'docs/product-design.md',
   'docs/architecture.md',
   'docs/implementation-plan.md',
+  'docs/failure-recovery-matrix.md',
   'docs/testing-strategy.md',
   'docs/upstream-compatibility.md',
   'docs/decisions/README.md',

@@ -87,7 +87,7 @@ describe('PermissionController (M2.1)', () => {
     await source.ctx.fiber.dispose()
   })
 
-  it('contains failed changes and refreshes only from the exact session', async () => {
+  it('M2.4-F04 contains failed changes, permits retry, and refreshes only the exact session', async () => {
     const source = fixture()
     const controller = new PermissionController(source.agent, source.service)
     const before = controller.getSnapshot().revision
@@ -105,6 +105,14 @@ describe('PermissionController (M2.1)', () => {
       error: 'policy write failed', status: 'error',
     })
     expect(controller.selected()).toMatchObject({ selected: true, value: 'workspace-write' })
+
+    controller.move('down')
+    expect(controller.requestSelected()).toBe('confirmation-required')
+    controller.insertConfirmation('enable danger-full-access')
+    expect(controller.confirm()).toBe(true)
+    expect(controller.getSnapshot()).toMatchObject({ status: 'ready' })
+    expect(controller.getSnapshot().error).toBeUndefined()
+    expect(controller.selected()).toMatchObject({ selected: true, value: 'danger-full-access' })
     controller.dispose()
     await source.ctx.fiber.dispose()
   })

@@ -55,6 +55,31 @@ describe('InputController', () => {
     await controller.dispose()
   })
 
+  it('M2.4-F01 contains followup and steering failures as recoverable submission results', async () => {
+    const followupFailure = new Error('followup queue unavailable')
+    const steeringFailure = new Error('steering window closed')
+    const agent = fakeAgent('running')
+    agent.followup.mockImplementationOnce(() => { throw followupFailure })
+    agent.steer.mockImplementationOnce(() => { throw steeringFailure })
+    const controller = new InputController({ agent, commands: { execute: vi.fn() } })
+
+    await expect(controller.submit('keep this draft', 'followup')).resolves.toEqual({
+      error: followupFailure,
+      kind: 'message-error',
+      message: 'followup queue unavailable',
+      mode: 'followup',
+    })
+    await expect(controller.submit('keep steering draft', 'steer')).resolves.toEqual({
+      error: steeringFailure,
+      kind: 'message-error',
+      message: 'steering window closed',
+      mode: 'steer',
+    })
+    expect(controller.commandPending).toBe(false)
+
+    await controller.dispose()
+  })
+
   it('rejects empty and over-budget input before touching the agent', async () => {
     const agent = fakeAgent()
     const controller = new InputController({

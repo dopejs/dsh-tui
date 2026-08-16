@@ -490,6 +490,10 @@ default.
 
 ## Failure behavior
 
+The executable injection cases and their attached-session versus clean-exit
+postconditions are recorded in the
+[failure recovery matrix](failure-recovery-matrix.md).
+
 | Failure | Required behavior |
 | --- | --- |
 | Resume corruption/unsupported format | Leave terminal clean and show the Harness error. |

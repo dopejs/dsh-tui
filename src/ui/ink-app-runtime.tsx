@@ -7,6 +7,7 @@ import type {
   SwitchableSessionBinding,
 } from '../runtime/session-attachment-coordinator'
 import { InteractiveTui, type InteractiveTuiProps } from './app'
+import { mountOwnedInkRenderer, type MountedInkRenderer } from './ink-lifecycle'
 
 export interface TuiSessionBinding extends SwitchableSessionBinding {
   readonly application: Omit<InteractiveTuiProps, 'onQuit' | 'sessionCenter'>
@@ -23,9 +24,12 @@ export interface InkApplicationOptions {
   readonly sessions: TuiSessionStore
 }
 
-export interface MountedInkApplication {
-  readonly exited: Promise<void>
-  dispose(): Promise<void>
+export type MountedInkApplication = MountedInkRenderer
+
+export interface InkApplicationStreams {
+  readonly stderr?: NodeJS.WriteStream
+  readonly stdin?: NodeJS.ReadStream
+  readonly stdout?: NodeJS.WriteStream
 }
 
 export function SessionApplication({ onQuit, sessionCenter, sessions }: InkApplicationOptions) {
@@ -57,24 +61,22 @@ export function SessionApplication({ onQuit, sessionCenter, sessions }: InkAppli
   />
 }
 
-export function mountInkApplication(options: InkApplicationOptions): MountedInkApplication {
-  const renderer = render(<SessionApplication {...options} />, {
-    alternateScreen: true,
-    exitOnCtrlC: false,
-    incrementalRendering: true,
-    interactive: true,
-    maxFps: 20,
-  })
-  const exited = renderer.waitUntilExit().then(() => undefined)
-  let disposing: Promise<void> | undefined
-  return {
-    exited,
-    dispose() {
-      disposing ??= (async () => {
-        renderer.unmount()
-        await exited
-      })()
-      return disposing
-    },
-  }
+export function mountInkApplication(
+  options: InkApplicationOptions,
+  streams: InkApplicationStreams = {},
+): MountedInkApplication {
+  const stdout = streams.stdout ?? process.stdout
+  return mountOwnedInkRenderer(
+    () => render(<SessionApplication {...options} />, {
+      alternateScreen: true,
+      exitOnCtrlC: false,
+      incrementalRendering: true,
+      interactive: true,
+      maxFps: 20,
+      stderr: streams.stderr ?? process.stderr,
+      stdin: streams.stdin ?? process.stdin,
+      stdout,
+    }),
+    stdout,
+  )
 }

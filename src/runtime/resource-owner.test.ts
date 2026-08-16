@@ -19,15 +19,31 @@ describe('ResourceOwner', () => {
     expect(calls).toEqual(['listener', 'terminal'])
   })
 
-  it('continues disposal and reports every failure', async () => {
+  it('M2.4-F08 continues disposal and reports every failure', async () => {
     const terminalDispose = vi.fn()
     const owner = new ResourceOwner()
     owner.own('terminal', terminalDispose)
-    owner.own('listener', () => {
-      throw new Error('listener failed')
+    owner.own('first listener', () => {
+      throw new Error('first listener failed')
+    })
+    owner.own('second listener', async () => {
+      throw new Error('second listener failed')
     })
 
-    await expect(owner.dispose()).rejects.toThrow('One or more owned resources failed')
+    let caught: unknown
+    try {
+      await owner.dispose()
+    } catch (error) {
+      caught = error
+    }
+    expect(caught).toBeInstanceOf(AggregateError)
+    expect(caught).toMatchObject({
+      errors: [
+        expect.objectContaining({ message: 'Failed to dispose second listener' }),
+        expect.objectContaining({ message: 'Failed to dispose first listener' }),
+      ],
+      message: 'One or more owned resources failed to dispose',
+    })
     expect(terminalDispose).toHaveBeenCalledOnce()
   })
 

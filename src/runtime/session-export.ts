@@ -1,15 +1,28 @@
-import { open, link, stat, unlink } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
+import { open, link, stat, unlink } from 'node:fs/promises'
+import type { FileHandle } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, resolve } from 'node:path'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type { SessionPersistence } from '@deepseek-ai/dsh-session-persistence'
 
 export interface SessionExportRequest {
   readonly destination: string
+  readonly fileSystem?: SessionExportFileSystem
   readonly persistence: Pick<SessionPersistence, 'readRaw' | 'supportsRawArtifacts'>
   readonly sessionId: string
   readonly signal: AbortSignal
   readonly workspace: string
+}
+
+export interface SessionExportFileSystem {
+  link(existingPath: string, newPath: string): Promise<void>
+  open(
+    path: string,
+    flags: 'wx',
+    mode: number,
+  ): Promise<Pick<FileHandle, 'close' | 'sync' | 'writeFile'>>
+  stat(path: string): Promise<{ isDirectory(): boolean }>
+  unlink(path: string): Promise<void>
 }
 
 export interface SessionExportResult {
@@ -29,14 +42,22 @@ function throwIfAborted(signal: AbortSignal): void {
   if (signal.aborted) throw abortError(signal)
 }
 
-function combine(error: unknown, cleanup: unknown): AggregateError {
+const DEFAULT_FILE_SYSTEM: SessionExportFileSystem = {
+  link,
+  open: (path, flags, mode) => open(path, flags, mode),
+  stat,
+  unlink,
+}
+
+function combine(error: unknown, cleanup: readonly unknown[]): AggregateError {
   return new AggregateError(
-    [error, cleanup],
+    [error, ...cleanup],
     'Session export failed and its temporary file could not be cleaned up',
   )
 }
 
 export async function exportRawSession(request: SessionExportRequest): Promise<SessionExportResult> {
+  const fileSystem = request.fileSystem ?? DEFAULT_FILE_SYSTEM
   throwIfAborted(request.signal)
   if (!request.persistence.supportsRawArtifacts) {
     throw new Error('This session backend does not expose a raw artifact')
@@ -53,45 +74,58 @@ export async function exportRawSession(request: SessionExportRequest): Promise<S
     ? resolve(request.destination)
     : resolve(request.workspace, request.destination)
   const parent = dirname(destination)
-  const parentStat = await stat(parent)
+  const parentStat = await fileSystem.stat(parent)
   if (!parentStat.isDirectory()) throw new Error('Export destination parent is not a directory')
   const temporary = resolve(parent, `.${basename(destination)}.dsh-tui-${randomUUID()}.tmp`)
-  let handle: Awaited<ReturnType<typeof open>> | undefined
+  let handle: Pick<FileHandle, 'close' | 'sync' | 'writeFile'> | undefined
   let primaryFailure: unknown
   let linked = false
+  let temporaryOwned = false
   try {
-    handle = await open(temporary, 'wx', 0o600)
+    handle = await fileSystem.open(temporary, 'wx', 0o600)
+    temporaryOwned = true
     await handle.writeFile(artifact.content, { encoding: 'utf8' })
     await handle.sync()
     await handle.close()
     handle = undefined
     throwIfAborted(request.signal)
-    await link(temporary, destination)
+    await fileSystem.link(temporary, destination)
     linked = true
   } catch (error) {
     primaryFailure = error
   }
 
-  let cleanupFailure: unknown
-  try {
-    await handle?.close()
-    await unlink(temporary)
-  } catch (error) {
-    const code = typeof error === 'object' && error !== null && 'code' in error
-      ? String(error.code)
-      : undefined
-    if (code !== 'ENOENT') cleanupFailure = error
+  const cleanupFailures: unknown[] = []
+  if (handle !== undefined) {
+    try {
+      await handle.close()
+    } catch (error) {
+      cleanupFailures.push(error)
+    }
   }
-  if (primaryFailure !== undefined && cleanupFailure !== undefined) {
-    throw combine(primaryFailure, cleanupFailure)
+  if (temporaryOwned) {
+    try {
+      await fileSystem.unlink(temporary)
+    } catch (error) {
+      const code = typeof error === 'object' && error !== null && 'code' in error
+        ? String(error.code)
+        : undefined
+      if (code !== 'ENOENT') cleanupFailures.push(error)
+    }
+  }
+  if (primaryFailure !== undefined && cleanupFailures.length > 0) {
+    throw combine(primaryFailure, cleanupFailures)
   }
   if (primaryFailure !== undefined) throw primaryFailure
-  if (cleanupFailure !== undefined) {
+  if (cleanupFailures.length > 0) {
+    const cause = cleanupFailures.length === 1
+      ? cleanupFailures[0]
+      : new AggregateError(cleanupFailures, 'Multiple export cleanup operations failed')
     throw new Error(
       linked
         ? `Session was exported to ${destination}, but temporary-file cleanup failed`
         : 'Session export temporary-file cleanup failed',
-      { cause: cleanupFailure },
+      { cause },
     )
   }
   return Object.freeze({

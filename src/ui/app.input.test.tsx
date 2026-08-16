@@ -162,18 +162,30 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       }],
     }, { switchSession }, { currentSessionId: 'input-session' })
     const runtimeStatus = new RuntimeStatusController({ model: 'model', provider: 'fixture' })
-    const submit = vi.fn(async (text: string): Promise<InputSubmission> => text === '/fail'
-      ? {
+    const submissionFailure = new Error('message queue unavailable')
+    const submit = vi.fn(async (text: string): Promise<InputSubmission> => {
+      if (text === '/fail') {
+        return {
           execution: {
             result: { kind: 'error', text: 'fixture command failed' },
           } as never,
           kind: 'command',
         }
-      : {
+      }
+      if (text === 'retain failed draft') {
+        return {
+          error: submissionFailure,
+          kind: 'message-error',
+          message: submissionFailure.message,
+          mode: 'followup',
+        }
+      }
+      return {
           kind: 'message',
           message: { text } as never,
           mode: 'followup',
-        })
+      }
+    })
     let commandPending = false
     const cancelCommand = vi.fn(() => {
       if (!commandPending) return false
@@ -279,6 +291,15 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       stdin.write('\u0003')
       await eventually(() => expect(editor.getSnapshot().text).toBe(''))
 
+      stdin.write('retain failed draft')
+      await eventually(() => expect(editor.getSnapshot().text).toBe('retain failed draft'))
+      stdin.write('\r')
+      await eventually(() => expect(submit).toHaveBeenCalledTimes(2))
+      await eventually(() => expect(output).toContain('message queue unavailable'))
+      expect(editor.getSnapshot().text).toBe('retain failed draft')
+      stdin.write('\u0003')
+      await eventually(() => expect(editor.getSnapshot().text).toBe(''))
+
       stdin.write('\u001B[111;5u')
       await eventually(() => expect(overlay.getSnapshot().active).toBe('session-center'))
       await eventually(() => expect(sessionCenter.getSnapshot()).toMatchObject({
@@ -303,7 +324,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       stdin.write('fixture')
       await eventually(() => expect(palette.getSnapshot().query).toBe('fixture'))
       stdin.write('\r')
-      await eventually(() => expect(submit).toHaveBeenCalledTimes(2))
+      await eventually(() => expect(submit).toHaveBeenCalledTimes(3))
       expect(submit).toHaveBeenLastCalledWith('/fixture', 'followup')
       expect(overlay.getSnapshot().active).toBeUndefined()
       await eventually(() => expect(editor.getSnapshot().text).toBe(''))
@@ -320,7 +341,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       stdin.write('src/controller.ts')
       await eventually(() => expect(editor.getSnapshot().text).toBe('/review src/controller.ts'))
       stdin.write('\r')
-      await eventually(() => expect(submit).toHaveBeenCalledTimes(3))
+      await eventually(() => expect(submit).toHaveBeenCalledTimes(4))
       expect(submit).toHaveBeenLastCalledWith('/review src/controller.ts', 'followup')
       await eventually(() => expect(editor.getSnapshot().text).toBe(''))
 
@@ -362,7 +383,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       stdin.write('fail')
       await eventually(() => expect(palette.getSnapshot().query).toBe('fail'))
       stdin.write('\r')
-      await eventually(() => expect(submit).toHaveBeenCalledTimes(4))
+      await eventually(() => expect(submit).toHaveBeenCalledTimes(5))
       await eventually(() => expect(output).toContain('fixture command failed'))
       expect(editor.getSnapshot().text).toBe('/fail')
 

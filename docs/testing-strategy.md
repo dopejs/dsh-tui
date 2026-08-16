@@ -138,6 +138,9 @@ Post-MVP fixtures also cover:
 - exact-session durability participation, raw-export absence/abort/no-overwrite,
   conversation-fork lineage, no-overlap attachment transfer, parent recovery,
   and explicit rc.6 file-rewind unavailability;
+- the stable [M2.4 failure injection matrix](failure-recovery-matrix.md),
+  including recoverable submission/switch/permission/export failures, fatal
+  projection/render/output failures, and primary-plus-cleanup aggregation;
 - model/default selection and permission-preset transitions;
 - exact startup-model preflight, 40/80/120-column status degradation, missing
   status facts, and atomic preference collision/fallback behavior;

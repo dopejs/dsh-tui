@@ -664,9 +664,56 @@ describe('startTuiRuntime', () => {
     await fixture.ctx.fiber.dispose()
   })
 
-  it('requests a failing launcher exit and reports renderer failure after teardown', async () => {
+  it('M2.4-F03 fails closed and disposes the exact attachment when a live projection rejects', async () => {
+    const fixture = runtimeFixture()
+    const dispose = await startTuiRuntime(
+      fixture.ctx,
+      {},
+      new AbortController().signal,
+      dependencies(fixture),
+    )
+
+    fixture.session.append({
+      data: {},
+      seq: 0,
+      time: 0,
+      type: 'user/message',
+    } as SessionEvent)
+
+    await vi.waitFor(() => expect(fixture.exits).toEqual([1]))
+    expect(fixture.flush).toHaveBeenCalledWith(fixture.agent.session)
+    expect(fixture.disposeHandle).toHaveBeenCalledOnce()
+    await expect(dispose()).resolves.toBeUndefined()
+    await fixture.ctx.fiber.dispose()
+  })
+
+  it('M2.4-F07 treats terminal output closure as fatal and reaches a clean process boundary', async () => {
+    const fixture = runtimeFixture()
+    const outputFailure = Object.assign(new Error('stdout pipe closed'), { code: 'EPIPE' })
+    let rejectRenderer!: (error: unknown) => void
+    const rendererExit = new Promise<void>((_resolve, reject) => {
+      rejectRenderer = reject
+    })
+    const dispose = await startTuiRuntime(
+      fixture.ctx,
+      {},
+      new AbortController().signal,
+      dependencies(fixture, { exited: rendererExit }),
+    )
+
+    rejectRenderer(outputFailure)
+    await vi.waitFor(() => expect(fixture.exits).toEqual([1]))
+    expect(fixture.disposeHandle).toHaveBeenCalledOnce()
+    await expect(dispose()).rejects.toBe(outputFailure)
+    await fixture.ctx.fiber.dispose()
+  })
+
+  it('M2.4-F06/F08 preserves renderer and cleanup failures after teardown', async () => {
     const fixture = runtimeFixture()
     const rendererFailure = new Error('renderer failed')
+    const applicationCleanupFailure = new Error('renderer cleanup failed')
+    const flushFailure = new Error('durability cleanup failed')
+    fixture.flush.mockRejectedValueOnce(flushFailure)
     let rejectRenderer!: (error: unknown) => void
     const rendererExit = new Promise<void>((_resolve, reject) => {
       rejectRenderer = reject
@@ -676,7 +723,7 @@ describe('startTuiRuntime', () => {
       {},
       new AbortController().signal,
       dependencies(fixture, {
-        dispose: async () => { throw rendererFailure },
+        dispose: async () => { throw applicationCleanupFailure },
         exited: rendererExit,
       }),
     )
@@ -685,7 +732,30 @@ describe('startTuiRuntime', () => {
     await vi.waitFor(() => {
       expect(fixture.exits).toEqual([1])
     })
-    await expect(dispose()).rejects.toThrow('TUI renderer and runtime cleanup both failed')
+    let caught: unknown
+    try {
+      await dispose()
+    } catch (error) {
+      caught = error
+    }
+    expect(caught).toBeInstanceOf(AggregateError)
+    expect(caught).toMatchObject({
+      errors: [rendererFailure, expect.any(AggregateError)],
+      message: 'TUI renderer and runtime cleanup both failed',
+    })
+    const cleanup = (caught as AggregateError).errors[1]
+    expect(cleanup).toMatchObject({
+      errors: [
+        expect.objectContaining({
+          cause: applicationCleanupFailure,
+          message: 'Failed to dispose Ink application and terminal state',
+        }),
+        expect.objectContaining({
+          message: 'Failed to dispose session attachment coordinator',
+        }),
+      ],
+      message: 'One or more owned resources failed to dispose',
+    })
     expect(fixture.disposeHandle).toHaveBeenCalledOnce()
     await fixture.ctx.fiber.dispose()
   })

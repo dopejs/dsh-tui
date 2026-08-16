@@ -82,6 +82,7 @@ function submissionNotice(submission: InputSubmission): string {
     case 'command-cancelled':
       return 'Command cancelled.'
     case 'command-error':
+    case 'message-error':
     case 'rejected':
       return submission.message
   }

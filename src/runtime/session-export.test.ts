@@ -1,7 +1,7 @@
 import { mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { exportRawSession } from './session-export'
 
@@ -73,5 +73,74 @@ describe('exportRawSession (M2.3)', () => {
     } finally {
       await rm(workspace, { recursive: true })
     }
+  })
+
+  it('M2.4-F05/F08 attempts every temporary cleanup and preserves the export failure first', async () => {
+    const primaryFailure = new Error('temporary write failed')
+    const closeFailure = new Error('temporary close failed')
+    const unlinkFailure = new Error('temporary unlink failed')
+    const close = vi.fn(async () => { throw closeFailure })
+    const unlink = vi.fn(async () => { throw unlinkFailure })
+    const fileSystem = {
+      link: vi.fn(async () => undefined),
+      open: vi.fn(async () => ({
+        close,
+        sync: vi.fn(async () => undefined),
+        writeFile: vi.fn(async () => { throw primaryFailure }),
+      })),
+      stat: vi.fn(async () => ({ isDirectory: () => true })),
+      unlink,
+    }
+
+    let caught: unknown
+    try {
+      await exportRawSession({
+        destination: 'copy.jsonl',
+        fileSystem: fileSystem as never,
+        persistence: {
+          readRaw: async () => ({ content: 'raw', filename: 'source.jsonl', meta: {} }),
+          supportsRawArtifacts: true,
+        } as never,
+        sessionId: 'session-a',
+        signal: new AbortController().signal,
+        workspace: '/workspace',
+      })
+    } catch (error) {
+      caught = error
+    }
+
+    expect(caught).toBeInstanceOf(AggregateError)
+    expect(caught).toMatchObject({
+      errors: [primaryFailure, closeFailure, unlinkFailure],
+      message: 'Session export failed and its temporary file could not be cleaned up',
+    })
+    expect(close).toHaveBeenCalledOnce()
+    expect(unlink).toHaveBeenCalledOnce()
+    expect(fileSystem.link).not.toHaveBeenCalled()
+  })
+
+  it('never unlinks a temporary path that exclusive creation did not acquire', async () => {
+    const openFailure = Object.assign(new Error('temporary path already exists'), {
+      code: 'EEXIST',
+    })
+    const unlink = vi.fn(async () => undefined)
+
+    await expect(exportRawSession({
+      destination: 'copy.jsonl',
+      fileSystem: {
+        link: vi.fn(),
+        open: vi.fn(async () => { throw openFailure }),
+        stat: vi.fn(async () => ({ isDirectory: () => true })),
+        unlink,
+      } as never,
+      persistence: {
+        readRaw: async () => ({ content: 'raw', filename: 'source.jsonl', meta: {} }),
+        supportsRawArtifacts: true,
+      } as never,
+      sessionId: 'session-a',
+      signal: new AbortController().signal,
+      workspace: '/workspace',
+    })).rejects.toBe(openFailure)
+    expect(unlink).not.toHaveBeenCalled()
   })
 })

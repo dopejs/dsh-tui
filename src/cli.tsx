@@ -3,6 +3,7 @@ import { render } from 'ink'
 
 import { ResourceOwner } from './runtime/resource-owner'
 import { formatHelp, parseStartupArguments } from './startup'
+import { mountOwnedInkRenderer } from './ui/ink-lifecycle'
 import { Shell } from './ui/shell'
 
 const TERMINATION_SIGNALS = ['SIGINT', 'SIGTERM'] as const
@@ -35,30 +36,31 @@ export async function runCli(
     resolveShutdown = undefined
   }
 
+  let primaryFailure: unknown
   try {
-    const renderer = render(
-      <Shell
-        onQuit={requestShutdown}
-        {...(runtimeOptions.crashAfterRender === undefined
-          ? {}
-          : { crashAfterRender: runtimeOptions.crashAfterRender })}
-        {...(startup.resumeSessionId === undefined
-          ? {}
-          : { resumeSessionId: startup.resumeSessionId })}
-      />,
-      {
-        alternateScreen: true,
-        exitOnCtrlC: false,
-        incrementalRendering: true,
-        interactive: true,
-        maxFps: 20,
-      },
+    const mountedRenderer = mountOwnedInkRenderer(
+      () => render(
+        <Shell
+          onQuit={requestShutdown}
+          {...(runtimeOptions.crashAfterRender === undefined
+            ? {}
+            : { crashAfterRender: runtimeOptions.crashAfterRender })}
+          {...(startup.resumeSessionId === undefined
+            ? {}
+            : { resumeSessionId: startup.resumeSessionId })}
+        />,
+        {
+          alternateScreen: true,
+          exitOnCtrlC: false,
+          incrementalRendering: true,
+          interactive: true,
+          maxFps: 20,
+        },
+      ),
+      process.stdout,
     )
-    owner.own('Ink renderer and terminal state', async () => {
-      renderer.unmount()
-      await renderer.waitUntilExit()
-    })
-    void renderer.waitUntilExit().then(requestShutdown, (error: unknown) => {
+    owner.own('Ink renderer and terminal state', () => mountedRenderer.dispose())
+    void mountedRenderer.exited.then(requestShutdown, (error: unknown) => {
       rendererFailure = error
       requestShutdown()
     })
@@ -81,13 +83,26 @@ export async function runCli(
     owner.own('termination signal listeners', stopListeningForSignals)
 
     await shutdown
-  } finally {
-    await owner.dispose()
+    if (rendererFailure !== undefined) throw rendererFailure
+  } catch (error) {
+    primaryFailure = error
   }
 
-  if (rendererFailure !== undefined) {
-    throw rendererFailure
+  let cleanupFailure: unknown
+  try {
+    await owner.dispose()
+  } catch (error) {
+    cleanupFailure = error
   }
+
+  if (primaryFailure !== undefined && cleanupFailure !== undefined) {
+    throw new AggregateError(
+      [primaryFailure, cleanupFailure],
+      'TUI failed and cleanup did not complete cleanly',
+    )
+  }
+  if (primaryFailure !== undefined) throw primaryFailure
+  if (cleanupFailure !== undefined) throw cleanupFailure
 }
 
 const executable = process.argv[1]

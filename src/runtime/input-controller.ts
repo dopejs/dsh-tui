@@ -29,6 +29,12 @@ export type InputSubmission =
       readonly message: string
     }
   | {
+      readonly error: unknown
+      readonly kind: 'message-error'
+      readonly message: string
+      readonly mode: SubmissionMode
+    }
+  | {
       readonly kind: 'command-cancelled'
     }
 
@@ -105,13 +111,17 @@ export class InputController {
     }
     if (line.startsWith('/')) return this.#submitCommand(line, signal)
 
-    const message = createUserMessage({
-      content: [{ text: line, type: 'text' }],
-      source: { kind: 'user' },
-    })
-    if (mode === 'steer') this.#agent.steer(message)
-    else this.#agent.followup(message)
-    return { kind: 'message', message, mode }
+    try {
+      const message = createUserMessage({
+        content: [{ text: line, type: 'text' }],
+        source: { kind: 'user' },
+      })
+      if (mode === 'steer') this.#agent.steer(message)
+      else this.#agent.followup(message)
+      return { kind: 'message', message, mode }
+    } catch (error) {
+      return { error, kind: 'message-error', message: renderError(error), mode }
+    }
   }
 
   cancelAgent(): void {

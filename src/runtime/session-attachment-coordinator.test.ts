@@ -103,7 +103,7 @@ describe('SessionAttachmentCoordinator (M1.4)', () => {
     await coordinator.dispose()
   })
 
-  it('restores the persisted parent when child-session creation fails', async () => {
+  it('M2.4-F02 restores the persisted parent and permits retry after child creation fails', async () => {
     const fixture = harness()
     const coordinator = new SessionAttachmentCoordinator({
       factory: fixture.factory,
@@ -130,6 +130,23 @@ describe('SessionAttachmentCoordinator (M1.4)', () => {
     expect(coordinator.getSnapshot()).toMatchObject({
       binding: { sessionId: 'parent' },
       error: 'child creation failed',
+      status: 'attached',
+    })
+
+    await coordinator.createSession('child', async () => {
+      fixture.order.push('create:child:retry')
+      if (fixture.active() !== 0) throw new Error('overlapping retry binding')
+      return fixture.binding('child')
+    }, new AbortController().signal)
+    expect(fixture.order).toEqual([
+      'dispose:parent',
+      'create:child',
+      'resume:parent',
+      'dispose:parent',
+      'create:child:retry',
+    ])
+    expect(coordinator.getSnapshot()).toMatchObject({
+      binding: { sessionId: 'child' },
       status: 'attached',
     })
     await coordinator.dispose()

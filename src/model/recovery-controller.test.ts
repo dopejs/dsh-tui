@@ -82,6 +82,34 @@ describe('RecoveryController (M2.3)', () => {
     expect(bounded.insertDestination('four')).toBe('limit-exceeded')
   })
 
+  it('M2.4-F05 contains an export failure and permits an explicit retry', async () => {
+    let attempt = 0
+    const mounted = fixture({
+      exportRaw: async destination => {
+        attempt += 1
+        if (attempt === 1) throw new Error('backend read failed')
+        return { codeUnits: 5, path: `/workspace/${destination}` }
+      },
+    })
+    mounted.controller.move('down')
+    mounted.controller.activateSelected()
+    mounted.controller.insertDestination('retry.jsonl')
+    mounted.controller.confirm()
+    await vi.waitFor(() => expect(mounted.controller.getSnapshot()).toMatchObject({
+      error: 'backend read failed',
+      status: 'error',
+    }))
+
+    expect(mounted.controller.activateSelected()).toBe('input-required')
+    mounted.controller.insertDestination('retry.jsonl')
+    mounted.controller.confirm()
+    await vi.waitFor(() => expect(mounted.controller.getSnapshot()).toMatchObject({
+      result: 'Exported 5 code units to /workspace/retry.jsonl',
+      status: 'success',
+    }))
+    expect(mounted.exportRaw).toHaveBeenCalledTimes(2)
+  })
+
   it('requires explicit fork confirmation and reports the transferred boundary', async () => {
     const mounted = fixture()
     mounted.controller.move('down')

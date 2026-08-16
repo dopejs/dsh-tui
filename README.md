@@ -104,12 +104,21 @@ attached session; `danger-full-access` requires typing
 changing either permission knob. Typing the upstream
 `/permission danger-full-access` command is also treated as explicit selection.
 
+Choose **Open changes** in the palette to review bounded, file-grouped diff
+presentations and jump back to the retained durable tool event. Choose
+**Open recovery** to run an exact-session durability barrier, export a
+backend-owned raw artifact without overwriting an existing path, or create an
+explicitly confirmed conversation-only fork. Harness rc.6 has no public file
+checkpoint owner, so file rewind is shown as unavailable and presented diffs
+are never reverse-applied.
+
 ## Documentation
 
 - [Product requirements](docs/product-requirements.md)
 - [Production product design](docs/product-design.md)
 - [Architecture](docs/architecture.md)
 - [Implementation plan](docs/implementation-plan.md)
+- [Failure recovery matrix](docs/failure-recovery-matrix.md)
 - [Testing strategy](docs/testing-strategy.md)
 - [Upstream compatibility](docs/upstream-compatibility.md)
 - [Architecture decisions](docs/decisions/README.md)

@@ -226,6 +226,12 @@ is visibly unavailable on rc.6; no diff is reverse-applied.
 
 ### M2.4 Failure recovery matrix (+2)
 
+Status: **complete**. Stable failure IDs inject every required boundary.
+Recoverable failures retain an exact usable attachment and retry path; fatal
+projection, render, and output failures drain ownership and request clean
+non-zero exit. Reverse-order teardown continues after independent failures and
+preserves the primary error ahead of labelled cleanup causes.
+
 - inject failures during editor submission, session switch, projection refresh,
   permission change, export, render, output closure, and disposal;
 - guarantee either a usable attached session or clean process exit;

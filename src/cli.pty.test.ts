@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest'
 const root = resolve(import.meta.dirname, '..')
 const cli = resolve(root, 'src/cli.tsx')
 const crashingCli = resolve(root, 'test-fixtures/crashing-cli.tsx')
+const outputErrorCli = resolve(root, 'test-fixtures/output-error-cli.tsx')
 const ptyWrapper = resolve(root, 'test-fixtures/pty-wrapper.mjs')
 const terminalKitCli = resolve(root, 'test-fixtures/terminal-kit-cli.ts')
 
@@ -112,7 +113,7 @@ describe('CLI terminal lifecycle', () => {
     },
   )
 
-  it('restores the alternate screen after a post-render failure', async () => {
+  it('M2.4-F06 restores the alternate screen after a post-render failure', async () => {
     const running = startCli(crashingCli)
     const result = await running.result
 
@@ -120,6 +121,16 @@ describe('CLI terminal lifecycle', () => {
     expect(result.output).toContain('\u001B[?1049h')
     expect(result.output).toContain('\u001B[?1049l')
     expect(result.output).toContain('Injected post-render failure')
+  })
+
+  it('M2.4-F07 contains an output error and restores the alternate screen', async () => {
+    const running = startCli(outputErrorCli)
+    const result = await running.result
+
+    expect(result.exitCode).toBe(1)
+    expect(result.output).toContain('\u001B[?1049h')
+    expect(result.output).toContain('\u001B[?1049l')
+    expect(result.output).toContain('Injected terminal output failure')
   })
 })
 
