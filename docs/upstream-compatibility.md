@@ -46,6 +46,36 @@ is required by this bundle.
   them; resume itself remains owned by `ctx.agents.resume()`.
 - `ctx.sessionProjections.snapshot()` / `onChanged()` for optional domain views.
 
+## Production-roadmap capability map
+
+The M1–M5 design was audited against the same pinned source and published
+baseline. The TUI may add the service-definition packages as exact peers when a
+slice begins consuming them, but it must continue using only their root package
+exports.
+
+| Product capability | Public Harness owner on the baseline | Baseline state |
+| --- | --- | --- |
+| Session list and inspection | `@deepseek-ai/dsh-session-persistence` / `ctx.sessionPersistence` | Available in `dsh-base` |
+| Session metadata search and export reads | `@deepseek-ai/dsh-session-query`, `@deepseek-ai/dsh-session-log-export` | Query mounted in `dsh-base`; full-text search disabled by default |
+| Model catalog and default selection | `ctx.llm`, `@deepseek-ai/dsh-agent-default-model` | Available in `dsh-base` |
+| Permission modes | `@deepseek-ai/dsh-permission-presets` / `ctx.permissionPresets` | Available in `dsh-base` |
+| Sandbox enforcement | `@deepseek-ai/dsh-sandbox-policy` and selected sandbox provider | Available in `dsh-base`; enforcement stays upstream-owned |
+| Todo/goal/plan/usage/subagent read models | `@deepseek-ai/dsh-session-projection` / `ctx.sessionProjections` and registered projection units | Registry available; individual views are capability-gated |
+| Background jobs | `@deepseek-ai/dsh-jobs` / `ctx.jobs` | Local provider available in `dsh-base` |
+| Subagents | `@deepseek-ai/dsh-subagent` plus registered providers and projections | Available in `dsh-base` |
+| Settings | `@deepseek-ai/dsh-settings` / `ctx.settings` | File-backed provider available in `dsh-base` |
+| Skills | `@deepseek-ai/dsh-skill` / `ctx.skills` | Filesystem provider available in `dsh-base` |
+| MCP tools | `@deepseek-ai/dsh-mcp-client` registrations in `ctx.tools` | Optional per user profile; no server-health registry on the baseline |
+| Plugin state | `@deepseek-ai/dsh-host-plugin-inventory` / loader projection | Public package exists but is not mounted by `dsh-base` |
+| Attachments | `@deepseek-ai/dsh-attachment` / `ctx.attachments` | Local provider available in `dsh-base` |
+| Durable session checkpoint policy | `@deepseek-ai/dsh-session-checkpoint-policy` | Persistence durability only; not file rewind |
+| File checkpoint/rewind | None | Unavailable; must fail closed |
+| Remote TUI attachment | SDK/API packages exist for other products | Out of scope until a second concrete transport and ADR exist |
+
+“Available” means a public service contract exists, not that the TUI may assume
+every deployment mounts it. Optional integrations still require an explicit
+unavailable state, injected fixture, cancellation, and disposal test.
+
 ## Compatibility rules
 
 1. Import only package exports documented by the owning upstream package.

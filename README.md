@@ -57,6 +57,7 @@ Enter.
 ## Documentation
 
 - [Product requirements](docs/product-requirements.md)
+- [Production product design](docs/product-design.md)
 - [Architecture](docs/architecture.md)
 - [Implementation plan](docs/implementation-plan.md)
 - [Testing strategy](docs/testing-strategy.md)

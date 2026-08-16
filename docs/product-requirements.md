@@ -6,8 +6,11 @@
 Harness. It should feel native to terminal workflows while preserving Harness
 semantics, plugin composition, safety policy, and durable session history.
 
-The first release targets a developer running `dsh` locally in an interactive
-TTY. It is not a generic chat client and does not attempt Web feature parity.
+The release-candidate MVP targets a developer running `dsh` locally in an
+interactive TTY. The production roadmap extends that foundation into a
+Claude-Code-class local workflow without copying browser-client internals. The
+complete interaction and capability design lives in
+[Product design](product-design.md).
 
 ## Users and jobs
 
@@ -70,14 +73,26 @@ The primary user is a software engineer who wants to:
 - Honor request abort signals and make agent identity visible in every modal.
 - Fail closed if the terminal cannot safely collect a decision.
 
-## Post-MVP candidates
+## Production requirements after MVP
 
-- Session browser with lightweight persistence metadata.
-- Model and permission selection.
-- Todo, goal, usage, and subagent panels backed by session projections.
-- Multiple open tabs or attached agents.
-- Search, export, themes, mouse support, and configurable key bindings.
-- A separately designed remote-client mode.
+- Provide a Unicode-safe multiline editor with bounded undo/history,
+  bracketed paste, completion, and configurable bindings.
+- Provide transcript scrolling, search, tool folding, stable navigation, and
+  explicit retained-window limits.
+- Provide a session center and safe owned transitions between persisted
+  sessions.
+- Expose command discovery, model selection, permission presets, sandbox state,
+  usage/context, and local preferences through their public owning services.
+- Provide change review and distinguish durable sessions, conversation forks,
+  and file checkpoints without overstating recoverability.
+- Render todo, goal, plan, usage, jobs, and subagent state from public Harness
+  projections/services.
+- Provide skills, hooks, MCP, and plugin inventory with health, redaction, and
+  capability-aware mutation.
+- Support non-interactive text/JSON/NDJSON operation, diagnostics,
+  accessibility, attachments, safe file links, and worktree-aware sessions.
+- Keep remote attachment a separately designed mode with a second concrete
+  transport and explicit security/reconnect contracts.
 
 ## Explicit non-goals for the first release
 

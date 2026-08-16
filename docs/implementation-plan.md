@@ -1,168 +1,346 @@
 # Implementation plan
 
-## Delivery principles
+## Objective and progress accounting
 
-- Land vertical slices that can be tested end to end.
-- Keep the first publishable change small enough to review; split framework
-  scaffolding, transcript semantics, and interaction adapters when needed.
-- Do not modify DeepSeek Harness core from this repository.
-- When a missing public seam is proven, propose the smallest upstream change
-  separately and keep a documented compatibility fallback or minimum version.
-- Keep `dsh.bundle` and publishability gated by Milestone 3's package and
-  teardown tests.
+Deliver the complete local production TUI described in
+[Product design](product-design.md), starting from the verified interactive MVP
+at 25%. Progress points represent accepted product capability, not elapsed time
+or code volume. A slice moves the total only after its exit criteria pass.
 
-## Milestone 0 — design baseline
+| Milestone | Slices | Start | End |
+| --- | --- | ---: | ---: |
+| M1 Daily Driver | M1.1–M1.5 | 25% | 45% |
+| M2 Safety & Recovery | M2.1–M2.4 | 45% | 62% |
+| M3 Orchestration | M3.1–M3.4 | 62% | 78% |
+| M4 Extension Workbench | M4.1–M4.4 | 78% | 90% |
+| M5 Productization | M5.1–M5.4 | 90% | 100% |
 
-Status: **complete with the initial repository scaffold**.
+The implementation proceeds in order because later panels depend on the M1
+overlay, focus, viewport, and command infrastructure. Each slice is committed
+and pushed independently after its local gates pass. Blocking CI must be green
+before the slice is marked complete.
 
-Deliverables:
+## Delivery invariants
 
-- product requirements;
-- architecture and accepted ADRs;
-- implementation and test plans;
-- compatibility policy;
-- documentation link validation and CI.
+- Import only documented package exports; local TypeScript imports remain
+  extensionless and runtime ESM is produced by the bundler.
+- Durable `session/event` data remains the only transcript history.
+- React and Ink types remain inside `src/ui`.
+- Harness owns domain state; the TUI consumes services and projections.
+- Every operation has cancellation, generation control, bounded retention, and
+  quiescent disposal.
+- Capability absence is a tested state. It is not filled with guessed private
+  behavior.
+- A session switch or runner exit cannot retain an unowned live agent.
+- New architecture decisions are recorded as new ADRs.
 
-Exit criteria:
+## M0 — Capability and design baseline (25%)
 
-- local documentation check passes;
-- repository has a protected, reviewable `main` baseline;
-- open questions are explicit rather than hidden in implementation.
-
-## Milestone 1 — framework spike and lifecycle shell
-
-Status: **complete**. The TypeScript gates, Ink selection, startup parser,
-framework-neutral resource owner, lifecycle shell, deterministic empty-screen
-rendering, PTY teardown matrix, loader-aware Cordis fixture mounting, and
-cross-platform CI definition are implemented and pass the blocking platform
-matrix.
-
-Goal: prove terminal ownership and Cordis application startup without driving a
-model turn.
-
-Work:
-
-- evaluate terminal frameworks using ADR-0003 criteria;
-- select and record the framework/version;
-- add TypeScript build, typecheck, unit-test, and lint gates;
-- implement `tui-startup` parsing for `--help` and `--resume`;
-- implement raw mode, alternate screen, resize, and deterministic shutdown;
-- mount a runtime plugin over a fixture Cordis context;
-- render an empty screen and exit through normal and signal paths.
-
-Exit criteria:
-
-- PTY tests prove terminal restoration after normal exit, startup failure,
-  SIGINT, and SIGTERM;
-- the renderer does not leak framework types into lifecycle or domain modules;
-- no agent or Harness package internals are imported.
-
-## Milestone 2 — durable transcript vertical slice
-
-Status: **complete**. Loader settlement, default-model setup, create/resume,
-exact `AgentHandle` ownership, listener-first replay/live handoff, sequence-gap
-validation, bounded event batches, quiescent teardown, the durable transcript
-reducer, controller, fixed-size renderer, input routing, and tool presentation
-are implemented and composed in the runtime application.
-
-Goal: create or resume one agent and render a correct text/tool transcript.
+Status: **complete**. The production product design, M1–M5 acceptance slices,
+test expansion, public capability map, unsupported recovery boundary, and
+documentation inventory are recorded and pass the repository gates.
 
 Work:
 
-- wait for loader settlement and install model selection;
-- own `AgentHandle` from `create()` or `resume()`;
-- implement listener-first replay/live attachment with sequence deduplication;
-- fold user, assistant chunks/messages, turns, errors, tool calls/results;
-- implement generic and terminal tool-intent renderers;
-- add ordinary follow-up, explicit steering, cancellation, and busy status;
-- add bounded transcript window and repaint coalescing.
+- commit the production product design and this executable plan;
+- map each Harness integration to its rc.6 public package/service;
+- record unsupported file-rewind and remote-transport boundaries;
+- extend test strategy and documentation inventory;
+- create a feature acceptance matrix that tests can reference by stable id.
 
 Exit criteria:
 
-- a keyless fixture completes a multi-step tool turn;
-- replay and live execution produce equivalent snapshots;
-- assistant chunk/final reconciliation never duplicates content;
-- long-output tests remain within defined memory/render budgets;
-- agent disposal reaches quiescence.
+- `pnpm check` passes;
+- every M1–M5 requirement has an owner, failure mode, and verification layer;
+- the documentation commit is pushed and CI is green.
 
-## Milestone 3 — safe interactive MVP
+## M1 — Daily Driver (25% → 45%)
 
-Status: **complete for the release candidate**. The
-bundle metadata, startup/runtime entries, approval and question adapters,
-interactive Ink application, diagnostics, clean-profile tarball smoke, and
-fresh/resume PTY paths are implemented. Publication remains a separate,
-explicit release action.
+### M1.1 Editor core and multiline composer (+5)
 
-Goal: cover every human-blocking seam and become installable.
+Implementation:
 
-Work:
+- add a pure `EditorController` with Unicode cursor/selection operations,
+  bounded undo/redo, multiline text, preferred column, and history traversal;
+- add bracketed-paste decoding and batch insertion at the terminal adapter;
+- preserve drafts on rejected/failed submission and reset only after accepted
+  ownership transfer;
+- render cursor and multiline viewport within a bounded composer height;
+- retain current followup, steer, cancel, and modal precedence.
 
-- integrate `ctx.commands`, discovery, and command results;
-- add approval answerer with exact-agent routing;
-- add user-question provider including plan review;
-- implement remaining tool-intent families and generic fallbacks;
-- add session id/model/workspace/status chrome;
-- add installation smoke test against a clean `dsh` profile;
-- declare `dsh.bundle`, add `cordis.patch.yml`, export built artifacts, and remove
-  `private: true` only after release review.
+Verification:
 
-Exit criteria:
+- table/property tests for editing operations and Unicode boundaries;
+- fixed 80×24 and 40×16 composer snapshots;
+- PTY multiline paste, edit, submit, cancel, and teardown cases;
+- memory tests for history/undo/input limits.
 
-- complete acceptance flow: install, create, tool call, approve, answer,
-  command, cancel, exit, resume;
-- all abort and teardown tests pass;
-- package tarball contains only intended runtime files and bundle patch;
-- README installation instructions work from a clean environment;
-- compatibility matrix names an exact supported Harness release/range.
+### M1.2 Transcript viewport and search (+4)
 
-## Milestone 4 — rich local workflow
+Implementation:
 
-Potential scope, prioritized by user evidence:
+- add a pure viewport controller with follow-tail, line/page jumps, stable row
+  focus, unseen count, and eviction awareness;
+- add bounded search with next/previous match;
+- add per-card fold/expand state keyed by durable call row id;
+- add plain-text copy projection and optional OSC 8 file links in the adapter.
 
-- session list and picker via persistence metadata;
-- model and permission selection;
-- diff, search, read, and Web presentation polish;
-- projection-backed todo, goal, usage, and subagent views;
-- configurable key bindings and themes;
-- session export and diagnostics.
+Verification:
 
-Each feature must use the owning Harness seam. If it needs TUI-specific
-rendering, begin with an internal keyed renderer table.
+- replay/live additions while following and while scrolled away;
+- search across Unicode, truncated cards, and evicted windows;
+- resize snapshots and PTY navigation tests;
+- 10,000-row benchmark remains inside the bounded rendering budget.
 
-## Milestone 5 — ecosystem and upstreaming
+### M1.3 Overlay system, command palette, and completion (+3)
 
-After at least one release is used in real projects:
+Implementation:
 
-- document missing or unstable upstream contracts with reproductions;
-- submit narrow DeepSeek Harness PRs where public seams are insufficient;
-- decide whether a public `dsh-tui-api` renderer registry has at least two real
-  providers/consumers;
-- propose official listing, recommended community status, or migration into the
-  DeepSeek Harness monorepo;
-- separately scope remote-client mode if users require attachment to an existing
-  Harness process.
+- introduce a framework-neutral overlay/focus state machine;
+- project Harness command metadata and local navigation actions into one fuzzy
+  palette without duplicating command execution;
+- add abortable, generation-checked command/path completion;
+- make every action discoverable when a terminal cannot emit its shortcut.
 
-## Initial issue breakdown
+Verification:
 
-Suggested review-sized issues:
+- focus precedence and stale-completion tests;
+- command argument/error/cancellation integration tests;
+- narrow/wide palette snapshots and keystroke PTY flow.
 
-1. Terminal-framework benchmark and ADR update.
-2. TypeScript/build/test scaffold.
-3. Runtime owner and terminal restoration tests.
-4. Startup argument provider.
-5. Agent create/resume ownership fixture.
-6. Replay/live event attachment and sequence reducer.
-7. Assistant-stream reconciliation.
-8. Generic and terminal tool presentation.
-9. Input routing and slash commands.
-10. Approval scheduler and tests.
-11. User-question provider and tests.
-12. Bundle packaging and clean-profile smoke test.
+### M1.4 Session center and attachment transitions (+4)
 
-## Release and rollback
+Implementation:
 
-Pre-1.0 releases should use explicit release candidates and a tested Harness
-peer range. Publishing a broken bundle can be rolled back by deprecating the npm
-version and instructing profiles to pin the last known-good release; user
-profiles remain independently patchable. No release should require rewriting
-stored session logs.
+- consume session-persistence metadata through a runtime adapter;
+- add bounded list, filter, preview, resume, and capability-gated actions;
+- refactor one-shot attachment into an owned session coordinator that can
+  quiesce and replace an attachment without leaking listeners or handles;
+- surface switch failure with deterministic recovery.
+
+Verification:
+
+- list/inspect abort and corruption fixtures;
+- exact-handle disposal and no-overlap transition tests;
+- fresh → session A → session B → exit PTY path;
+- resume meaning remains equivalent to durable replay.
+
+### M1.5 Status, model, permission entry points, and preferences shell (+4)
+
+Implementation:
+
+- add immutable status projections for model, permission, usage/context
+  availability, branch/workspace, viewport, and background state;
+- add model selection before new-session creation using the public model
+  registry/default-selection seams;
+- add the preference schema and default theme/keymap command bindings;
+- keep dangerous permission mutation for M2.1.
+
+Verification:
+
+- missing/late service projection tests;
+- model choice applied to the newly created exact agent;
+- status degradation snapshots at 120, 80, and 40 columns;
+- invalid preference fallback and collision tests.
+
+M1 exit gate:
+
+- a clean-profile user can compose multiline prompts, navigate/search history,
+  discover commands, browse/resume sessions, choose a model, and understand
+  current state entirely from the terminal;
+- total progress becomes **45%** only after all five pushed slices and blocking
+  CI runs pass.
+
+## M2 — Safety & Recovery (45% → 62%)
+
+### M2.1 Permission presets and sandbox visibility (+5)
+
+- adapt the public permission-preset service;
+- preview sandbox/approval consequences;
+- apply safe modes atomically and require typed/explicit confirmation for
+  danger-full-access;
+- test unavailable services, failed transitions, concurrent changes, and exact
+  agent scoping.
+
+### M2.2 Change index and review workbench (+5)
+
+- index durable diff intents by tool call and file without reading hidden tool
+  state;
+- provide file grouping, jump-to-event, folded/unfolded diff, truncation, and
+  pre-execution approval context;
+- test parallel calls, repeated file edits, malformed diffs, and bounded index
+  retention.
+
+### M2.3 Durable recovery and capability-gated rewind (+5)
+
+- expose session durability, export, fork, and checkpoint capabilities as
+  separate operations;
+- implement conversation fork only through a public lineage/session seam;
+- adapt public file rewind when the compatibility baseline provides one;
+- on rc.6, show a tested unavailable state and never reverse arbitrary diffs or
+  claim Bash writes are recoverable.
+
+### M2.4 Failure recovery matrix (+2)
+
+- inject failures during editor submission, session switch, projection refresh,
+  permission change, export, render, output closure, and disposal;
+- guarantee either a usable attached session or clean process exit;
+- aggregate cleanup errors without suppressing the primary failure.
+
+M2 exit gate:
+
+- every authority escalation is explicit and every supported recovery operation
+  states its exact boundary;
+- total progress becomes **62%** after four pushed slices and green CI.
+
+## M3 — Orchestration (62% → 78%)
+
+### M3.1 Projection hub: todo, goal, plan, usage (+4)
+
+- add one projection subscription owner with immutable snapshots and bounded
+  diagnostics;
+- implement plan/todo/goal/usage panels from registered projection values;
+- prove no second event-folding truth is introduced.
+
+### M3.2 Background jobs (+4)
+
+- adapt jobs list/status/output/control operations;
+- add attach/detach, bounded log tail, cancel confirmation, and completion
+  notices;
+- test races between completion, cancellation, refresh, and disposal.
+
+### M3.3 Subagent tree and controls (+5)
+
+- project lineage/status into a stable tree;
+- expose only public message/follow-up/interrupt/cancel/attach controls;
+- retain exact-agent approval/question isolation;
+- test parallel children, disappearing agents, unread updates, and root switch.
+
+### M3.4 Unified activity center (+3)
+
+- combine plans, jobs, and agents into bounded notifications and navigation;
+- add command-palette actions and status counts;
+- test notification coalescing and no update-after-disposal behavior.
+
+M3 exit gate:
+
+- a user can inspect and control every publicly observable local activity
+  without leaving the TUI;
+- total progress becomes **78%** after four pushed slices and green CI.
+
+## M4 — Extension Workbench (78% → 90%)
+
+### M4.1 Versioned preferences, themes, and keymaps (+3)
+
+- persist the TUI settings namespace through the public settings service when
+  writable, with safe process-only fallback otherwise;
+- add semantic color themes, no-color/reduced-motion modes, binding overrides,
+  and atomic validation;
+- snapshot all semantic states in color and no-color modes.
+
+### M4.2 Skills and hooks (+3)
+
+- add abortable skill catalog discovery, completeness/error state, details, and
+  explicit invocation insertion;
+- show hook providers/configuration and observable failures through public
+  inventory only;
+- never execute a hook merely to test it.
+
+### M4.3 MCP inventory and health (+3)
+
+- group MCP-qualified tools by server and expose public connection health when
+  available;
+- redact headers/env/secrets and distinguish configured, connecting, active,
+  degraded, and unavailable when the service provides these states;
+- test reconnect invalidation and stale inventory generations.
+
+### M4.4 Plugin inventory and diagnostics (+3)
+
+- consume the public plugin-inventory/loader projection;
+- show enabled state, fiber phase, module, and bounded failure diagnostics;
+- enable mutation only if an owning loader/settings transaction is public;
+- test HMR/disposal invalidation without importing plugin implementation files.
+
+M4 exit gate:
+
+- installed capabilities and configuration are discoverable, safely redacted,
+  and diagnosable from the terminal;
+- total progress becomes **90%** after four pushed slices and green CI.
+
+## M5 — Productization (90% → 100%)
+
+### M5.1 Non-interactive runner and output contracts (+3)
+
+- extend startup with `--print`, `--output-format text|json|stream-json`, and
+  piped prompt handling;
+- share runtime controllers without mounting terminal state;
+- version JSON envelopes, preserve event order, separate stdout/stderr, handle
+  backpressure, and fail closed on invisible human interaction;
+- add golden contract tests and pipe/exit-code integration tests.
+
+### M5.2 Diagnostics, onboarding, and accessibility (+3)
+
+- implement read-only `--doctor` and actionable service/model/persistence/TTY
+  checks with redaction;
+- add first-run guidance, no-color, reduced-motion, keyboard-only operation,
+  and screen-reader-oriented text mode;
+- add clean-profile broken-configuration fixtures.
+
+### M5.3 Attachments and terminal/IDE links (+2)
+
+- consume the public attachment seam for image/file inputs;
+- negotiate terminal image support and retain a textual fallback;
+- generate safe OSC 8 file links without shell interpolation;
+- test unsupported terminals, missing attachments, size limits, and replay.
+
+### M5.4 Worktrees and remote readiness (+2)
+
+- add capability-gated worktree/session filtering and launcher-owned workspace
+  transitions;
+- keep remote mode out of the local runtime until a second concrete transport
+  exists;
+- if remote is implemented, first add an ADR covering auth, negotiation,
+  reconnect, ordering, and exact-agent human interaction routing.
+
+M5 exit gate:
+
+- interactive and non-interactive clean-profile acceptance suites pass on the
+  blocking platform matrix;
+- documentation, package contents, diagnostics, accessibility paths, and
+  supported capability limitations match actual behavior;
+- total progress becomes **100%** only after final production review, fixes,
+  push, and green CI.
+
+## Commit, CI, and rollback protocol
+
+For each slice:
+
+1. Implement one complete vertical path and its failure/unavailable states.
+2. Run focused tests while developing.
+3. Run `pnpm check`; run package/PTY/benchmark gates proportional to the
+   changed boundary.
+4. Review the diff for correctness, security, bounds, cancellation, ownership,
+   public imports, and documentation truth.
+5. Fix every finding, commit with a slice-scoped message, and push `main`.
+6. Wait for blocking CI. A red run leaves the slice incomplete; fix, commit,
+   push, and repeat.
+
+Changes are additive and independently revertible. Persisted session formats
+are never rewritten. Preference schema migrations retain the previous valid
+document and support downgrade. New entry-point flags remain backward
+compatible. A failed release can be deprecated while users pin the last green
+release candidate.
+
+## Final completion audit
+
+Before declaring 100%, inspect evidence for every M1–M5 slice rather than
+inferring completion from a green aggregate command. The audit records:
+
+- source module and public service implementing each requirement;
+- deterministic test or snapshot proving the normal path;
+- test proving cancellation, unavailable capability, and disposal;
+- clean-package/PTY evidence where applicable;
+- pushed commit and blocking CI run;
+- residual upstream limitations, especially file rewind and remote transport.
+
+Any missing or indirect evidence keeps the objective active.

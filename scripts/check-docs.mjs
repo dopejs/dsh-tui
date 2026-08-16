@@ -6,6 +6,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const required = [
   'README.md',
   'docs/product-requirements.md',
+  'docs/product-design.md',
   'docs/architecture.md',
   'docs/implementation-plan.md',
   'docs/testing-strategy.md',

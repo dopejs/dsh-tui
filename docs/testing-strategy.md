@@ -6,6 +6,11 @@ Testing must prove semantic correctness, resource cleanup, deterministic visual
 output, compatibility with Harness public contracts, and safe behavior under
 cancellation. Browser component tests are not evidence for the TUI.
 
+The full M1–M5 acceptance contract is defined in
+[Product design](product-design.md) and [Implementation plan](implementation-plan.md).
+Every feature test is tagged in its description with the milestone slice it
+proves so the final audit can map requirements to executable evidence.
+
 ## Test layers
 
 ### Pure reducer tests
@@ -28,6 +33,12 @@ Required cases:
 Property tests may generate valid event prefixes once the basic reducer is
 stable. They should check idempotence by sequence and equivalence between one-shot
 folding and arbitrary replay/live partitions.
+
+Framework-neutral editor, viewport, overlay, palette, preference, projection,
+and activity controllers receive the same treatment. Generated editor
+operation sequences must preserve valid cursor/selection bounds and undo/redo
+round trips. Async search/catalog tests use injected settlement rather than
+wall-clock sleeps and prove stale generations cannot publish.
 
 ### Presenter contract tests
 
@@ -107,6 +118,16 @@ and tool fixtures. Exercise public entry paths:
 No network API key is required for blocking CI. A separately gated smoke test
 may use a real DeepSeek endpoint without becoming the semantic test oracle.
 
+Post-MVP fixtures also cover:
+
+- session list/inspect and exact-handle attachment replacement;
+- model/default selection and permission-preset transitions;
+- projection refresh and missing optional units;
+- jobs and subagent list/control races;
+- skills, MCP-qualified tools, settings, and plugin inventory invalidation;
+- attachment metadata and unavailable checkpoint/worktree capabilities;
+- fail-closed non-interactive approval and question behavior.
+
 ### Package and install tests
 
 Before publishing:
@@ -116,6 +137,23 @@ Before publishing:
 - verify bundle discovery and composed config dump;
 - start the TUI and complete the deterministic acceptance script;
 - confirm no Web/Host/server rows or listening ports are introduced.
+
+The M5 package suite additionally runs piped `text`, `json`, and `stream-json`
+commands, validates stdout/stderr separation and exit codes, runs `--doctor`
+against valid and broken clean profiles, and verifies no interactive terminal
+escape sequence appears in redirected output.
+
+### Contract and accessibility tests
+
+Versioned JSON/NDJSON output uses golden fixtures plus schema validation.
+Backpressure fixtures delay writes and prove ordered, lossless termination.
+Redaction fixtures seed recognizable secrets in settings, environment maps,
+MCP headers, and diagnostics and assert that none reaches rendered or machine
+output.
+
+Every interactive action has a keyboard path and a command-palette path.
+Snapshots run with color, `NO_COLOR`, narrow terminals, high contrast, reduced
+motion, and plain screen-reader text. Color is never the only status marker.
 
 ## Platform matrix
 
@@ -150,6 +188,12 @@ The current release-candidate budgets are:
 - cold replay time for representative long sessions;
 - resize/reflow latency for the visible window;
 - quiescent shutdown deadline before launcher escalation.
+- interactive editor/navigation key-to-frame p95 below 50 ms for the bounded
+  visible model;
+- at most 200 editor undo entries, history entries, completion candidates,
+  session rows, search matches, jobs, agents, or extension rows per view;
+- non-interactive stream output honors writable backpressure without reordering
+  durable events.
 
 Regressions above a documented budget fail a benchmark smoke gate or require an
 explicit decision update.
