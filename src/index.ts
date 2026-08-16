@@ -12,6 +12,7 @@ import { EditorController } from './model/editor-controller'
 import { InteractionController } from './model/interaction-controller'
 import { TranscriptController } from './model/transcript-controller'
 import { reduceTranscriptBatch } from './model/transcript-reducer'
+import { TranscriptViewportController } from './model/transcript-viewport-controller'
 import { ToolTranscriptProjector } from './presentation/tools'
 import { attachAgent, type AgentAttachmentRequest } from './runtime/agent-attachment'
 import { createRuntimePlugin } from './runtime/cordis-runtime'
@@ -190,6 +191,8 @@ export async function startTuiRuntime(
     reportError: diagnostics.report,
   })
   owner.own('transcript controller', () => transcript.dispose())
+  const viewport = new TranscriptViewportController(transcript)
+  owner.own('transcript viewport controller', () => viewport.dispose())
 
   try {
     const attachment = await attachAgent(ctx, {
@@ -252,6 +255,7 @@ export async function startTuiRuntime(
       sessionId: String(attachment.agent.session.id),
       status,
       transcript,
+      viewport,
       workspace: attachment.agent.session.header.cwd ?? dependencies.cwd(),
     })
     owner.own('Ink application and terminal state', () => application.dispose())

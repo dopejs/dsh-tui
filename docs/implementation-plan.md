@@ -82,13 +82,19 @@ Verification:
 
 ### M1.2 Transcript viewport and search (+4)
 
+Status: **complete**. The owned viewport, bounded retained-window search, stable
+focus, navigation/unseen state, tool-card fold and bounded detail paging,
+visible plain-text OSC 52 copy, fixed-size snapshots, interactive PTY flow, and
+10,000-row benchmark are implemented.
+
 Implementation:
 
 - add a pure viewport controller with follow-tail, line/page jumps, stable row
   focus, unseen count, and eviction awareness;
 - add bounded search with next/previous match;
 - add per-card fold/expand state keyed by durable call row id;
-- add plain-text copy projection and optional OSC 8 file links in the adapter.
+- add a bounded plain-text projection and explicit OSC 52 copy request in the
+  adapter. Safe OSC 8 file links remain in M5.3 with attachments/IDE links.
 
 Verification:
 

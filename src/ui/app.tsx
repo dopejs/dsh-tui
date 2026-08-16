@@ -10,9 +10,15 @@ import type {
   InteractionSnapshot,
 } from '../model/interaction-controller'
 import type { TranscriptStore } from '../model/transcript-controller'
+import type {
+  TranscriptViewportController,
+  TranscriptViewportSnapshot,
+} from '../model/transcript-viewport-controller'
+import { projectTranscriptPlainText } from '../model/transcript-viewport-controller'
 import { createScreenModel, type InteractionModal } from '../model/view-model'
 import type { InputController, InputSubmission, SubmissionMode } from '../runtime/input-controller'
 import { Composer, createComposerView } from './composer'
+import { writeOsc52Clipboard } from './clipboard'
 import { Frame } from './ink-renderer'
 
 interface QuestionDraft {
@@ -32,6 +38,7 @@ export interface InteractiveTuiProps {
   readonly status: AgentStatusStore
   readonly terminalRows?: number
   readonly transcript: TranscriptStore
+  readonly viewport: TranscriptViewportController
   readonly workspace: string
 }
 
@@ -115,6 +122,17 @@ function normalizeTerminalPaste(value: string): string {
   return value.replaceAll('\r\n', '\n').replaceAll('\r', '\n')
 }
 
+function searchStatus(search: TranscriptViewportSnapshot['search']): string {
+  if (search.query === '') {
+    return `type to search retained transcript${search.incomplete ? ' · history evicted' : ''}`
+  }
+  const position = search.activeIndex === undefined ? 0 : search.activeIndex + 1
+  const count = search.truncated
+    ? `${String(search.totalMatches)} (showing ${String(search.matchIds.length)})`
+    : String(search.totalMatches)
+  return `${String(position)}/${count}${search.incomplete ? ' · retained window only' : ''}`
+}
+
 export function InteractiveTui({
   columns: fixedColumns,
   editor,
@@ -126,6 +144,7 @@ export function InteractiveTui({
   status,
   terminalRows: fixedRows,
   transcript,
+  viewport,
   workspace,
 }: InteractiveTuiProps) {
   const { stdout } = useStdout()
@@ -161,6 +180,11 @@ export function InteractiveTui({
     editor.subscribe,
     editor.getSnapshot,
     editor.getSnapshot,
+  )
+  const viewportSnapshot = useSyncExternalStore(
+    viewport.subscribe,
+    viewport.getSnapshot,
+    viewport.getSnapshot,
   )
 
   useEffect(() => {
@@ -262,6 +286,11 @@ export function InteractiveTui({
       })
       return
     }
+    if (viewport.getSnapshot().search.open) {
+      const result = viewport.insertSearch(normalized.replaceAll('\n', ' '))
+      if (result === 'limit-exceeded') setNotice('Search query is too long.')
+      return
+    }
     const result = editor.insert(normalized)
     setNotice(result === 'limit-exceeded'
       ? `Composer exceeds ${String(editor.textLimit)} code units.`
@@ -350,6 +379,81 @@ export function InteractiveTui({
         }
         finishQuestion(question, { id: question.id, selected: answers })
       }
+      return
+    }
+
+    if (viewport.getSnapshot().search.open) {
+      if (key.escape || (key.ctrl && typed === 'c')) {
+        viewport.closeSearch()
+        setNotice('Transcript search closed.')
+        return
+      }
+      if (key.return || key.downArrow || (key.ctrl && typed.toLowerCase() === 'f')) {
+        viewport.nextMatch(key.shift ? 'previous' : 'next')
+        return
+      }
+      if (key.upArrow) {
+        viewport.nextMatch('previous')
+        return
+      }
+      if (key.backspace || key.delete) {
+        viewport.backspaceSearch()
+        return
+      }
+      if (!key.ctrl && !key.meta && !key.super && typed !== '') {
+        if (viewport.insertSearch(typed) === 'limit-exceeded') {
+          setNotice('Search query is too long.')
+        }
+      }
+      return
+    }
+
+    if (key.ctrl && typed.toLowerCase() === 'f') {
+      viewport.openSearch()
+      setNotice('Transcript search opened.')
+      return
+    }
+    if (key.ctrl && (key.upArrow || key.downArrow)) {
+      viewport.scrollLines(key.upArrow ? 1 : -1)
+      return
+    }
+    if (key.pageUp || key.pageDown) {
+      if (key.meta) {
+        if (!viewport.scrollFocusedTool(
+          key.pageUp ? 'up' : 'down',
+          Math.max(1, Math.floor(dimensions.rows / 2)),
+        )) {
+          setNotice('Focused tool has no more detail in that direction.')
+        }
+        return
+      }
+      viewport.scrollPage(
+        key.pageUp ? 'up' : 'down',
+        Math.max(1, Math.floor(dimensions.rows / 2)),
+      )
+      return
+    }
+    if (key.ctrl && key.home) {
+      viewport.toStart()
+      return
+    }
+    if (key.ctrl && key.end) {
+      viewport.toEnd()
+      return
+    }
+    if (key.ctrl && typed.toLowerCase() === 't') {
+      if (key.shift) viewport.toggleCompactTools()
+      else if (!viewport.toggleFocusedTool()) setNotice('No focused tool details to fold.')
+      return
+    }
+    if (key.ctrl && key.shift && typed.toLowerCase() === 'c') {
+      const plain = projectTranscriptPlainText(screen.rows, 100_000)
+      const result = writeOsc52Clipboard(stdout, plain.text)
+      setNotice(result === 'sent'
+        ? `Visible transcript copied${plain.truncated ? ' with truncation' : ''}.`
+        : result === 'too-large'
+          ? 'Visible transcript is too large for terminal clipboard transfer.'
+          : 'Terminal clipboard transfer is unavailable.')
       return
     }
 
@@ -448,10 +552,6 @@ export function InteractiveTui({
       editor.move('left', key.shift)
       return
     }
-    if (key.ctrl && typed.toLowerCase() === 'f') {
-      editor.move('right', key.shift)
-      return
-    }
     if (key.ctrl && typed.toLowerCase() === 'k') {
       editor.killToLineEnd()
       return
@@ -492,15 +592,29 @@ export function InteractiveTui({
   )
   const composerRows = composerView.rows.length
     + (composerView.hiddenAbove > 0 || composerView.hiddenBelow > 0 ? 1 : 0)
-  const screenRows = Math.max(4, dimensions.rows - composerRows - 1)
+  const searchRows = viewportSnapshot.search.open ? 1 : 0
+  const screenRows = Math.max(4, dimensions.rows - composerRows - searchRows - 1)
+  const maximumToolDetailLines = Math.max(
+    1,
+    screenRows - 5 - (modal === undefined ? 0 : modalRows(modal)),
+  )
+  const projectedRows = viewport.projectRows(transcriptSnapshot.rows, {
+    maxToolDetailLines: maximumToolDetailLines,
+  })
   const screen = createScreenModel(
-    transcriptSnapshot.rows,
+    projectedRows,
     {
+      droppedRows: transcriptSnapshot.droppedRows,
+      ...(viewportSnapshot.focusedRowId === undefined
+        ? {}
+        : { focusedRowId: viewportSnapshot.focusedRowId }),
       ...(modal === undefined ? {} : { modalRows: modalRows(modal) }),
       modelLabel,
       sessionId,
+      scrollOffset: viewportSnapshot.scrollOffset,
       status: agentStatus === 'running' ? 'busy' : 'idle',
       terminalRows: screenRows,
+      unseenRows: viewportSnapshot.unseenRows,
       workspace,
     },
     modal,
@@ -509,6 +623,12 @@ export function InteractiveTui({
   return (
     <Box flexDirection="column">
       <Frame columns={dimensions.columns} model={screen} />
+      {viewportSnapshot.search.open ? (
+        <Text wrap="truncate-end">
+          / {viewportSnapshot.search.query}<Text inverse>█</Text>
+          <Text dimColor> · {searchStatus(viewportSnapshot.search)}</Text>
+        </Text>
+      ) : null}
       <Composer
         columns={dimensions.columns}
         maxRows={composerMaxRows}

@@ -40,11 +40,14 @@ export function Frame({ columns, model }: FrameProps) {
         {model.visibleRange === undefined
           ? 'transcript empty'
           : `transcript ${model.visibleRange.start}–${model.visibleRange.end} of ${model.totalRows}`}
+        {model.droppedRows === undefined ? '' : ` · ${String(model.droppedRows)} evicted`}
+        {model.unseenRows === undefined ? '' : ` · ${String(model.unseenRows)} new`}
       </Text>
       <Box flexDirection="column">
         {model.rows.map((row) => (
           <Box flexDirection="column" key={row.id}>
             <Text wrap="truncate-end">
+              {model.focusedRowId === row.id ? '› ' : ''}
               {ROW_PREFIX[row.kind]} {row.toolCard?.title ?? row.content}
               {row.status === undefined ? '' : ROW_STATUS[row.status]}
             </Text>

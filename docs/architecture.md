@@ -273,6 +273,28 @@ and aggregate code units; the
 horizontal projector scans only a small window around the cursor instead of a
 100,000-code-unit line.
 
+### Transcript viewport ownership
+
+The transcript viewport is a framework-neutral controller subscribed to the
+bounded transcript reducer. It owns only ephemeral navigation state: tail
+following, retained-row offset, stable focused row id, unseen/evicted counters,
+search state, tool-card folding, and tool-detail page offsets. It never appends
+or reconstructs durable history. Reducer rows remain immutable and continue to
+be the sole transcript truth.
+
+Literal case-insensitive search indexes at most 2,000,000 UTF-16 code units and
+retains at most 200 newest match ids. The UI explicitly marks results incomplete
+when reducer eviction or the search budget excludes older text. Per-card fold
+and page overrides are bounded to 200 ids and are removed when their durable row
+is evicted. Expanded cards are projected to the physical screen budget before
+the screen window is selected, so one large tool result cannot grow the render
+tree without bound.
+
+The adapter may emit OSC 52 only after an explicit copy action, only to a TTY,
+and only for a bounded UTF-8 payload. The copied value is a decoration-free
+plain-text projection of visible rows; terminal control sequences from durable
+content are base64 encoded rather than written as control data.
+
 ## Human interaction
 
 The interaction scheduler serializes terminal ownership across the composer,

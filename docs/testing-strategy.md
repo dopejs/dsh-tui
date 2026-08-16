@@ -78,6 +78,7 @@ time, paths, ids, and Unicode settings. Snapshots cover:
 - generic, terminal, diff, read, search, and Web cards;
 - approval and question modals;
 - queued input and cancellation;
+- transcript focus, eviction/unseen state, search, and folded/expanded tools;
 - narrow terminal wrapping and resize;
 - errors, truncation, and unsupported content fallback.
 
@@ -96,6 +97,7 @@ Required paths:
 - terminal resize while output streams;
 - EOF and closed output;
 - repeated cancellation;
+- multiline paste and transcript search/navigation input ownership;
 - non-TTY stdin/stdout refusal;
 - no orphan process or open handle after exit.
 

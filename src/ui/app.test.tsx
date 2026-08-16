@@ -6,6 +6,7 @@ import type { AgentStatusStore } from '../model/agent-status-controller'
 import { EditorController } from '../model/editor-controller'
 import { InteractionController } from '../model/interaction-controller'
 import { TranscriptController } from '../model/transcript-controller'
+import { TranscriptViewportController } from '../model/transcript-viewport-controller'
 import type { InputController } from '../runtime/input-controller'
 import { InteractiveTui } from './app'
 
@@ -30,9 +31,12 @@ function fakeInput(): InputController {
 function renderApp(
   transcript: TranscriptController,
   interaction: InteractionController,
+  configure?: (viewport: TranscriptViewportController) => void,
 ) {
   const editor = new EditorController()
+  const viewport = new TranscriptViewportController(transcript)
   try {
+    configure?.(viewport)
     return renderToString(
       <InteractiveTui
         columns={52}
@@ -45,11 +49,13 @@ function renderApp(
         status={status}
         terminalRows={14}
         transcript={transcript}
+        viewport={viewport}
         workspace="/fixture/workspace"
       />,
       { columns: 52 },
     )
   } finally {
+    viewport.dispose()
     editor.dispose()
   }
 }
@@ -121,6 +127,26 @@ describe('InteractiveTui', () => {
 
     abort.abort(new Error('done'))
     await expect(pending).rejects.toThrow('done')
+    interaction.dispose()
+    await transcript.dispose()
+  })
+
+  it('renders transcript search as an exclusive focus row without discarding the composer', async () => {
+    const transcript = new TranscriptController()
+    const interaction = new InteractionController()
+
+    expect(renderApp(transcript, interaction, (viewport) => {
+      viewport.openSearch()
+      viewport.insertSearch('needle')
+    })).toMatchInlineSnapshot(`
+      "dsh-tui · session-app · idle
+      fixture/model · /fixture/workspace
+      transcript empty
+      / needle█ · 0/0
+      › █
+      Enter send · ^J newline · ^S steer · ^C cancel"
+    `)
+
     interaction.dispose()
     await transcript.dispose()
   })

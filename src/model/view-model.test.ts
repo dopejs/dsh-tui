@@ -41,4 +41,31 @@ describe('createScreenModel', () => {
     expect(model.modal?.agentLabel).toBe('root')
     expect(model.visibleRange).toEqual({ end: 9_990, start: 9_979 })
   })
+
+  it('budgets expanded tool details by rendered height', () => {
+    const model = createScreenModel([
+      { content: 'before', id: 'before', kind: 'assistant' },
+      {
+        content: 'raw',
+        id: 'tool',
+        kind: 'tool',
+        toolCard: {
+          card: 'terminal',
+          lines: ['one', 'two', 'three', 'four'],
+          title: 'Expanded tool',
+          truncated: true,
+        },
+      },
+    ], {
+      droppedRows: 4,
+      focusedRowId: 'tool',
+      sessionId: 'session-height',
+      status: 'busy',
+      terminalRows: 8,
+      unseenRows: 2,
+    })
+
+    expect(model.rows.map(row => row.id)).toEqual(['tool'])
+    expect(model).toMatchObject({ droppedRows: 4, focusedRowId: 'tool', unseenRows: 2 })
+  })
 })

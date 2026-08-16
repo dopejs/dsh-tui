@@ -144,6 +144,12 @@ async function exerciseMultilineComposer(running) {
   }
   running.child.write('\u0003')
   await waitForOutput(running, 'Composer cleared.', 'clear the multiline draft')
+  running.child.write('\u0006')
+  await waitForOutput(running, 'type to search retained transcript', 'open transcript search')
+  running.child.write('needle')
+  await waitForOutput(running, '/ needle', 'edit the transcript search query')
+  running.child.write('\u001B')
+  await waitForOutput(running, 'Transcript search closed.', 'close transcript search')
 }
 
 async function quitAndAssert(running) {

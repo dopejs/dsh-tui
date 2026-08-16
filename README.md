@@ -57,6 +57,14 @@ the document boundary to recall history, and `/exit` for a graceful, durable
 shutdown. Approval prompts accept `y` or `n`; structured questions use arrows,
 Space, Tab, and Enter.
 
+The transcript follows new output until navigation detaches it. Use Ctrl-Up or
+Ctrl-Down for one retained entry, PageUp or PageDown for a page, and Ctrl-Home
+or Ctrl-End for the retained window boundaries. Ctrl-F opens bounded transcript
+search. Ctrl-T folds the focused tool, Ctrl-Shift-T toggles compact tool cards,
+and Alt-PageUp or Alt-PageDown pages through a long focused tool result.
+Ctrl-Shift-C requests an OSC 52 copy of the currently visible transcript when
+the terminal supports it.
+
 ## Documentation
 
 - [Product requirements](docs/product-requirements.md)

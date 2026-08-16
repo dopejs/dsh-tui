@@ -156,6 +156,33 @@ describe('renderInkFrame', () => {
     `)
   })
 
+  it('renders viewport focus, eviction, unseen state, and a folded tool card', () => {
+    const model = createScreenModel([{
+      content: 'raw',
+      id: 'folded-tool',
+      kind: 'tool',
+      toolCard: {
+        card: 'terminal',
+        lines: ['[12 detail lines folded]'],
+        title: 'Run suite',
+      },
+    }], {
+      droppedRows: 7,
+      focusedRowId: 'folded-tool',
+      sessionId: 'viewport-session',
+      status: 'busy',
+      terminalRows: 8,
+      unseenRows: 3,
+    })
+
+    expect(renderInkFrame(model, 48)).toMatchInlineSnapshot(`
+      "dsh-tui · viewport-session · busy
+      transcript 1–1 of 1 · 7 evicted · 3 new
+      › T Run suite
+        [12 detail lines folded]"
+    `)
+  })
+
   it('renders an agent-labelled plan review from the interaction store', async () => {
     const transcript = new TranscriptController()
     const interaction = new InteractionController()
