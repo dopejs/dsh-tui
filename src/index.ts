@@ -12,6 +12,7 @@ import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-user-questions'
 
 import { AgentStatusController } from './model/agent-status-controller'
+import { ChangeIndexController } from './model/change-index-controller'
 import { CommandPaletteController } from './model/command-palette-controller'
 import { CompletionController } from './model/completion-controller'
 import { EditorController } from './model/editor-controller'
@@ -258,6 +259,8 @@ export async function startTuiRuntime(
       bindingOwner.own('transcript controller', () => transcript.dispose())
       const viewport = new TranscriptViewportController(transcript)
       bindingOwner.own('transcript viewport controller', () => viewport.dispose())
+      const changes = new ChangeIndexController()
+      bindingOwner.own('change index controller', () => changes.dispose())
       const runtimeStatus = new RuntimeStatusController()
       bindingOwner.own('runtime status controller', () => runtimeStatus.dispose())
       try {
@@ -266,6 +269,7 @@ export async function startTuiRuntime(
             runtimeStatus.setModel(agent.options)
             projector = new ToolTranscriptProjector({
               agent,
+              onChangePresentation: intent => changes.record(intent),
               reportError: diagnostics.report,
               tools,
             })
@@ -321,6 +325,7 @@ export async function startTuiRuntime(
         return {
           application: {
             acceptsInput: () => acceptingInput,
+            changes,
             completion,
             editor,
             input,

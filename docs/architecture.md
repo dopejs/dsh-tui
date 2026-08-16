@@ -212,6 +212,14 @@ the exact attached-agent scope, applies the same rules to nested code-dispatch
 events, and preserves raw durable result content when a result presenter is
 missing or only supplies structural metadata.
 
+The same replay boundary emits structured public diff intents to a separate
+change index. That index retains at most 500 changes across 500 files by
+default, replaces call-time plans with result-time presentations, and records
+successful calls without a result diff as `unverified` rather than claiming a
+file mutation was applied. It owns only review navigation and fold state; the
+durable transcript remains the history source of truth. Approval prompts may
+look up planned paths only by the exact call id.
+
 ## Live state
 
 Live state is deliberately separate from durable transcript state:

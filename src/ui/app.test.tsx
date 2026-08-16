@@ -3,6 +3,7 @@ import { renderToString } from 'ink'
 import { describe, expect, it } from 'vitest'
 
 import type { AgentStatusStore } from '../model/agent-status-controller'
+import { ChangeIndexController } from '../model/change-index-controller'
 import { CommandPaletteController } from '../model/command-palette-controller'
 import { CompletionController } from '../model/completion-controller'
 import { EditorController } from '../model/editor-controller'
@@ -42,10 +43,12 @@ function renderApp(
     viewport: TranscriptViewportController,
     overlay: OverlayController,
     palette: CommandPaletteController,
+    changes: ChangeIndexController,
   ) => void,
   initialNotice?: string,
 ) {
   const editor = new EditorController()
+  const changes = new ChangeIndexController()
   const viewport = new TranscriptViewportController(transcript)
   const overlay = new OverlayController()
   const palette = new CommandPaletteController({
@@ -63,9 +66,10 @@ function renderApp(
   }, { currentSessionId: 'session-app' })
   const runtimeStatus = new RuntimeStatusController({ model: 'model', provider: 'fixture' })
   try {
-    configure?.(viewport, overlay, palette)
+    configure?.(viewport, overlay, palette, changes)
     return renderToString(
       <InteractiveTui
+        changes={changes}
         columns={52}
         completion={completion}
         editor={editor}
@@ -91,6 +95,7 @@ function renderApp(
     )
   } finally {
     void completion.dispose()
+    changes.dispose()
     void sessionCenter.dispose()
     runtimeStatus.dispose()
     permission.dispose()
@@ -162,6 +167,36 @@ describe('InteractiveTui', () => {
       › █
       Enter send · ^J newline · ^S steer · ^C cancel"
     `)
+
+    abort.abort(new Error('done'))
+    await expect(pending).rejects.toThrow('done')
+    interaction.dispose()
+    await transcript.dispose()
+  })
+
+  it('adds exact planned file context to a matching approval only', async () => {
+    const transcript = new TranscriptController()
+    const interaction = new InteractionController()
+    const abort = new AbortController()
+    const pending = interaction.askApproval({
+      agent: { id: 'root-agent' } as unknown as Agent,
+      callId: 'write-call' as never,
+      reason: 'write file',
+      toolName: 'write',
+    }, abort.signal)
+
+    const rendered = renderApp(transcript, interaction, (_viewport, _overlay, _palette, changes) => {
+      changes.record({
+        callId: 'write-call',
+        diffs: [{ newText: 'new', oldText: 'old', path: 'src/app.ts' }],
+        eventSeq: 1,
+        phase: 'planned',
+        rowId: 'tool:write-call',
+        title: 'Edit app',
+      })
+    })
+    expect(rendered).toContain('Planned changes (1):')
+    expect(rendered).toContain('src/app.ts')
 
     abort.abort(new Error('done'))
     await expect(pending).rejects.toThrow('done')

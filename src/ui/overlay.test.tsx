@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
 import type { CommandPaletteSnapshot } from '../model/command-palette-controller'
+import type { ChangeIndexSnapshot } from '../model/change-index-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
 import type { SessionCenterSnapshot } from '../model/session-center-controller'
 import type { PermissionSnapshot } from '../model/permission-controller'
@@ -11,6 +12,15 @@ const emptyCompletion: CompletionSnapshot = {
   query: '',
   revision: 0,
   status: 'idle',
+  truncated: false,
+}
+
+const emptyChanges: ChangeIndexSnapshot = {
+  droppedChanges: 0,
+  groups: [],
+  invalidDiffs: 0,
+  revision: 0,
+  totalChanges: 0,
   truncated: false,
 }
 
@@ -32,6 +42,54 @@ const emptyPermissions: PermissionSnapshot = {
 }
 
 describe('OverlayPanel (M1.3)', () => {
+  it('renders file-grouped change review with bounded expanded detail', () => {
+    const first = {
+      callId: 'call-a',
+      eventSeq: 2,
+      expanded: true,
+      id: 'call-a:0',
+      newText: 'new one\nnew two\nnew three',
+      oldText: 'old one\nold two',
+      path: 'src/a.ts',
+      phase: 'applied' as const,
+      rowId: 'tool:call-a',
+      title: 'Edit a.ts',
+      truncated: false,
+    }
+    expect(renderOverlayPanel({
+      active: 'changes',
+      changes: {
+        droppedChanges: 3,
+        groups: [{
+          changes: [first, {
+            ...first,
+            callId: 'call-b',
+            eventSeq: 4,
+            expanded: false,
+            id: 'call-b:0',
+            phase: 'unverified',
+            rowId: 'tool:call-b',
+            title: 'Edit a.ts again',
+          }],
+          path: 'src/a.ts',
+        }],
+        invalidDiffs: 1,
+        revision: 3,
+        selectedIndex: 0,
+        totalChanges: 2,
+        truncated: true,
+      },
+      columns: 64,
+      completion: emptyCompletion,
+      maxRows: 10,
+      palette: {
+        catalogTruncated: false, items: [], query: '', revision: 0, totalMatches: 0,
+      },
+      permissions: emptyPermissions,
+      sessions: emptySessions,
+    })).toMatchSnapshot()
+  })
+
   it('renders a bounded narrow command palette', () => {
     const palette: CommandPaletteSnapshot = {
       catalogTruncated: true,
@@ -50,6 +108,7 @@ describe('OverlayPanel (M1.3)', () => {
 
     expect(renderOverlayPanel({
       active: 'command-palette',
+      changes: emptyChanges,
       columns: 40,
       completion: emptyCompletion,
       maxRows: 9,
@@ -87,6 +146,7 @@ describe('OverlayPanel (M1.3)', () => {
 
     expect(renderOverlayPanel({
       active: 'completion',
+      changes: emptyChanges,
       columns: 60,
       completion,
       maxRows: 8,
@@ -121,6 +181,7 @@ describe('OverlayPanel (M1.3)', () => {
 
     expect(renderOverlayPanel({
       active: 'command-palette',
+      changes: emptyChanges,
       columns: 80,
       completion: emptyCompletion,
       maxRows: 10,
@@ -164,6 +225,7 @@ describe('OverlayPanel (M1.3)', () => {
 
     expect(renderOverlayPanel({
       active: 'session-center',
+      changes: emptyChanges,
       columns: 80,
       completion: emptyCompletion,
       maxRows: 10,
@@ -195,6 +257,7 @@ describe('OverlayPanel (M1.3)', () => {
     }
     expect(renderOverlayPanel({
       active: 'permissions',
+      changes: emptyChanges,
       columns: 80,
       completion: emptyCompletion,
       maxRows: 10,
@@ -205,6 +268,7 @@ describe('OverlayPanel (M1.3)', () => {
 
     expect(renderOverlayPanel({
       active: 'permissions',
+      changes: emptyChanges,
       columns: 80,
       completion: emptyCompletion,
       maxRows: 10,

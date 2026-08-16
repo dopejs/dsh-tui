@@ -209,6 +209,22 @@ describe('TranscriptViewportController (M1.2)', () => {
     viewport.dispose()
   })
 
+  it('reveals an exact retained row for cross-panel navigation', () => {
+    const store = new FixtureTranscriptStore([row('row-0'), row('row-1'), row('row-2')])
+    const viewport = new TranscriptViewportController(store)
+
+    expect(viewport.focusRow('row-1')).toBe(true)
+    expect(viewport.getSnapshot()).toMatchObject({
+      focusedRowId: 'row-1',
+      followTail: false,
+      scrollOffset: 1,
+    })
+    expect(viewport.focusRow('missing')).toBe(false)
+    expect(viewport.getSnapshot().focusedRowId).toBe('row-1')
+
+    viewport.dispose()
+  })
+
   it('reserves the bounded card budget for an upstream truncation marker', () => {
     const durable: readonly TranscriptRow[] = [{
       content: 'raw truncated',

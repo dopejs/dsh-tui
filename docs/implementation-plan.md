@@ -194,6 +194,13 @@ fail-closed.
 
 ### M2.2 Change index and review workbench (+5)
 
+Status: **complete**. Durable call/result events are replayed through the exact
+tool's public presentation functions into a bounded, framework-neutral change
+index. The review overlay groups repeated edits by file, distinguishes planned,
+applied, failed, and unverified results, expands bounded diff detail, jumps to a
+retained transcript row, and adds exact-call planned-file context to approval
+prompts. Presenter and index failures remain non-authoritative and contained.
+
 - index durable diff intents by tool call and file without reading hidden tool
   state;
 - provide file grouping, jump-to-event, folded/unfolded diff, truncation, and

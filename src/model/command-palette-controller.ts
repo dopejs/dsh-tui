@@ -8,6 +8,7 @@ const MAX_METADATA_CODE_UNITS = 500
 type Listener = () => void
 
 export type TuiActionId =
+  | 'changes.center'
   | 'composer.clear'
   | 'permission.center'
   | 'session.center'
@@ -63,6 +64,12 @@ export interface CommandPaletteSnapshot {
 }
 
 export const DEFAULT_TUI_ACTIONS: readonly TuiActionDescriptor[] = Object.freeze([
+  Object.freeze({
+    description: 'Review durable tool-presented file changes',
+    id: 'changes.center',
+    keywords: Object.freeze(['diff', 'files', 'review']),
+    title: 'Open changes',
+  }),
   Object.freeze({
     description: 'Clear the current composer draft',
     id: 'composer.clear',

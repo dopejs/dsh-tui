@@ -2,6 +2,7 @@ import { PassThrough } from 'node:stream'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 import type { AgentStatusStore } from '../model/agent-status-controller'
+import { ChangeIndexController } from '../model/change-index-controller'
 import { CommandPaletteController } from '../model/command-palette-controller'
 import { CompletionController } from '../model/completion-controller'
 import { EditorController } from '../model/editor-controller'
@@ -75,6 +76,15 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
     let output = ''
     stdout.on('data', chunk => { output += String(chunk) })
     const editor = new EditorController()
+    const changes = new ChangeIndexController()
+    changes.record({
+      callId: 'input-change',
+      diffs: [{ newText: 'new', oldText: 'old', path: 'src/controller.ts' }],
+      eventSeq: 1,
+      phase: 'applied',
+      rowId: 'tool-row',
+      title: 'Edit controller',
+    })
     const interaction = new InteractionController()
     const durableRows: readonly TranscriptRow[] = Object.freeze([
       ...Array.from({ length: 20 }, (_, index): TranscriptRow => Object.freeze({
@@ -170,6 +180,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
 
     const mounted = render(
       <InteractiveTui
+        changes={changes}
         completion={completion}
         editor={editor}
         input={input}
@@ -305,6 +316,18 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
 
       stdin.write('\u001B[112;5u')
       await eventually(() => expect(overlay.getSnapshot().active).toBe('command-palette'))
+      stdin.write('open changes')
+      await eventually(() => expect(palette.getSnapshot().query).toBe('open changes'))
+      stdin.write('\r')
+      await eventually(() => expect(overlay.getSnapshot().active).toBe('changes'))
+      stdin.write('\r')
+      await eventually(() => expect(changes.selected()?.expanded).toBe(true))
+      stdin.write('j')
+      await eventually(() => expect(overlay.getSnapshot().active).toBeUndefined())
+      expect(viewport.getSnapshot().focusedRowId).toBe('tool-row')
+
+      stdin.write('\u001B[112;5u')
+      await eventually(() => expect(overlay.getSnapshot().active).toBe('command-palette'))
       stdin.write('fail')
       await eventually(() => expect(palette.getSnapshot().query).toBe('fail'))
       stdin.write('\r')
@@ -331,6 +354,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       viewport.dispose()
       await transcript.dispose()
       editor.dispose()
+      changes.dispose()
     }
     expect(stdin.isRaw).toBe(false)
     expect(output).toContain('\u001B[?2004l')

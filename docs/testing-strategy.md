@@ -132,6 +132,9 @@ Post-MVP fixtures also cover:
   and fail-closed double-resume failure;
 - exact-session permission writes, missing services, typed dangerous-mode
   confirmation/cancellation, external changes, and failed knob writes;
+- parallel and repeated public diff presentations, planned-to-result
+  replacement, malformed diff containment, bounded change-index eviction,
+  approval context, and retained-row navigation;
 - model/default selection and permission-preset transitions;
 - exact startup-model preflight, 40/80/120-column status degradation, missing
   status facts, and atomic preference collision/fallback behavior;

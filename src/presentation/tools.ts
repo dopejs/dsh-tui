@@ -10,6 +10,7 @@ import type {
 } from '@deepseek-ai/dsh-tools'
 
 import { reduceTranscriptBatch, type TranscriptState } from '../model/transcript-reducer'
+import type { ChangePresentationIntent } from '../model/change-index-controller'
 import type { ToolCardModel, TranscriptRow } from '../model/view-model'
 
 const DEFAULT_MAX_CALLS = 2_000
@@ -29,6 +30,7 @@ export interface ToolTranscriptProjectorOptions {
   readonly maxCalls?: number
   readonly maxLineChars?: number
   readonly maxLines?: number
+  readonly onChangePresentation?: (intent: ChangePresentationIntent) => void
   readonly reportError?: (error: unknown) => void
   readonly tools: ToolResolver
 }
@@ -199,6 +201,7 @@ export class ToolTranscriptProjector {
   readonly #maxCalls: number
   readonly #maxLineChars: number
   readonly #maxLines: number
+  readonly #onChangePresentation: (intent: ChangePresentationIntent) => void
   readonly #reportError: (error: unknown) => void
   readonly #tools: ToolResolver
 
@@ -211,6 +214,7 @@ export class ToolTranscriptProjector {
       'maxLineChars', options.maxLineChars, DEFAULT_MAX_LINE_CHARS,
     )
     this.#reportError = options.reportError ?? (() => undefined)
+    this.#onChangePresentation = options.onChangePresentation ?? (() => undefined)
   }
 
   readonly reduceBatch = (
@@ -229,6 +233,14 @@ export class ToolTranscriptProjector {
           const call = definition?.presentCall?.(args)
           const callId = String(event.data.callId)
           calls.set(callId, { args, ...(call === undefined ? {} : { call }), name: event.data.name })
+          if (call?.card === 'diff') this.#emitChange({
+            callId,
+            diffs: call.diffs,
+            eventSeq: event.seq,
+            phase: 'planned',
+            rowId: `tool:${callId}`,
+            title: call.title,
+          })
           next = attachCard(next, `tool:${callId}`, call === undefined
             ? undefined
             : boundCard(cardLines(event.data.name, call, undefined), this.#maxLines, this.#maxLineChars))
@@ -257,6 +269,23 @@ export class ToolTranscriptProjector {
                   this.#maxLineChars,
                 )
             next = attachCard(next, `tool:${callId}`, card)
+            const pendingDiff = pending.call?.card === 'diff' ? pending.call : undefined
+            if (result?.card === 'diff') this.#emitChange({
+              callId,
+              diffs: result.diffs,
+              eventSeq: event.seq,
+              phase: block.isError === true ? 'failed' : 'applied',
+              rowId: `tool:${callId}`,
+              title: result.title ?? pending.call?.title ?? pending.name,
+            })
+            else if (pendingDiff !== undefined) this.#emitChange({
+              callId,
+              diffs: pendingDiff.diffs,
+              eventSeq: event.seq,
+              phase: block.isError === true ? 'failed' : 'unverified',
+              rowId: `tool:${callId}`,
+              title: pendingDiff.title,
+            })
             calls.delete(callId)
           }
         } else if (event.type === 'tool/code-dispatch-start') {
@@ -267,6 +296,14 @@ export class ToolTranscriptProjector {
             args: event.data.arguments,
             ...(call === undefined ? {} : { call }),
             name: event.data.name,
+          })
+          if (call?.card === 'diff') this.#emitChange({
+            callId,
+            diffs: call.diffs,
+            eventSeq: event.seq,
+            phase: 'planned',
+            rowId: `tool:${callId}`,
+            title: call.title,
           })
           next = attachCard(next, `tool:${callId}`, call === undefined
             ? undefined
@@ -290,6 +327,23 @@ export class ToolTranscriptProjector {
                   this.#maxLineChars,
                 )
             next = attachCard(next, `tool:${callId}`, card)
+            const pendingDiff = pending.call?.card === 'diff' ? pending.call : undefined
+            if (result?.card === 'diff') this.#emitChange({
+              callId,
+              diffs: result.diffs,
+              eventSeq: event.seq,
+              phase: event.data.isError ? 'failed' : 'applied',
+              rowId: `tool:${callId}`,
+              title: result.title ?? pending.call?.title ?? pending.name,
+            })
+            else if (pendingDiff !== undefined) this.#emitChange({
+              callId,
+              diffs: pendingDiff.diffs,
+              eventSeq: event.seq,
+              phase: event.data.isError ? 'failed' : 'unverified',
+              rowId: `tool:${callId}`,
+              title: pendingDiff.title,
+            })
             calls.delete(callId)
           }
         }
@@ -309,5 +363,17 @@ export class ToolTranscriptProjector {
     this.#calls.clear()
     for (const [id, call] of calls) this.#calls.set(id, call)
     return next
+  }
+
+  #emitChange(intent: ChangePresentationIntent): void {
+    try {
+      this.#onChangePresentation(intent)
+    } catch (error) {
+      try {
+        this.#reportError(error)
+      } catch {
+        // Change indexing is a non-authoritative presentation consumer.
+      }
+    }
   }
 }

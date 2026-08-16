@@ -3,6 +3,7 @@ import { Box, Text, useInput, usePaste, useStdout } from 'ink'
 import type { AskUserQuestionAnswer } from '@deepseek-ai/dsh-user-questions'
 
 import type { AgentStatusStore } from '../model/agent-status-controller'
+import type { ChangeIndexController } from '../model/change-index-controller'
 import type {
   CommandPaletteController,
   PaletteItem,
@@ -42,6 +43,7 @@ interface QuestionDraft {
 
 export interface InteractiveTuiProps {
   readonly acceptsInput?: () => boolean
+  readonly changes: ChangeIndexController
   readonly columns?: number
   readonly completion: CompletionController
   readonly editor: EditorController
@@ -83,12 +85,16 @@ function submissionNotice(submission: InputSubmission): string {
   }
 }
 
-function approvalModal(snapshot: Exclude<InteractionSnapshot, undefined> & { kind: 'approval' }) {
+function approvalModal(
+  snapshot: Exclude<InteractionSnapshot, undefined> & { kind: 'approval' },
+  changeContext: readonly string[],
+) {
   return {
     agentLabel: snapshot.agentLabel,
     message: [
       snapshot.toolName,
       snapshot.reason,
+      ...changeContext,
       'Y allow once · N reject',
     ].filter(Boolean).join('\n'),
     title: 'Approval',
@@ -157,6 +163,7 @@ function searchStatus(search: TranscriptViewportSnapshot['search']): string {
 
 export function InteractiveTui({
   acceptsInput = () => true,
+  changes,
   columns: fixedColumns,
   completion,
   editor,
@@ -196,6 +203,11 @@ export function InteractiveTui({
     transcript.subscribe,
     transcript.getSnapshot,
     transcript.getSnapshot,
+  )
+  const changeSnapshot = useSyncExternalStore(
+    changes.subscribe,
+    changes.getSnapshot,
+    changes.getSnapshot,
   )
   const interactionSnapshot = useSyncExternalStore(
     interaction.subscribe,
@@ -280,7 +292,7 @@ export function InteractiveTui({
   const modal = useMemo(() => {
     if (interactionSnapshot === undefined) return undefined
     return interactionSnapshot.kind === 'approval'
-      ? approvalModal(interactionSnapshot)
+      ? approvalModal(interactionSnapshot, changes.approvalContext(interactionSnapshot.callId))
       : questionModal(
           interactionSnapshot,
           questionIndex,
@@ -289,7 +301,7 @@ export function InteractiveTui({
           customMode,
           customText,
         )
-  }, [cursor, customMode, customText, interactionSnapshot, questionIndex, selected])
+  }, [changeSnapshot, changes, cursor, customMode, customText, interactionSnapshot, questionIndex, selected])
 
   const submitComposer = async (mode: SubmissionMode) => {
     const draft = editor.captureSubmission()
@@ -342,6 +354,10 @@ export function InteractiveTui({
 
   const executeTuiAction = (action: TuiActionId) => {
     switch (action) {
+      case 'changes.center':
+        overlay.open('changes')
+        setNotice('Changes opened.')
+        return
       case 'composer.clear':
         setNotice(editor.clear() ? 'Composer cleared.' : 'Composer is already empty.')
         return
@@ -688,6 +704,23 @@ export function InteractiveTui({
         }
         return
       }
+      if (activeOverlay === 'changes') {
+        if (key.upArrow) changes.move('up')
+        else if (key.downArrow || key.tab) changes.move('down')
+        else if (key.return) changes.toggleSelected()
+        else if (!key.ctrl && typed.toLowerCase() === 'j') {
+          const selectedChange = changes.selected()
+          if (selectedChange === undefined) {
+            setNotice('No change is selected.')
+          } else if (viewport.focusRow(selectedChange.rowId)) {
+            overlay.close('changes')
+            setNotice(`Jumped to ${selectedChange.path}.`)
+          } else {
+            setNotice('The linked transcript row is outside the retained window.')
+          }
+        }
+        return
+      }
       if (key.upArrow) {
         completion.move('up')
         return
@@ -979,6 +1012,7 @@ export function InteractiveTui({
   if (fullScreenOverlay && activeOverlay !== undefined) {
     return <OverlayPanel
       active={activeOverlay}
+      changes={changeSnapshot}
       columns={dimensions.columns}
       completion={completionSnapshot}
       maxRows={overlayMaxRows}
@@ -994,6 +1028,7 @@ export function InteractiveTui({
       {activeOverlay === undefined ? null : (
         <OverlayPanel
           active={activeOverlay}
+          changes={changeSnapshot}
           columns={dimensions.columns}
           completion={completionSnapshot}
           maxRows={overlayMaxRows}

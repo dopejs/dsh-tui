@@ -5,6 +5,7 @@ import type { ToolDefinition, ToolResultView } from '@deepseek-ai/dsh-tools'
 import { describe, expect, it, vi } from 'vitest'
 
 import { TranscriptController } from '../model/transcript-controller'
+import { ChangeIndexController, type ChangePresentationIntent } from '../model/change-index-controller'
 import { createTranscriptState } from '../model/transcript-reducer'
 import { ToolTranscriptProjector } from './tools'
 
@@ -21,6 +22,7 @@ function result(
   seq: number,
   id: CallId,
   text = 'raw output',
+  isError = false,
 ): SessionEvent<'tool/result'> {
   return {
     data: {
@@ -28,6 +30,7 @@ function result(
         content: [{
           content: [{ text, type: 'text' }],
           toolCallId: id,
+          ...(isError ? { isError: true } : {}),
           type: 'tool-result',
         }],
         id: `result-${String(seq)}` as MessageId,
@@ -45,7 +48,11 @@ function result(
 
 function fixture(
   definition: Partial<Pick<ToolDefinition, 'presentCall' | 'presentResult'>>,
-  limits: { readonly maxLineChars?: number; readonly maxLines?: number } = {},
+  limits: {
+    readonly maxLineChars?: number
+    readonly maxLines?: number
+    readonly onChangePresentation?: (intent: ChangePresentationIntent) => void
+  } = {},
 ) {
   const agent = { id: 'agent' } as unknown as Agent
   const get = vi.fn(() => definition as ToolDefinition)
@@ -204,5 +211,107 @@ describe('ToolTranscriptProjector', () => {
       lines: ['raw result stays visible'],
       title: 'echo hi',
     })
+  })
+
+  it('emits public diff intents for planned and applied durable events', () => {
+    const id = 'change-call' as CallId
+    const changes: ChangePresentationIntent[] = []
+    const mounted = fixture({
+      presentCall: () => ({
+        card: 'diff',
+        diffs: [{ newText: 'planned', oldText: 'old', path: 'src/a.ts' }],
+        title: 'Plan a.ts',
+      }),
+      presentResult: () => ({
+        card: 'diff',
+        diffs: [{ newText: 'applied', oldText: 'old', path: 'src/a.ts' }],
+        title: 'Applied a.ts',
+      }),
+    }, { onChangePresentation: change => changes.push(change) })
+
+    mounted.projector.reduceBatch(createTranscriptState(), [call(0, id), result(1, id)])
+
+    expect(changes).toEqual([{
+      callId: id,
+      diffs: [{ newText: 'planned', oldText: 'old', path: 'src/a.ts' }],
+      eventSeq: 0,
+      phase: 'planned',
+      rowId: `tool:${id}`,
+      title: 'Plan a.ts',
+    }, {
+      callId: id,
+      diffs: [{ newText: 'applied', oldText: 'old', path: 'src/a.ts' }],
+      eventSeq: 1,
+      phase: 'applied',
+      rowId: `tool:${id}`,
+      title: 'Applied a.ts',
+    }])
+  })
+
+  it('builds the same change index across replay and live batch partitions', () => {
+    const id = 'partitioned-change' as CallId
+    const definition = {
+      presentCall: () => ({
+        card: 'diff' as const,
+        diffs: [{ newText: 'planned', oldText: 'old', path: 'src/a.ts' }],
+        title: 'Plan a.ts',
+      }),
+      presentResult: () => ({
+        card: 'diff' as const,
+        diffs: [{ newText: 'applied', oldText: 'old', path: 'src/a.ts' }],
+        title: 'Applied a.ts',
+      }),
+    }
+    const replayIndex = new ChangeIndexController()
+    const replay = fixture(definition, { onChangePresentation: change => replayIndex.record(change) })
+    replay.projector.reduceBatch(createTranscriptState(), [call(0, id), result(1, id)])
+
+    const liveIndex = new ChangeIndexController()
+    const live = fixture(definition, { onChangePresentation: change => liveIndex.record(change) })
+    const pending = live.projector.reduceBatch(createTranscriptState(), [call(0, id)])
+    live.projector.reduceBatch(pending, [result(1, id)])
+
+    expect(liveIndex.getSnapshot()).toEqual(replayIndex.getSnapshot())
+    replayIndex.dispose()
+    liveIndex.dispose()
+  })
+
+  it.each([
+    [false, 'unverified'],
+    [true, 'failed'],
+  ] as const)('does not claim an applied diff without a result presentation', (isError, phase) => {
+    const id = `fallback-${phase}` as CallId
+    const changes: ChangePresentationIntent[] = []
+    const mounted = fixture({
+      presentCall: () => ({
+        card: 'diff',
+        diffs: [{ newText: 'planned', oldText: 'old', path: 'a.ts' }],
+        title: 'Edit a.ts',
+      }),
+    }, { onChangePresentation: change => changes.push(change) })
+
+    mounted.projector.reduceBatch(createTranscriptState(), [call(0, id), result(1, id, 'done', isError)])
+
+    expect(changes.at(-1)?.phase).toBe(phase)
+  })
+
+  it('contains change-consumer failures without interrupting transcript projection', () => {
+    const id = 'consumer-failure' as CallId
+    const mounted = fixture({
+      presentCall: () => ({
+        card: 'diff',
+        diffs: [{ newText: 'new', oldText: 'old', path: 'a.ts' }],
+        title: 'Edit a.ts',
+      }),
+      presentResult: () => ({ card: 'generic', title: 'Done' }),
+    }, {
+      onChangePresentation: () => { throw new Error('index failed') },
+    })
+
+    const state = mounted.projector.reduceBatch(createTranscriptState(), [call(0, id), result(1, id)])
+
+    expect(state.nextSeq).toBe(2)
+    expect(state.rows[0]?.toolCard?.title).toBe('Done')
+    expect(mounted.errors).toHaveLength(2)
   })
 })

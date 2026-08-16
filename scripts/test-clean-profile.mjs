@@ -211,6 +211,24 @@ async function exerciseMultilineComposer(running) {
   await waitForOutputSince(running, offset, 'Overlay closed.', 'close permissions')
 
   offset = running.output().length
+  running.child.write('\u0010')
+  await waitForOutputSince(running, offset, 'Command palette', 'open changes discovery')
+  running.child.write('open changes')
+  await waitForOutputSince(running, offset, 'Open changes', 'discover changes')
+  offset = running.output().length
+  running.child.write('\r')
+  await waitForOutputSince(running, offset, 'Changes · 0 files · 0 edits', 'open changes')
+  await waitForOutputSince(
+    running,
+    offset,
+    'No durable diff presentations in this session',
+    'show empty changes state',
+  )
+  offset = running.output().length
+  running.child.write('\u001B')
+  await waitForOutputSince(running, offset, 'Overlay closed.', 'close changes')
+
+  offset = running.output().length
   running.child.write('/ex')
   await waitForOutputSince(running, offset, '/ex', 'render the command completion query')
   offset = running.output().length

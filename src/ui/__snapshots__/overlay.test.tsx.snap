@@ -41,6 +41,19 @@ exports[`OverlayPanel (M1.3) > renders command/path completion states 1`] = `
 ╰──────────────────────────────────────────────────────────╯"
 `;
 
+exports[`OverlayPanel (M1.3) > renders file-grouped change review with bounded expanded detail 1`] = `
+"╭──────────────────────────────────────────────────────────────╮
+│Changes · 1 files · 2 edits                                   │
+│› ▾ src/a.ts [1/2] · applied · Edit a.ts                      │
+│  ▸ src/a.ts [2/2] · unverified · Edit a.ts again             │
+│--- src/a.ts                                                  │
+│+++ src/a.ts                                                  │
+│- old one                                                     │
+│… diff continues                                              │
+│↑/↓ select · Enter fold/expand · J jump to transcript · Esc c…│
+╰──────────────────────────────────────────────────────────────╯"
+`;
+
 exports[`OverlayPanel (M1.3) > renders permission consequences and dangerous typed confirmation 1`] = `
 "╭──────────────────────────────────────────────────────────────────────────────╮
 │Permissions · confirming                                                      │

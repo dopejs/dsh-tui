@@ -1,5 +1,6 @@
 import { Box, Text, renderToString } from 'ink'
 
+import type { ChangeIndexSnapshot, IndexedChange } from '../model/change-index-controller'
 import type { CommandPaletteSnapshot } from '../model/command-palette-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
 import type { OverlayKind } from '../model/overlay-controller'
@@ -26,6 +27,7 @@ function selectedWindow<T>(
 
 interface OverlayPanelProps {
   readonly active: OverlayKind
+  readonly changes: ChangeIndexSnapshot
   readonly columns: number
   readonly completion: CompletionSnapshot
   readonly maxRows: number
@@ -36,6 +38,7 @@ interface OverlayPanelProps {
 
 export function OverlayPanel({
   active,
+  changes,
   columns,
   completion,
   maxRows,
@@ -43,6 +46,60 @@ export function OverlayPanel({
   permissions,
   sessions,
 }: OverlayPanelProps) {
+  if (active === 'changes') {
+    const flattened = changes.groups.flatMap(group => group.changes.map((change, index) => ({
+      change,
+      groupCount: group.changes.length,
+      groupIndex: index,
+    })))
+    const selected = changes.selectedIndex === undefined
+      ? undefined
+      : flattened[changes.selectedIndex]?.change
+    const listRows = selected?.expanded === true
+      ? Math.max(1, Math.floor((maxRows - 5) / 2))
+      : Math.max(1, maxRows - 4)
+    const window = selectedWindow(flattened, changes.selectedIndex, listRows)
+    const detailMaximum = Math.max(1, maxRows - window.rows.length - 4)
+    const detail = selected?.expanded === true ? diffLines(selected, detailMaximum) : undefined
+    return (
+      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+        <Text bold wrap="truncate-end">
+          Changes · {String(changes.groups.length)} files · {String(changes.totalChanges)} edits
+        </Text>
+        {window.rows.length === 0 ? (
+          <Text dimColor>No durable diff presentations in this session</Text>
+        ) : window.rows.map((item, index) => {
+          const absolute = window.start + index
+          const isSelected = absolute === changes.selectedIndex
+          return (
+            <Text inverse={isSelected} key={item.change.id} wrap="truncate-end">
+              {isSelected ? '›' : ' '} {item.change.expanded ? '▾' : '▸'} {item.change.path}
+              {item.groupCount > 1 ? ` [${String(item.groupIndex + 1)}/${String(item.groupCount)}]` : ''}
+              {' · '}{item.change.phase}{' · '}{item.change.title}
+            </Text>
+          )
+        })}
+        {detail === undefined ? null : detail.lines.map((line, index) => (
+          <Text
+            {...diffLineColor(line)}
+            key={`${selected?.id ?? 'detail'}:${String(index)}`}
+            wrap="truncate-end"
+          >
+            {line}
+          </Text>
+        ))}
+        <Text dimColor wrap="truncate-end">
+          {changes.totalChanges === 0
+            ? 'Esc close'
+            : '↑/↓ select · Enter fold/expand · J jump to transcript · Esc close'}
+          {changes.truncated ? ` · truncated (${String(changes.droppedChanges)} dropped)` : ''}
+          {changes.invalidDiffs > 0 ? ` · ${String(changes.invalidDiffs)} invalid ignored` : ''}
+          {detail?.truncated === true ? ' · diff folded to fit' : ''}
+        </Text>
+      </Box>
+    )
+  }
+
   if (active === 'command-palette') {
     const window = selectedWindow(palette.items, palette.selectedIndex, maxRows - 5)
     return (
@@ -202,6 +259,35 @@ export function OverlayPanel({
       </Text>
     </Box>
   )
+}
+
+function diffLines(change: IndexedChange, maximum: number): {
+  readonly lines: readonly string[]
+  readonly truncated: boolean
+} {
+  const lines = [
+    `--- ${change.oldText === null ? '/dev/null' : change.path}`,
+    `+++ ${change.path}`,
+    ...(textLines(change.oldText).map(line => `- ${line}`)),
+    ...(textLines(change.newText).map(line => `+ ${line}`)),
+  ]
+  const truncated = lines.length > maximum
+  return {
+    lines: Object.freeze(truncated
+      ? [...lines.slice(0, Math.max(0, maximum - 1)), '… diff continues']
+      : lines),
+    truncated,
+  }
+}
+
+function diffLineColor(line: string): Readonly<{ color: 'green' | 'red' }> | Readonly<Record<string, never>> {
+  if (line.startsWith('+++') || line.startsWith('+ ')) return { color: 'green' }
+  if (line.startsWith('---') || line.startsWith('- ')) return { color: 'red' }
+  return {}
+}
+
+function textLines(value: string | null): readonly string[] {
+  return value === null || value === '' ? [] : value.split('\n')
 }
 
 export function renderOverlayPanel(

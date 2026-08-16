@@ -245,6 +245,23 @@ export class TranscriptViewportController {
     return true
   }
 
+  focusRow(rowId: string): boolean {
+    this.#assertActive()
+    if (!this.#store.getSnapshot().rows.some(row => row.id === rowId)) return false
+    const before = {
+      focusedRowId: this.#focusedRowId,
+      followTail: this.#followTail,
+      scrollOffset: this.#scrollOffset,
+    }
+    this.#focusRow(rowId)
+    if (
+      before.focusedRowId !== this.#focusedRowId
+      || before.followTail !== this.#followTail
+      || before.scrollOffset !== this.#scrollOffset
+    ) this.#publish()
+    return true
+  }
+
   openSearch(): void {
     this.#assertActive()
     if (this.#search.open) return

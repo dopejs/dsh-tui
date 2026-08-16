@@ -5,10 +5,11 @@ exports[`InteractiveTui > renders a narrow command palette as a full-screen excl
 │Command palette                                   │
 │> rev█                                            │
 │› /review · Review changes                        │
+│  Open changes · Review durable tool-presented fi…│
 │  Exit TUI · Gracefully close the interactive TUI │
 │  Go to transcript end · Return to the live trans…│
 │  Copy visible transcript · Request terminal clip…│
 │  Open permissions · Inspect and change the exact…│
-│1/5 · Enter select · Esc close                    │
+│1/6 · Enter select · Esc close                    │
 ╰──────────────────────────────────────────────────╯"
 `;
