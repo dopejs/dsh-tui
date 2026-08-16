@@ -154,6 +154,68 @@ exports[`OverlayPanel (M1.3) > renders distinct recovery capabilities and fail-c
 ╰──────────────────────────────────────────────────────────────────────╯"
 `;
 
+exports[`OverlayPanel (M1.3) > renders every semantic job state under the default theme 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│Jobs · confirming · 2 running · truncated                                     │
+│registry degraded                                                             │
+│bash-2 failed · +1 more · A acknowledge                                       │
+│  bash-1 · running · pnpm test --watch                                        │
+│› bash-2 · failed · pnpm build                                                │
+│  exit code: 3                                                                │
+│  subagent-1 · running · unowned · audit the change index                     │
+│Cancel bash-1? Enter confirm · Esc dismiss                                    │
+│Output stays with the agent · 2/3 · ↑/↓ select · K cancel · R refresh · Esc c…│
+╰──────────────────────────────────────────────────────────────────────────────╯"
+`;
+
+exports[`OverlayPanel (M1.3) > renders every semantic job state under the high-contrast theme 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│Jobs · confirming · 2 running · truncated                                     │
+│registry degraded                                                             │
+│bash-2 failed · +1 more · A acknowledge                                       │
+│  bash-1 · running · pnpm test --watch                                        │
+│› bash-2 · failed · pnpm build                                                │
+│  exit code: 3                                                                │
+│  subagent-1 · running · unowned · audit the change index                     │
+│Cancel bash-1? Enter confirm · Esc dismiss                                    │
+│Output stays with the agent · 2/3 · ↑/↓ select · K cancel · R refresh · Esc c…│
+╰──────────────────────────────────────────────────────────────────────────────╯"
+`;
+
+exports[`OverlayPanel (M1.3) > renders every semantic job state under the no-color theme 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│Jobs · confirming · 2 running · truncated                                     │
+│registry degraded                                                             │
+│bash-2 failed · +1 more · A acknowledge                                       │
+│  bash-1 · running · pnpm test --watch                                        │
+│› bash-2 · failed · pnpm build                                                │
+│  exit code: 3                                                                │
+│  subagent-1 · running · unowned · audit the change index                     │
+│Cancel bash-1? Enter confirm · Esc dismiss                                    │
+│Output stays with the agent · 2/3 · ↑/↓ select · K cancel · R refresh · Esc c…│
+╰──────────────────────────────────────────────────────────────────────────────╯"
+`;
+
+exports[`OverlayPanel (M1.3) > renders every semantic subagent state under the default theme 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│Subagents · ready · 1 unread                                                  │
+│› •audit the change index · continuable · running · has children              │
+│     summarize findings · one-shot · inactive                                 │
+│  child-bad · unreadable (corrupt)                                            │
+│1/3 · ↑/↓ select · F follow up · I interrupt · A attach · M mark read · R ref…│
+╰──────────────────────────────────────────────────────────────────────────────╯"
+`;
+
+exports[`OverlayPanel (M1.3) > renders every semantic subagent state under the no-color theme 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│Subagents · ready · 1 unread                                                  │
+│› •audit the change index · continuable · running · has children              │
+│     summarize findings · one-shot · inactive                                 │
+│  child-bad · unreadable (corrupt)                                            │
+│1/3 · ↑/↓ select · F follow up · I interrupt · A attach · M mark read · R ref…│
+╰──────────────────────────────────────────────────────────────────────────────╯"
+`;
+
 exports[`OverlayPanel (M1.3) > renders file-grouped change review with bounded expanded detail 1`] = `
 "╭──────────────────────────────────────────────────────────────╮
 │Changes · 1 files · 2 edits                                   │

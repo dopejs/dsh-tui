@@ -11,6 +11,8 @@ import type { ProjectionHubSnapshot } from '../model/projection-hub-controller'
 import type { RecoverySnapshot } from '../model/recovery-controller'
 import type { SessionCenterSnapshot } from '../model/session-center-controller'
 import type { SubagentTreeSnapshot } from '../model/subagent-tree-controller'
+import type { TuiTheme } from '../model/preferences-controller'
+import { toneStyle, type SemanticTone } from './theme'
 
 interface OverlayWindow<T> {
   readonly end: number
@@ -44,6 +46,7 @@ interface OverlayPanelProps {
   readonly recovery: RecoverySnapshot
   readonly sessions: SessionCenterSnapshot
   readonly subagents: SubagentTreeSnapshot
+  readonly theme: TuiTheme
 }
 
 export function OverlayPanel({
@@ -60,7 +63,9 @@ export function OverlayPanel({
   recovery,
   sessions,
   subagents,
+  theme,
 }: OverlayPanelProps) {
+  const tone = (name: Parameters<typeof toneStyle>[1]) => toneStyle(theme, name)
   if (active === 'activity') {
     const window = selectedWindow(activity.rows, activity.selectedIndex, maxRows - 4)
     return (
@@ -114,7 +119,7 @@ export function OverlayPanel({
           {subagents.truncated ? ' · truncated' : ''}
         </Text>
         {subagents.error === undefined ? null : (
-          <Text color="red" wrap="truncate-end">{subagents.error}</Text>
+          <Text {...tone('danger')} wrap="truncate-end">{subagents.error}</Text>
         )}
         {window.rows.map((row, index) => {
           const absolute = window.start + index
@@ -122,14 +127,14 @@ export function OverlayPanel({
           const indent = '  '.repeat(Math.max(0, row.depth - 1))
           if (row.kind === 'diagnostic') {
             return (
-              <Text color="red" inverse={isSelected} key={String(row.id)} wrap="truncate-end">
+              <Text {...tone('danger')} inverse={isSelected} key={String(row.id)} wrap="truncate-end">
                 {isSelected ? '›' : ' '} {indent}{String(row.id)} · unreadable ({row.reason})
               </Text>
             )
           }
           return (
             <Text
-              {...(row.activity === 'running' ? { color: 'green' } : {})}
+              {...(row.activity === 'running' ? tone('positive') : {})}
               dimColor={row.activity === 'inactive'}
               inverse={isSelected}
               key={String(row.id)}
@@ -142,7 +147,7 @@ export function OverlayPanel({
           )
         })}
         {subagents.status === 'followup-input' ? (
-          <Text color="yellow" wrap="truncate-end">
+          <Text {...tone('warning')} wrap="truncate-end">
             Follow up: {subagents.followupText}█ · Enter send · Esc cancel
           </Text>
         ) : null}
@@ -169,10 +174,10 @@ export function OverlayPanel({
           {jobs.truncated ? ' · truncated' : ''}
         </Text>
         {jobs.error === undefined ? null : (
-          <Text color="red" wrap="truncate-end">{jobs.error}</Text>
+          <Text {...tone('danger')} wrap="truncate-end">{jobs.error}</Text>
         )}
         {jobs.notices.length === 0 && jobs.droppedNotices === 0 ? null : (
-          <Text color="cyan" wrap="truncate-end">
+          <Text {...tone('accent')} wrap="truncate-end">
             {jobs.notices.map(notice => `${String(notice.id)} ${notice.status}`).join(' · ')}
             {jobs.droppedNotices > 0 ? ` · +${String(jobs.droppedNotices)} more` : ''}
             {' · A acknowledge'}
@@ -203,7 +208,7 @@ export function OverlayPanel({
           )
         })}
         {confirming === undefined ? null : (
-          <Text color="yellow" wrap="truncate-end">
+          <Text {...tone('warning')} wrap="truncate-end">
             Cancel {String(confirming.id)}? Enter confirm · Esc dismiss
           </Text>
         )}
@@ -228,7 +233,7 @@ export function OverlayPanel({
           {projections.asOfSeq === undefined ? '' : ` · seq ${String(projections.asOfSeq)}`}
         </Text>
         {projections.error === undefined ? null : (
-          <Text color="red" wrap="truncate-end">{projections.error}</Text>
+          <Text {...tone('danger')} wrap="truncate-end">{projections.error}</Text>
         )}
         {window.rows.map((row, index) => {
           const absolute = window.start + index
@@ -304,15 +309,15 @@ export function OverlayPanel({
           </>
         ) : null}
         {recovery.status === 'confirming-fork' ? (
-          <Text color="yellow" wrap="truncate-end">
+          <Text {...tone('warning')} wrap="truncate-end">
             Fork conversation only; current workspace files are not rewound. Enter confirms.
           </Text>
         ) : null}
         {recovery.error === undefined ? null : (
-          <Text color="red" wrap="truncate-end">{recovery.error}</Text>
+          <Text {...tone('danger')} wrap="truncate-end">{recovery.error}</Text>
         )}
         {recovery.result === undefined ? null : (
-          <Text color="green" wrap="truncate-end">{recovery.result}</Text>
+          <Text {...tone('positive')} wrap="truncate-end">{recovery.result}</Text>
         )}
         <Text dimColor wrap="truncate-end">
           {recovery.status === 'export-input'
@@ -362,7 +367,7 @@ export function OverlayPanel({
         })}
         {detail === undefined ? null : detail.lines.map((line, index) => (
           <Text
-            {...diffLineColor(line)}
+            {...tone(diffLineTone(line))}
             key={`${selected?.id ?? 'detail'}:${String(index)}`}
             wrap="truncate-end"
           >
@@ -390,7 +395,7 @@ export function OverlayPanel({
           &gt; {palette.query}<Text inverse>█</Text>
         </Text>
         {palette.error === undefined ? null : (
-          <Text color="red" wrap="truncate-end">{palette.error}</Text>
+          <Text {...tone('danger')} wrap="truncate-end">{palette.error}</Text>
         )}
         {window.rows.length === 0 && palette.error === undefined ? (
           <Text dimColor wrap="truncate-end">No matching commands or actions</Text>
@@ -428,7 +433,7 @@ export function OverlayPanel({
           &gt; {sessions.query}<Text inverse>█</Text>
         </Text>
         {sessions.error === undefined ? null : (
-          <Text color="red" wrap="truncate-end">{sessions.error}</Text>
+          <Text {...tone('danger')} wrap="truncate-end">{sessions.error}</Text>
         )}
         {window.rows.length === 0 && sessions.status !== 'loading' ? (
           <Text dimColor>No matching persisted sessions</Text>
@@ -471,7 +476,7 @@ export function OverlayPanel({
         <Text bold wrap="truncate-end">Permissions · {permissions.status}</Text>
         {permissions.status === 'confirming' ? (
           <>
-            <Text color="red" wrap="truncate-end">
+            <Text {...tone('danger')} wrap="truncate-end">
               Danger: sandbox {confirmation?.sandbox ?? 'unrestricted'} · approval{' '}
               {confirmation?.approval ?? 'unknown'}.
             </Text>
@@ -497,7 +502,7 @@ export function OverlayPanel({
           <Text dimColor>Permission preset service unavailable</Text>
         ) : null}
         {permissions.error === undefined ? null : (
-          <Text color="red" wrap="truncate-end">{permissions.error}</Text>
+          <Text {...tone('danger')} wrap="truncate-end">{permissions.error}</Text>
         )}
         <Text dimColor wrap="truncate-end">
           {permissions.status === 'confirming'
@@ -518,7 +523,7 @@ export function OverlayPanel({
       <Text bold wrap="truncate-end">{kind} completion · {completion.query}</Text>
       {completion.status === 'loading' ? <Text dimColor>Loading…</Text> : null}
       {completion.error === undefined ? null : (
-        <Text color="red" wrap="truncate-end">{completion.error}</Text>
+        <Text {...tone('danger')} wrap="truncate-end">{completion.error}</Text>
       )}
       {completion.status === 'ready' && window.rows.length === 0 ? (
         <Text dimColor>No matching completion</Text>
@@ -561,10 +566,10 @@ function diffLines(change: IndexedChange, maximum: number): {
   }
 }
 
-function diffLineColor(line: string): Readonly<{ color: 'green' | 'red' }> | Readonly<Record<string, never>> {
-  if (line.startsWith('+++') || line.startsWith('+ ')) return { color: 'green' }
-  if (line.startsWith('---') || line.startsWith('- ')) return { color: 'red' }
-  return {}
+function diffLineTone(line: string): SemanticTone | undefined {
+  if (line.startsWith('+++') || line.startsWith('+ ')) return 'positive'
+  if (line.startsWith('---') || line.startsWith('- ')) return 'danger'
+  return undefined
 }
 
 function textLines(value: string | null): readonly string[] {
@@ -572,8 +577,9 @@ function textLines(value: string | null): readonly string[] {
 }
 
 export function renderOverlayPanel(
-  props: Omit<OverlayPanelProps, 'activity' | 'jobs' | 'projections' | 'subagents'> & {
+  props: Omit<OverlayPanelProps, 'activity' | 'jobs' | 'projections' | 'subagents' | 'theme'> & {
     readonly activity?: ActivityCenterSnapshot
+    readonly theme?: TuiTheme
     readonly jobs?: JobsSnapshot
     readonly projections?: ProjectionHubSnapshot
     readonly subagents?: SubagentTreeSnapshot
@@ -625,6 +631,7 @@ export function renderOverlayPanel(
       jobs={jobs}
       projections={projections}
       subagents={subagents}
+      theme={props.theme ?? 'default'}
     />,
     { columns: props.columns },
   )

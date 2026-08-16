@@ -321,6 +321,16 @@ and subagent follow-up reaches only this session's direct children.
 
 ### M4.1 Versioned preferences, themes, and keymaps (+3)
 
+Status: **complete**. The `dsh-tui` namespace registers a schema through
+`ctx.settings` and persists there when a writable provider exists; an absent or
+read-only provider is reported as process-only rather than accepting edits that
+would be dropped at exit. Panels name semantic tones instead of colors, so the
+default, high-contrast, and no-color themes are answered in one place, and a
+test asserts the rendered text is identical with and without color — no
+information is carried by color alone. Reduced motion and keymap overrides are
+part of the same document, validation is all-or-nothing, and an externally
+edited document that fails it keeps the last good value and warns.
+
 - persist the TUI settings namespace through the public settings service when
   writable, with safe process-only fallback otherwise;
 - add semantic color themes, no-color/reduced-motion modes, binding overrides,

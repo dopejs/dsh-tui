@@ -543,9 +543,14 @@ describe('OverlayPanel (M1.3)', () => {
     unread: false,
   }]
 
-  function renderSubagents(columns: number, overrides: Partial<SubagentTreeSnapshot> = {}): string {
+  function renderSubagents(
+    columns: number,
+    overrides: Partial<SubagentTreeSnapshot> = {},
+    theme: 'default' | 'high-contrast' | 'no-color' = 'default',
+  ): string {
     return renderOverlayPanel({
       active: 'subagents',
+      theme,
       changes: emptyChanges,
       columns,
       completion: emptyCompletion,
@@ -641,6 +646,61 @@ describe('OverlayPanel (M1.3)', () => {
 
   it('renders coalesced activity from all three sources at 80 columns', () => {
     expect(renderActivity(80)).toMatchSnapshot()
+  })
+
+  // Every semantic state must survive a terminal that renders no color, so the
+  // distinction has to be carried by text, not only by tone.
+  it.each(['default', 'high-contrast', 'no-color'] as const)(
+    'renders every semantic job state under the %s theme',
+    (theme) => {
+      expect(renderOverlayPanel({
+        active: 'jobs',
+        changes: emptyChanges,
+        columns: 80,
+        completion: emptyCompletion,
+        jobs: {
+          confirmingCancelId: 'bash-1' as JobsSnapshot['jobs'][number]['id'],
+          droppedNotices: 1,
+          error: 'registry degraded',
+          jobs: jobRows,
+          notices: [{
+            id: 'bash-2' as JobsSnapshot['jobs'][number]['id'],
+            label: 'pnpm build',
+            status: 'failed',
+          }],
+          outputCapability: 'unsupported-consuming-read',
+          revision: 4,
+          runningCount: 2,
+          selectedIndex: 1,
+          status: 'confirming',
+          truncated: true,
+        },
+        maxRows: 12,
+        palette: {
+          catalogTruncated: false, items: [], query: '', revision: 0, totalMatches: 0,
+        },
+        permissions: emptyPermissions,
+        recovery: emptyRecovery,
+        sessions: emptySessions,
+        theme,
+      })).toMatchSnapshot()
+    },
+  )
+
+  it.each(['default', 'no-color'] as const)(
+    'renders every semantic subagent state under the %s theme',
+    (theme) => {
+      expect(renderSubagents(80, { selectedIndex: 0 }, theme)).toMatchSnapshot()
+    },
+  )
+
+  // The accessibility claim: dropping color must lose no information, so the
+  // rendered text has to be identical with and without it.
+  it('carries no information in color alone', () => {
+    expect(renderSubagents(80, { selectedIndex: 0 }, 'no-color'))
+      .toBe(renderSubagents(80, { selectedIndex: 0 }, 'default'))
+    expect(renderSubagents(80, { selectedIndex: 0 }, 'high-contrast'))
+      .toBe(renderSubagents(80, { selectedIndex: 0 }, 'default'))
   })
 
   it('degrades the activity center at 40 columns', () => {

@@ -10,6 +10,8 @@ import type {} from '@deepseek-ai/dsh-permission-presets'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import type {} from '@deepseek-ai/dsh-session-projection'
+import { settingsNamespace } from '@deepseek-ai/dsh-settings'
+import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-subagent'
 import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-user-questions'
@@ -23,7 +25,7 @@ import { EditorController } from './model/editor-controller'
 import { InteractionController } from './model/interaction-controller'
 import { JobsController } from './model/jobs-controller'
 import { OverlayController } from './model/overlay-controller'
-import { PreferencesController } from './model/preferences-controller'
+import { PreferencesController, resolvePreferences } from './model/preferences-controller'
 import { PermissionController } from './model/permission-controller'
 import { ProjectionHubController } from './model/projection-hub-controller'
 import { RecoveryController } from './model/recovery-controller'
@@ -38,6 +40,7 @@ import { attachAgent, type AgentAttachmentRequest } from './runtime/agent-attach
 import { createRuntimePlugin } from './runtime/cordis-runtime'
 import { InputController } from './runtime/input-controller'
 import { InteractionScheduler } from './runtime/interaction-scheduler'
+import { PreferencesStore, TUI_SETTINGS_NAMESPACE } from './runtime/preferences-store'
 import { ResourceOwner } from './runtime/resource-owner'
 import { SessionAttachmentCoordinator } from './runtime/session-attachment-coordinator'
 import { exportRawSession } from './runtime/session-export'
@@ -186,6 +189,7 @@ export async function startTuiRuntime(
   const permissionPresets = ctx.get('permissionPresets')
   const sessionPersistence = ctx.get('sessionPersistence')
   const jobs = ctx.get('jobs')
+  const settings = ctx.get('settings')
   const subagentRuntime = ctx.get('subagents')
   const sessionProjections = ctx.get('sessionProjections')
   const sessions = ctx.get('sessions')
@@ -256,6 +260,37 @@ export async function startTuiRuntime(
     })
     owner.own('exit command', unregisterExitCommand)
     const preferences = new PreferencesController()
+    // The schema is what a configuration surface renders; the cross-field rules
+    // a schema cannot express (chord syntax, keymap collisions) stay in
+    // `validate`, so an unusable document is refused at the write.
+    const settingsScope = settings === undefined
+      ? undefined
+      : (() => {
+          try {
+            return settings.register(
+              settingsNamespace(TUI_SETTINGS_NAMESPACE),
+              z.object({
+                keymap: z.dict(z.string()).default({}),
+                reducedMotion: z.boolean().default(false),
+                theme: z.union(['default', 'high-contrast', 'no-color'] as const)
+                  .default('default'),
+              }),
+              { applies: 'live', validate: value => void resolvePreferences(value) },
+            )
+          } catch (error) {
+            diagnostics.report(error)
+            return undefined
+          }
+        })()
+    // Persistence is capability-gated: without a writable settings provider the
+    // store stays process-only and says so rather than dropping edits at exit.
+    const preferencesStore = new PreferencesStore({
+      controller: preferences,
+      reportError: diagnostics.report,
+      ...(settingsScope === undefined ? {} : { scope: settingsScope }),
+      writable: settings?.writable === true,
+    })
+    owner.own('preferences store', () => preferencesStore.dispose())
     const coordinatorRef: { current?: SessionAttachmentCoordinator<TuiSessionBinding> } = {}
 
     const createBinding = async (

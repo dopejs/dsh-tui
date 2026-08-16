@@ -300,6 +300,11 @@ export function InteractiveTui({
     activity.getSnapshot,
     activity.getSnapshot,
   )
+  const preferenceSnapshot = useSyncExternalStore(
+    preferences.subscribe,
+    preferences.getSnapshot,
+    preferences.getSnapshot,
+  )
 
   useEffect(() => {
     if (fixedColumns !== undefined && fixedRows !== undefined) return
@@ -687,6 +692,32 @@ export function InteractiveTui({
         sessionCenter.refresh()
         overlay.open('session-center')
         setNotice('Session center opened.')
+      }
+      return
+    }
+
+    if (
+      preferenceAction === 'activity.center'
+      || preferenceAction === 'jobs.center'
+      || preferenceAction === 'projection.center'
+      || preferenceAction === 'subagent.center'
+    ) {
+      const kind = preferenceAction === 'activity.center'
+        ? 'activity'
+        : preferenceAction === 'jobs.center'
+          ? 'jobs'
+          : preferenceAction === 'projection.center' ? 'projections' : 'subagents'
+      if (overlay.getSnapshot().active === kind) {
+        overlay.close(kind)
+        setNotice('Overlay closed.')
+      } else {
+        completion.cancel()
+        if (kind === 'activity') activity.refresh()
+        else if (kind === 'jobs') jobs.refresh()
+        else if (kind === 'projections') projections.refresh()
+        else void subagents.refresh()
+        overlay.open(kind)
+        setNotice(`Opened ${kind}.`)
       }
       return
     }
@@ -1256,6 +1287,7 @@ export function InteractiveTui({
       jobs={jobsSnapshot}
       projections={projectionSnapshot}
       subagents={subagentSnapshot}
+      theme={preferenceSnapshot.theme}
       recovery={recoverySnapshot}
       sessions={sessionCenterSnapshot}
     />
@@ -1277,6 +1309,7 @@ export function InteractiveTui({
           jobs={jobsSnapshot}
           projections={projectionSnapshot}
           subagents={subagentSnapshot}
+          theme={preferenceSnapshot.theme}
           recovery={recoverySnapshot}
           sessions={sessionCenterSnapshot}
         />

@@ -52,6 +52,9 @@ is required by this bundle.
 - `ctx.jobs.list()` / `get()` / `kill()` / `onJobsChanged()` / `onJobDone()` for
   background-job observation and owned cancellation; the consuming `read()` and
   the admitting `attachController()` are deliberately not consumed.
+- `ctx.settings.register()` plus the returned scope's `get()` / `watch()` /
+  `update()` for the `dsh-tui` preference namespace; `SettingsProvider.writable`
+  gates whether persistence is promised at all.
 - `ctx.subagents.listDescendants()` / `followup()` / `interrupt()` for the
   subagent tree and its controls; child attachment stays owned by the session
   attachment coordinator.
