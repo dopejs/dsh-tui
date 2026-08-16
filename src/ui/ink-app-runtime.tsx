@@ -1,30 +1,26 @@
-import { render } from 'ink'
+import { useSyncExternalStore } from 'react'
+import { Box, Text, render } from 'ink'
 
-import type { AgentStatusStore } from '../model/agent-status-controller'
-import type { CommandPaletteController } from '../model/command-palette-controller'
-import type { CompletionController } from '../model/completion-controller'
-import type { EditorController } from '../model/editor-controller'
-import type { InteractionController } from '../model/interaction-controller'
-import type { OverlayController } from '../model/overlay-controller'
-import type { TranscriptStore } from '../model/transcript-controller'
-import type { TranscriptViewportController } from '../model/transcript-viewport-controller'
-import type { InputController } from '../runtime/input-controller'
-import { InteractiveTui } from './app'
+import type { SessionCenterController } from '../model/session-center-controller'
+import type {
+  SessionAttachmentSnapshot,
+  SwitchableSessionBinding,
+} from '../runtime/session-attachment-coordinator'
+import { InteractiveTui, type InteractiveTuiProps } from './app'
+
+export interface TuiSessionBinding extends SwitchableSessionBinding {
+  readonly application: Omit<InteractiveTuiProps, 'onQuit' | 'sessionCenter'>
+}
+
+export interface TuiSessionStore {
+  readonly getSnapshot: () => SessionAttachmentSnapshot<TuiSessionBinding>
+  readonly subscribe: (listener: () => void) => () => void
+}
 
 export interface InkApplicationOptions {
-  readonly completion: CompletionController
-  readonly editor: EditorController
-  readonly input: InputController
-  readonly interaction: InteractionController
-  readonly modelLabel: string
   readonly onQuit: (code: number) => void
-  readonly overlay: OverlayController
-  readonly palette: CommandPaletteController
-  readonly sessionId: string
-  readonly status: AgentStatusStore
-  readonly transcript: TranscriptStore
-  readonly viewport: TranscriptViewportController
-  readonly workspace: string
+  readonly sessionCenter: SessionCenterController
+  readonly sessions: TuiSessionStore
 }
 
 export interface MountedInkApplication {
@@ -32,8 +28,37 @@ export interface MountedInkApplication {
   dispose(): Promise<void>
 }
 
+export function SessionApplication({ onQuit, sessionCenter, sessions }: InkApplicationOptions) {
+  const snapshot = useSyncExternalStore(
+    sessions.subscribe,
+    sessions.getSnapshot,
+    sessions.getSnapshot,
+  )
+  if (snapshot.binding === undefined || snapshot.status !== 'attached') {
+    return (
+      <Box flexDirection="column">
+        <Text bold>dsh-tui · {snapshot.status}</Text>
+        <Text dimColor wrap="truncate-end">
+          {snapshot.targetSessionId === undefined
+            ? (snapshot.error ?? 'No session is attached.')
+            : `Switching to ${snapshot.targetSessionId}…`}
+        </Text>
+      </Box>
+    )
+  }
+  return <InteractiveTui
+    key={`${snapshot.binding.sessionId}:${String(snapshot.revision)}`}
+    {...snapshot.binding.application}
+    {...(snapshot.error === undefined
+      ? {}
+      : { initialNotice: `Session switch failed: ${snapshot.error}` })}
+    onQuit={onQuit}
+    sessionCenter={sessionCenter}
+  />
+}
+
 export function mountInkApplication(options: InkApplicationOptions): MountedInkApplication {
-  const renderer = render(<InteractiveTui {...options} />, {
+  const renderer = render(<SessionApplication {...options} />, {
     alternateScreen: true,
     exitOnCtrlC: false,
     incrementalRendering: true,

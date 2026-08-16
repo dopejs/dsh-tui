@@ -3,6 +3,7 @@ import { Box, Text, renderToString } from 'ink'
 import type { CommandPaletteSnapshot } from '../model/command-palette-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
 import type { OverlayKind } from '../model/overlay-controller'
+import type { SessionCenterSnapshot } from '../model/session-center-controller'
 
 interface OverlayWindow<T> {
   readonly end: number
@@ -28,6 +29,7 @@ interface OverlayPanelProps {
   readonly completion: CompletionSnapshot
   readonly maxRows: number
   readonly palette: CommandPaletteSnapshot
+  readonly sessions: SessionCenterSnapshot
 }
 
 export function OverlayPanel({
@@ -36,6 +38,7 @@ export function OverlayPanel({
   completion,
   maxRows,
   palette,
+  sessions,
 }: OverlayPanelProps) {
   if (active === 'command-palette') {
     const window = selectedWindow(palette.items, palette.selectedIndex, maxRows - 5)
@@ -70,6 +73,48 @@ export function OverlayPanel({
           {window.end < palette.items.length
             ? ` · ${String(palette.items.length - window.end)} below`
             : ''}
+        </Text>
+      </Box>
+    )
+  }
+
+  if (active === 'session-center') {
+    const window = selectedWindow(sessions.items, sessions.selectedIndex, maxRows - 6)
+    return (
+      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+        <Text bold wrap="truncate-end">Session center · {sessions.status}</Text>
+        <Text wrap="truncate-end">
+          &gt; {sessions.query}<Text inverse>█</Text>
+        </Text>
+        {sessions.error === undefined ? null : (
+          <Text color="red" wrap="truncate-end">{sessions.error}</Text>
+        )}
+        {window.rows.length === 0 && sessions.status !== 'loading' ? (
+          <Text dimColor>No matching persisted sessions</Text>
+        ) : window.rows.map((item, index) => {
+          const absolute = window.start + index
+          const selected = absolute === sessions.selectedIndex
+          return (
+            <Text inverse={selected} key={item.id} wrap="truncate-end">
+              {selected ? '›' : ' '} {item.isCurrent ? '●' : '○'} {item.id}
+              {' · '}{new Date(item.createdAt).toISOString()}
+              {item.cwd === undefined ? '' : ` · ${item.cwd}`}
+            </Text>
+          )
+        })}
+        {sessions.preview === undefined ? null : (
+          <Text dimColor wrap="truncate-end">
+            Preview {sessions.preview.id} · {String(sessions.preview.eventCount)} events
+            {sessions.preview.lastEventType === undefined
+              ? ''
+              : ` · last ${sessions.preview.lastEventType}`}
+          </Text>
+        )}
+        <Text dimColor wrap="truncate-end">
+          {sessions.items.length === 0
+            ? 'R refresh · Esc close'
+            : `${String((sessions.selectedIndex ?? 0) + 1)}/${String(sessions.totalMatches)} · Enter resume · Space preview · R refresh`}
+          {sessions.catalogTruncated ? ' · catalog truncated' : ''}
         </Text>
       </Box>
     )

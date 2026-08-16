@@ -24,6 +24,8 @@ interface RuntimeFixture {
   readonly disposeHandle: ReturnType<typeof vi.fn>
   readonly exits: number[]
   readonly flush: ReturnType<typeof vi.fn>
+  readonly inspectSession: ReturnType<typeof vi.fn>
+  readonly listSessions: ReturnType<typeof vi.fn>
   readonly mounted: InkApplicationOptions[]
   readonly order: string[]
   readonly questionProvider: () => UserQuestionProvider | undefined
@@ -35,11 +37,13 @@ interface RuntimeFixture {
 class FixtureSession {
   readonly #ctx: Context
   readonly #events: SessionEvent[] = []
-  readonly header = { cwd: '/fixture/workspace', id: 'live-session' }
-  readonly id = 'live-session'
+  readonly header: { cwd: string, id: string }
+  readonly id: string
 
-  constructor(ctx: Context) {
+  constructor(ctx: Context, id = 'live-session') {
     this.#ctx = ctx
+    this.header = { cwd: '/fixture/workspace', id }
+    this.id = id
   }
 
   get events(): readonly SessionEvent[] {
@@ -81,6 +85,28 @@ function runtimeFixture(): RuntimeFixture {
     return handle
   })
   const resume = vi.fn(async (options: ResumeAgentOptions) => {
+    if (options.resumeSessionId === 'target-session') {
+      const targetCtx = new Context()
+      const targetSession = new FixtureSession(targetCtx, 'target-session')
+      const targetAgent = {
+        cancel: vi.fn(),
+        ctx: targetCtx,
+        followup: vi.fn(),
+        id: 'target-session',
+        options: { model: 'fixture-model', provider: 'fixture-provider' },
+        session: targetSession as unknown as Session,
+        status: 'idle',
+        steer: vi.fn(),
+      } as unknown as Agent
+      await options.setup?.(targetCtx)
+      return {
+        agent: targetAgent,
+        dispose: async () => {
+          order.push('handle:target-session')
+          await targetCtx.fiber.dispose()
+        },
+      }
+    }
     await options.setup?.(agentCtx)
     return handle
   })
@@ -98,6 +124,15 @@ function runtimeFixture(): RuntimeFixture {
     execute: vi.fn(),
     list: vi.fn(() => []),
     register: vi.fn(() => unregisterCommand),
+  } as never)
+  const inspectSession = vi.fn(async (id) => ({
+      events: session.events,
+      meta: { createdAt: 0, cwd: '/fixture/workspace', id, version: 0 },
+    }))
+  const listSessions = vi.fn(async () => [])
+  ctx.provide('sessionPersistence', {
+    inspect: inspectSession,
+    list: listSessions,
   } as never)
   ctx.provide('sessions', { flush } as never)
   ctx.provide('tools', {
@@ -123,6 +158,8 @@ function runtimeFixture(): RuntimeFixture {
     disposeHandle,
     exits,
     flush,
+    inspectSession,
+    listSessions,
     mounted,
     order,
     questionProvider: () => questionProvider,
@@ -151,6 +188,10 @@ function dependencies(
   }
 }
 
+function currentApplication(fixture: RuntimeFixture) {
+  return fixture.mounted[0]?.sessions.getSnapshot().binding?.application
+}
+
 describe('startTuiRuntime', () => {
   it('composes a fresh exact-agent application and flushes before handle disposal', async () => {
     const fixture = runtimeFixture()
@@ -161,7 +202,7 @@ describe('startTuiRuntime', () => {
       new AbortController().signal,
       dependencies(fixture, {
         dispose: async () => {
-          editorWasActiveDuringRendererDisposal = fixture.mounted[0]?.editor.insert('closing') === 'applied'
+          editorWasActiveDuringRendererDisposal = currentApplication(fixture)?.editor.insert('closing') === 'applied'
         },
       }),
     )
@@ -173,11 +214,11 @@ describe('startTuiRuntime', () => {
       sessionId: 'new-session',
     })
     expect(fixture.mounted).toHaveLength(1)
-    expect(fixture.mounted[0]?.sessionId).toBe('live-session')
-    const editor = fixture.mounted[0]?.editor
-    const overlay = fixture.mounted[0]?.overlay
-    const palette = fixture.mounted[0]?.palette
-    const completion = fixture.mounted[0]?.completion
+    expect(currentApplication(fixture)?.sessionId).toBe('live-session')
+    const editor = currentApplication(fixture)?.editor
+    const overlay = currentApplication(fixture)?.overlay
+    const palette = currentApplication(fixture)?.palette
+    const completion = currentApplication(fixture)?.completion
     if (
       editor === undefined
       || overlay === undefined
@@ -221,6 +262,59 @@ describe('startTuiRuntime', () => {
     await fixture.ctx.fiber.dispose()
   })
 
+  it('switches the mounted runtime to the exact persisted session without overlapping handles', async () => {
+    const fixture = runtimeFixture()
+    fixture.listSessions.mockResolvedValue([{
+      createdAt: 2,
+      cwd: '/fixture/workspace',
+      id: 'live-session',
+      version: 0,
+    }, {
+      createdAt: 1,
+      cwd: '/fixture/workspace',
+      id: 'target-session',
+      version: 0,
+    }])
+    const dispose = await startTuiRuntime(
+      fixture.ctx,
+      {},
+      new AbortController().signal,
+      dependencies(fixture),
+    )
+    const mounted = fixture.mounted[0]
+    if (mounted === undefined) throw new Error('application was not mounted')
+
+    mounted.sessionCenter.refresh()
+    await vi.waitFor(() => {
+      expect(mounted.sessionCenter.getSnapshot()).toMatchObject({
+        status: 'ready',
+        totalMatches: 2,
+      })
+    })
+    mounted.sessionCenter.move('down')
+    expect(mounted.sessionCenter.selected()?.id).toBe('target-session')
+    expect(mounted.sessionCenter.resumeSelected()).toBe(true)
+    await vi.waitFor(() => {
+      expect(mounted.sessions.getSnapshot()).toMatchObject({
+        binding: { sessionId: 'target-session' },
+        status: 'attached',
+      })
+      expect(mounted.sessionCenter.selected()).toMatchObject({
+        id: 'target-session',
+        isCurrent: true,
+      })
+    })
+
+    expect(fixture.resume).toHaveBeenLastCalledWith(expect.objectContaining({
+      resumeSessionId: 'target-session',
+    }))
+    expect(fixture.disposeHandle).toHaveBeenCalledOnce()
+    expect(fixture.order).toEqual(['flush', 'handle'])
+    await dispose()
+    expect(fixture.order).toEqual(['flush', 'handle', 'flush', 'handle:target-session'])
+    await fixture.ctx.fiber.dispose()
+  })
+
   it('composes durable tool presentation, approval, and structured questions', async () => {
     const fixture = runtimeFixture()
     const dispose = await startTuiRuntime(
@@ -229,7 +323,7 @@ describe('startTuiRuntime', () => {
       new AbortController().signal,
       dependencies(fixture),
     )
-    const application = fixture.mounted[0]
+    const application = currentApplication(fixture)
     if (application === undefined) throw new Error('application was not mounted')
     const callId = 'composed-call' as CallId
     fixture.session.append({

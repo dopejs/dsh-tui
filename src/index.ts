@@ -3,7 +3,8 @@ import { appendFileSync } from 'node:fs'
 import type { Context } from '@deepseek-ai/cordis'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-commands'
-import type {} from '@deepseek-ai/dsh-session'
+import { SessionId } from '@deepseek-ai/dsh-session'
+import type {} from '@deepseek-ai/dsh-session-persistence'
 import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-user-questions'
 
@@ -13,6 +14,7 @@ import { CompletionController } from './model/completion-controller'
 import { EditorController } from './model/editor-controller'
 import { InteractionController } from './model/interaction-controller'
 import { OverlayController } from './model/overlay-controller'
+import { SessionCenterController } from './model/session-center-controller'
 import { TranscriptController } from './model/transcript-controller'
 import { reduceTranscriptBatch } from './model/transcript-reducer'
 import { TranscriptViewportController } from './model/transcript-viewport-controller'
@@ -22,12 +24,14 @@ import { createRuntimePlugin } from './runtime/cordis-runtime'
 import { InputController } from './runtime/input-controller'
 import { InteractionScheduler } from './runtime/interaction-scheduler'
 import { ResourceOwner } from './runtime/resource-owner'
+import { SessionAttachmentCoordinator } from './runtime/session-attachment-coordinator'
 import { WorkspaceCompletionProvider } from './runtime/workspace-completion-provider'
 import type { TuiStartupValues } from './startup'
 import {
   mountInkApplication,
   type InkApplicationOptions,
   type MountedInkApplication,
+  type TuiSessionBinding,
 } from './ui/ink-app-runtime'
 
 export const name = 'tui-runtime'
@@ -35,6 +39,7 @@ export const inject = [
   'agentDefaultModel',
   'agents',
   'commands',
+  'sessionPersistence',
   'sessions',
   'tools',
   'tuiStartup',
@@ -142,11 +147,18 @@ export async function startTuiRuntime(
   }
   const appExit = ctx.get('appExit')
   const commands = ctx.get('commands')
+  const sessionPersistence = ctx.get('sessionPersistence')
   const sessions = ctx.get('sessions')
   const tools = ctx.get('tools')
   const userQuestions = ctx.get('userQuestions')
   if (appExit === undefined) throw new Error('dsh-tui requires the launcher appExit service')
-  if (commands === undefined || sessions === undefined || tools === undefined || userQuestions === undefined) {
+  if (
+    commands === undefined
+    || sessionPersistence === undefined
+    || sessions === undefined
+    || tools === undefined
+    || userQuestions === undefined
+  ) {
     throw new Error('dsh-tui is missing one or more required Harness services')
   }
 
@@ -188,44 +200,7 @@ export async function startTuiRuntime(
       },
     )
   }
-  let projector: ToolTranscriptProjector | undefined
-  const transcript = new TranscriptController({
-    projectBatch: (state, events) => projector?.reduceBatch(state, events)
-      ?? reduceTranscriptBatch(state, events),
-    reportError: diagnostics.report,
-  })
-  owner.own('transcript controller', () => transcript.dispose())
-  const viewport = new TranscriptViewportController(transcript)
-  owner.own('transcript viewport controller', () => viewport.dispose())
-
   try {
-    const attachment = await attachAgent(ctx, {
-      onAttached: (agent) => {
-        projector = new ToolTranscriptProjector({
-          agent,
-          reportError: diagnostics.report,
-          tools,
-        })
-      },
-      onError: (error) => {
-        diagnostics.report(error)
-        requestExit(1)
-      },
-      onEvents: ({ events }, eventSignal) => {
-        transcript.accept(events, eventSignal)
-      },
-      request: requestFor(startup, dependencies),
-      signal,
-    })
-    owner.own('agent attachment', () => attachment.dispose())
-    owner.own('session durability flush', () => sessions.flush(attachment.agent.session).then(() => undefined))
-
-    const status = new AgentStatusController(attachment.agent, diagnostics.report)
-    owner.own('agent status controller', () => status.dispose())
-    const editor = new EditorController()
-    owner.own('editor controller', () => editor.dispose())
-    const input = new InputController({ agent: attachment.agent, commands })
-    owner.own('input controller', () => input.dispose())
     const unregisterExitCommand = commands.register({
       description: 'Exit the interactive TUI after graceful teardown',
       handler: () => {
@@ -239,44 +214,140 @@ export async function startTuiRuntime(
       recordInput: false,
     })
     owner.own('exit command', unregisterExitCommand)
-    const overlay = new OverlayController()
-    owner.own('overlay controller', () => overlay.dispose())
-    const palette = new CommandPaletteController({
-      list: () => commands.list(attachment.agent),
-      subscribe: listener => ctx.on('commands/change', listener),
-    })
-    owner.own('command palette controller', () => palette.dispose())
-    const workspace = attachment.agent.session.header.cwd ?? dependencies.cwd()
-    const completion = new CompletionController(new WorkspaceCompletionProvider({
-      listCommands: () => commands.list(attachment.agent),
-      workspace,
-    }))
-    owner.own('completion controller', () => completion.dispose())
-    const interaction = new InteractionController(diagnostics.report)
-    owner.own('interaction controller', () => interaction.dispose())
-    const scheduler = new InteractionScheduler({
-      agent: attachment.agent,
-      host: interaction,
-      userQuestions,
-    })
-    owner.own('interaction scheduler', () => scheduler.dispose())
 
+    const createBinding = async (
+      request: AgentAttachmentRequest,
+      bindingSignal: AbortSignal,
+    ): Promise<TuiSessionBinding> => {
+      const bindingOwner = new ResourceOwner()
+      let projector: ToolTranscriptProjector | undefined
+      const transcript = new TranscriptController({
+        projectBatch: (state, events) => projector?.reduceBatch(state, events)
+          ?? reduceTranscriptBatch(state, events),
+        reportError: diagnostics.report,
+      })
+      bindingOwner.own('transcript controller', () => transcript.dispose())
+      const viewport = new TranscriptViewportController(transcript)
+      bindingOwner.own('transcript viewport controller', () => viewport.dispose())
+      try {
+        const attachment = await attachAgent(ctx, {
+          onAttached: (agent) => {
+            projector = new ToolTranscriptProjector({
+              agent,
+              reportError: diagnostics.report,
+              tools,
+            })
+          },
+          onError: (error) => {
+            diagnostics.report(error)
+            requestExit(1)
+          },
+          onEvents: ({ events }, eventSignal) => {
+            transcript.accept(events, eventSignal)
+          },
+          request,
+          signal: bindingSignal,
+        })
+        bindingOwner.own('agent attachment', () => attachment.dispose())
+        bindingOwner.own(
+          'session durability flush',
+          () => sessions.flush(attachment.agent.session).then(() => undefined),
+        )
+        const status = new AgentStatusController(attachment.agent, diagnostics.report)
+        bindingOwner.own('agent status controller', () => status.dispose())
+        const editor = new EditorController()
+        bindingOwner.own('editor controller', () => editor.dispose())
+        const input = new InputController({ agent: attachment.agent, commands })
+        bindingOwner.own('input controller', () => input.dispose())
+        const overlay = new OverlayController()
+        bindingOwner.own('overlay controller', () => overlay.dispose())
+        const palette = new CommandPaletteController({
+          list: () => commands.list(attachment.agent),
+          subscribe: listener => ctx.on('commands/change', listener),
+        })
+        bindingOwner.own('command palette controller', () => palette.dispose())
+        const workspace = attachment.agent.session.header.cwd ?? dependencies.cwd()
+        const completion = new CompletionController(new WorkspaceCompletionProvider({
+          listCommands: () => commands.list(attachment.agent),
+          workspace,
+        }))
+        bindingOwner.own('completion controller', () => completion.dispose())
+        const interaction = new InteractionController(diagnostics.report)
+        bindingOwner.own('interaction controller', () => interaction.dispose())
+        const scheduler = new InteractionScheduler({
+          agent: attachment.agent,
+          host: interaction,
+          userQuestions,
+        })
+        bindingOwner.own('interaction scheduler', () => scheduler.dispose())
+        const sessionId = String(attachment.agent.session.id)
+        let acceptingInput = true
+        let bindingDisposal: Promise<void> | undefined
+        return {
+          application: {
+            acceptsInput: () => acceptingInput,
+            completion,
+            editor,
+            input,
+            interaction,
+            modelLabel: [attachment.agent.options.provider, attachment.agent.options.model]
+              .filter((value): value is string => value !== undefined && value !== '')
+              .join('/'),
+            overlay,
+            palette,
+            sessionId,
+            status,
+            transcript,
+            viewport,
+            workspace,
+          },
+          dispose() {
+            acceptingInput = false
+            bindingDisposal ??= bindingOwner.dispose()
+            return bindingDisposal
+          },
+          setAcceptingInput(accepting) {
+            acceptingInput = accepting
+          },
+          sessionId,
+        }
+      } catch (error) {
+        try {
+          await bindingOwner.dispose()
+        } catch (cleanupError) {
+          throw combineStartupFailure(error, cleanupError)
+        }
+        throw error
+      }
+    }
+
+    const initialBinding = await createBinding(requestFor(startup, dependencies), signal)
+    const coordinator = new SessionAttachmentCoordinator<TuiSessionBinding>({
+      factory: {
+        preflight: async (sessionId, preflightSignal) => {
+          await sessionPersistence.inspect(SessionId(sessionId), preflightSignal)
+        },
+        resume: (sessionId, resumeSignal) => createBinding({
+          kind: 'resume',
+          sessionId,
+        }, resumeSignal),
+      },
+      initial: initialBinding,
+      onFatal: (error) => {
+        diagnostics.report(error)
+        requestExit(1)
+      },
+      signal,
+    })
+    owner.own('session attachment coordinator', () => coordinator.dispose())
+    const sessionCenter = new SessionCenterController(sessionPersistence, coordinator, {
+      currentSessionId: initialBinding.sessionId,
+    })
+    owner.own('session center controller', () => sessionCenter.dispose())
     const application = dependencies.mountApplication({
-      completion,
-      editor,
-      input,
-      interaction,
-      modelLabel: [attachment.agent.options.provider, attachment.agent.options.model]
-        .filter((value): value is string => value !== undefined && value !== '')
-        .join('/'),
       onQuit: requestExit,
-      overlay,
-      palette,
-      sessionId: String(attachment.agent.session.id),
-      status,
-      transcript,
-      viewport,
-      workspace,
+      sessionCenter,
+      sessions: coordinator,
     })
     owner.own('Ink application and terminal state', () => application.dispose())
     void application.exited.catch((error: unknown) => {

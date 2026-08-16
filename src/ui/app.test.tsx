@@ -8,6 +8,7 @@ import { CompletionController } from '../model/completion-controller'
 import { EditorController } from '../model/editor-controller'
 import { InteractionController } from '../model/interaction-controller'
 import { OverlayController } from '../model/overlay-controller'
+import { SessionCenterController } from '../model/session-center-controller'
 import { TranscriptController } from '../model/transcript-controller'
 import { TranscriptViewportController } from '../model/transcript-viewport-controller'
 import type { InputController } from '../runtime/input-controller'
@@ -39,6 +40,7 @@ function renderApp(
     overlay: OverlayController,
     palette: CommandPaletteController,
   ) => void,
+  initialNotice?: string,
 ) {
   const editor = new EditorController()
   const viewport = new TranscriptViewportController(transcript)
@@ -48,6 +50,12 @@ function renderApp(
     subscribe: () => () => undefined,
   })
   const completion = new CompletionController({ complete: async () => [] })
+  const sessionCenter = new SessionCenterController({
+    inspect: async () => { throw new Error('not configured') },
+    list: async () => [],
+  }, {
+    switchSession: async () => undefined,
+  }, { currentSessionId: 'session-app' })
   try {
     configure?.(viewport, overlay, palette)
     return renderToString(
@@ -56,12 +64,14 @@ function renderApp(
         completion={completion}
         editor={editor}
         input={fakeInput()}
+        {...(initialNotice === undefined ? {} : { initialNotice })}
         interaction={interaction}
         modelLabel="fixture/model"
         onQuit={() => undefined}
         overlay={overlay}
         palette={palette}
         sessionId="session-app"
+        sessionCenter={sessionCenter}
         status={status}
         terminalRows={14}
         transcript={transcript}
@@ -72,6 +82,7 @@ function renderApp(
     )
   } finally {
     void completion.dispose()
+    void sessionCenter.dispose()
     palette.dispose()
     overlay.dispose()
     viewport.dispose()
@@ -90,6 +101,27 @@ describe('InteractiveTui', () => {
       transcript empty
       › █
       Enter send · ^J newline · ^S steer · ^C cancel"
+    `)
+
+    interaction.dispose()
+    await transcript.dispose()
+  })
+
+  it('surfaces a recovered session-switch failure on the reattached application', async () => {
+    const transcript = new TranscriptController()
+    const interaction = new InteractionController()
+
+    expect(renderApp(
+      transcript,
+      interaction,
+      undefined,
+      'Target session failed; restored session-app.',
+    )).toMatchInlineSnapshot(`
+      "dsh-tui · session-app · idle
+      fixture/model · /fixture/workspace
+      transcript empty
+      › █
+      Target session failed; restored session-app."
     `)
 
     interaction.dispose()

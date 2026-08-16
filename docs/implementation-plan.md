@@ -126,6 +126,10 @@ Verification:
 
 ### M1.4 Session center and attachment transitions (+4)
 
+Status: **complete**. Bounded persisted-session discovery, metadata filtering,
+durable preview, exact-session resume, input-blocking attachment transitions,
+preflight recovery, and fail-closed teardown are implemented.
+
 Implementation:
 
 - consume session-persistence metadata through a runtime adapter;

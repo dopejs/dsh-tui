@@ -18,6 +18,7 @@ import type {
 import type { TranscriptStore } from '../model/transcript-controller'
 import type { OverlayController } from '../model/overlay-controller'
 import { resolveInputSurface } from '../model/overlay-controller'
+import type { SessionCenterController } from '../model/session-center-controller'
 import type {
   TranscriptViewportController,
   TranscriptViewportSnapshot,
@@ -37,16 +38,19 @@ interface QuestionDraft {
 }
 
 export interface InteractiveTuiProps {
+  readonly acceptsInput?: () => boolean
   readonly columns?: number
   readonly completion: CompletionController
   readonly editor: EditorController
   readonly input: InputController
+  readonly initialNotice?: string
   readonly interaction: InteractionController
   readonly modelLabel: string
   readonly onQuit: (code: number) => void
   readonly overlay: OverlayController
   readonly palette: CommandPaletteController
   readonly sessionId: string
+  readonly sessionCenter: SessionCenterController
   readonly status: AgentStatusStore
   readonly terminalRows?: number
   readonly transcript: TranscriptStore
@@ -146,16 +150,19 @@ function searchStatus(search: TranscriptViewportSnapshot['search']): string {
 }
 
 export function InteractiveTui({
+  acceptsInput = () => true,
   columns: fixedColumns,
   completion,
   editor,
   input,
+  initialNotice,
   interaction,
   modelLabel,
   onQuit,
   overlay,
   palette,
   sessionId,
+  sessionCenter,
   status,
   terminalRows: fixedRows,
   transcript,
@@ -168,7 +175,7 @@ export function InteractiveTui({
     rows: fixedRows ?? stdout.rows ?? 24,
   }))
   const [notice, setNotice] = useState(
-    'Enter send · ^J newline · ^S steer · ^C cancel',
+    initialNotice ?? 'Enter send · ^J newline · ^S steer · ^C cancel',
   )
   const [questionIndex, setQuestionIndex] = useState(0)
   const [cursor, setCursor] = useState(0)
@@ -215,6 +222,11 @@ export function InteractiveTui({
     completion.subscribe,
     completion.getSnapshot,
     completion.getSnapshot,
+  )
+  const sessionCenterSnapshot = useSyncExternalStore(
+    sessionCenter.subscribe,
+    sessionCenter.getSnapshot,
+    sessionCenter.getSnapshot,
   )
 
   useEffect(() => {
@@ -314,6 +326,12 @@ export function InteractiveTui({
       case 'composer.clear':
         setNotice(editor.clear() ? 'Composer cleared.' : 'Composer is already empty.')
         return
+      case 'session.center':
+        sessionCenter.resetQuery()
+        sessionCenter.refresh()
+        overlay.open('session-center')
+        setNotice('Session center opened.')
+        return
       case 'transcript.compact-tools':
         viewport.toggleCompactTools()
         setNotice('Tool card density toggled.')
@@ -390,6 +408,7 @@ export function InteractiveTui({
   }
 
   usePaste((pasted) => {
+    if (!acceptsInput()) return
     const normalized = normalizeTerminalPaste(pasted)
     if (interactionSnapshot?.kind === 'approval') return
     if (interactionSnapshot?.kind === 'questions') {
@@ -417,6 +436,12 @@ export function InteractiveTui({
         }
         return
       }
+      if (overlay.getSnapshot().active === 'session-center') {
+        if (sessionCenter.insertQuery(normalized.replaceAll('\n', ' ')) === 'limit-exceeded') {
+          setNotice('Session filter is too long.')
+        }
+        return
+      }
       completion.cancel()
       overlay.close('completion')
       const result = editor.insert(normalized)
@@ -437,6 +462,7 @@ export function InteractiveTui({
   })
 
   useInput((typed, key) => {
+    if (!acceptsInput()) return
     if (interactionSnapshot?.kind === 'approval') {
       if (typed.toLowerCase() === 'y') {
         interaction.answerApproval('allowed-once')
@@ -530,6 +556,20 @@ export function InteractiveTui({
       return
     }
 
+    if (key.ctrl && typed.toLowerCase() === 'o') {
+      if (overlay.getSnapshot().active === 'session-center') {
+        overlay.close('session-center')
+        setNotice('Session center closed.')
+      } else {
+        completion.cancel()
+        sessionCenter.resetQuery()
+        sessionCenter.refresh()
+        overlay.open('session-center')
+        setNotice('Session center opened.')
+      }
+      return
+    }
+
     const inputSurface = resolveInputSurface(overlay.getSnapshot(), {
       interactionActive: false,
       searchOpen: viewport.getSnapshot().search.open,
@@ -550,6 +590,31 @@ export function InteractiveTui({
         else if (!key.ctrl && !key.meta && !key.super && typed !== '') {
           if (palette.insertQuery(typed) === 'limit-exceeded') {
             setNotice('Palette query is too long.')
+          }
+        }
+        return
+      }
+      if (activeOverlay === 'session-center') {
+        if (key.upArrow) sessionCenter.move('up')
+        else if (key.downArrow || key.tab) sessionCenter.move('down')
+        else if (typed === ' ') sessionCenter.inspectSelected()
+        else if (!key.ctrl && typed.toLowerCase() === 'r') sessionCenter.refresh()
+        else if (key.return) {
+          if (editor.getSnapshot().text !== '') {
+            setNotice('Clear the composer draft before switching sessions.')
+          } else if (input.commandPending) {
+            setNotice('Cancel the running command before switching sessions.')
+          } else if (agentStatus === 'running') {
+            setNotice('Wait for or cancel the active agent before switching sessions.')
+          } else if (!sessionCenter.resumeSelected()) {
+            setNotice('Select a different persisted session to resume.')
+          } else {
+            setNotice('Switching sessions…')
+          }
+        } else if (key.backspace || key.delete) sessionCenter.backspaceQuery()
+        else if (!key.ctrl && !key.meta && !key.super && typed !== '') {
+          if (sessionCenter.insertQuery(typed) === 'limit-exceeded') {
+            setNotice('Session filter is too long.')
           }
         }
         return
@@ -837,6 +902,7 @@ export function InteractiveTui({
       completion={completionSnapshot}
       maxRows={overlayMaxRows}
       palette={paletteSnapshot}
+      sessions={sessionCenterSnapshot}
     />
   }
 
@@ -850,6 +916,7 @@ export function InteractiveTui({
           completion={completionSnapshot}
           maxRows={overlayMaxRows}
           palette={paletteSnapshot}
+          sessions={sessionCenterSnapshot}
         />
       )}
       {viewportSnapshot.search.open && activeOverlay === undefined ? (

@@ -12,6 +12,17 @@ exports[`OverlayPanel (M1.3) > renders a bounded narrow command palette 1`] = `
 ╰──────────────────────────────────────╯"
 `;
 
+exports[`OverlayPanel (M1.3) > renders a bounded session list and durable preview metadata 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│Session center · ready                                                        │
+│> session█                                                                    │
+│› ● current-session · 2023-11-14T22:13:20.000Z · /workspace                   │
+│  ○ older-session · 2023-11-03T08:26:40.000Z                                  │
+│Preview current-session · 42 events · last turn/end                           │
+│1/2 · Enter resume · Space preview · R refresh                                │
+╰──────────────────────────────────────────────────────────────────────────────╯"
+`;
+
 exports[`OverlayPanel (M1.3) > renders a wide command palette without losing input metadata 1`] = `
 "╭──────────────────────────────────────────────────────────────────────────────╮
 │Command palette                                                               │

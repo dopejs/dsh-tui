@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 
 import type { CommandPaletteSnapshot } from '../model/command-palette-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
+import type { SessionCenterSnapshot } from '../model/session-center-controller'
 import { renderOverlayPanel } from './overlay'
 
 const emptyCompletion: CompletionSnapshot = {
@@ -10,6 +11,15 @@ const emptyCompletion: CompletionSnapshot = {
   revision: 0,
   status: 'idle',
   truncated: false,
+}
+
+const emptySessions: SessionCenterSnapshot = {
+  catalogTruncated: false,
+  items: [],
+  query: '',
+  revision: 0,
+  status: 'idle',
+  totalMatches: 0,
 }
 
 describe('OverlayPanel (M1.3)', () => {
@@ -35,6 +45,7 @@ describe('OverlayPanel (M1.3)', () => {
       completion: emptyCompletion,
       maxRows: 9,
       palette,
+      sessions: emptySessions,
     })).toMatchSnapshot()
   })
 
@@ -70,6 +81,7 @@ describe('OverlayPanel (M1.3)', () => {
       completion,
       maxRows: 8,
       palette,
+      sessions: emptySessions,
     })).toMatchSnapshot()
   })
 
@@ -102,6 +114,49 @@ describe('OverlayPanel (M1.3)', () => {
       completion: emptyCompletion,
       maxRows: 10,
       palette,
+      sessions: emptySessions,
+    })).toMatchSnapshot()
+  })
+
+  it('renders a bounded session list and durable preview metadata', () => {
+    const palette: CommandPaletteSnapshot = {
+      catalogTruncated: false,
+      items: [],
+      query: '',
+      revision: 0,
+      totalMatches: 0,
+    }
+    const sessions: SessionCenterSnapshot = {
+      catalogTruncated: false,
+      items: [{
+        createdAt: 1_700_000_000_000,
+        cwd: '/workspace',
+        id: 'current-session',
+        isCurrent: true,
+      }, {
+        createdAt: 1_699_000_000_000,
+        id: 'older-session',
+        isCurrent: false,
+      }],
+      preview: {
+        eventCount: 42,
+        id: 'current-session',
+        lastEventType: 'turn/end',
+      },
+      query: 'session',
+      revision: 3,
+      selectedIndex: 0,
+      status: 'ready',
+      totalMatches: 2,
+    }
+
+    expect(renderOverlayPanel({
+      active: 'session-center',
+      columns: 80,
+      completion: emptyCompletion,
+      maxRows: 10,
+      palette,
+      sessions,
     })).toMatchSnapshot()
   })
 })

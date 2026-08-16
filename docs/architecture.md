@@ -349,6 +349,30 @@ Switching sessions is forbidden while a modal owns terminal input in the MVP.
 Later multi-agent support must define an explicit queue and visible agent identity
 before relaxing that rule.
 
+### Session attachment ownership
+
+The runtime owns one `SessionAttachmentCoordinator`. A binding contains the
+exact root `AgentHandle`, its durable transcript listener, interaction seams,
+controllers, and input-acceptance gate. The session center reads only the public
+`ctx.sessionPersistence.list()` and `inspect()` contracts; it never opens
+persistence files or reconstructs transcript history.
+
+A transition synchronously closes the binding's input gate and publishes
+`switching` before target preflight, so input is blocked even before React can
+unmount the old view. Preflight failure reopens the gate and republishes the
+untouched old binding.
+After successful preflight, the coordinator flushes and fully disposes the old
+binding before calling `ctx.agents.resume()` for the selected id. If target
+resume fails, it may recreate the previous binding only after the failed target
+has proven it owns no live handle. Failure to dispose either handle is fatal,
+because restoring in that state could create two live roots.
+
+The stable root renderer subscribes to coordinator snapshots and remounts the
+interactive application with a keyed, freshly composed controller graph. Root
+disposal first unmounts the renderer, then aborts and awaits session-center work,
+then disposes the coordinator and its current binding. This ordering makes
+shutdown quiescent during both normal attachment and an in-flight transition.
+
 The scheduler accepts at most 32 pending interactions by default and presents
 them serially. Caller and lifecycle aborts settle queued work promptly; disposal
 unregisters both Harness seams before aborting and awaiting owned work. Question

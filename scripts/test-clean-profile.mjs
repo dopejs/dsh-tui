@@ -169,6 +169,14 @@ async function exerciseMultilineComposer(running) {
   running.child.write('\u001B')
   await waitForOutputSince(running, offset, 'Overlay closed.', 'close the command palette')
 
+  offset = running.output().length
+  running.child.write('\u000f')
+  await waitForOutputSince(running, offset, 'Session center', 'open the session center')
+  await waitForOutputSince(running, offset, 'Session center · ready', 'load the session center')
+  offset = running.output().length
+  running.child.write('\u001B')
+  await waitForOutputSince(running, offset, 'Overlay closed.', 'close the session center')
+
   running.child.write('/ex')
   offset = running.output().length
   running.child.write('\t')
@@ -181,6 +189,7 @@ async function exerciseMultilineComposer(running) {
   await waitForOutputSince(running, offset, 'Composer cleared.', 'clear the completed command')
 
   running.child.write('@cord')
+  await waitForOutputSince(running, offset, '@cord', 'render the path completion query')
   offset = running.output().length
   running.child.write('\t')
   await waitForOutputSince(running, offset, 'Path completion · cord', 'open path completion')
@@ -190,6 +199,23 @@ async function exerciseMultilineComposer(running) {
   offset = running.output().length
   running.child.write('\u0003')
   await waitForOutputSince(running, offset, 'Composer cleared.', 'clear the completed path')
+}
+
+async function exerciseSessionSwitch(running, targetSessionId) {
+  let offset = running.output().length
+  running.child.write('\u000f')
+  await waitForOutputSince(running, offset, 'Session center · ready', 'load persisted sessions')
+  offset = running.output().length
+  running.child.write(targetSessionId)
+  await waitForOutputSince(running, offset, targetSessionId, 'filter the target session')
+  offset = running.output().length
+  running.child.write('\r')
+  await waitForOutputSince(
+    running,
+    offset,
+    `dsh-tui · ${targetSessionId} · idle`,
+    'attach the selected persisted session',
+  )
 }
 
 async function quitAndAssert(running) {
@@ -222,6 +248,15 @@ const sessionId = /dsh-tui · (session-[^ ·\r\n]+)/.exec(fresh.output())?.[1]
 if (sessionId === undefined) throw new Error('Fresh TUI did not display its session id')
 await exerciseMultilineComposer(fresh)
 await quitAndAssert(fresh)
+
+const switching = runTui([])
+await waitForScreen(switching)
+const switchingSessionId = /dsh-tui · (session-[^ ·\r\n]+)/.exec(switching.output())?.[1]
+if (switchingSessionId === undefined || switchingSessionId === sessionId) {
+  throw new Error('Session-switch fixture did not create a distinct initial session')
+}
+await exerciseSessionSwitch(switching, sessionId)
+await quitAndAssert(switching)
 
 const resumed = runTui(['--resume', sessionId])
 await waitForScreen(resumed)

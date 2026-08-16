@@ -128,6 +128,8 @@ may use a real DeepSeek endpoint without becoming the semantic test oracle.
 Post-MVP fixtures also cover:
 
 - session list/inspect and exact-handle attachment replacement;
+- preflight input blocking, no-overlap A → B switching, old-session recovery,
+  and fail-closed double-resume failure;
 - model/default selection and permission-preset transitions;
 - projection refresh and missing optional units;
 - jobs and subagent list/control races;

@@ -1,10 +1,12 @@
 import { PassThrough } from 'node:stream'
+import { SessionId, type SessionEvent } from '@deepseek-ai/dsh-session'
 import type { AgentStatusStore } from '../model/agent-status-controller'
 import { CommandPaletteController } from '../model/command-palette-controller'
 import { CompletionController } from '../model/completion-controller'
 import { EditorController } from '../model/editor-controller'
 import { InteractionController } from '../model/interaction-controller'
 import { OverlayController } from '../model/overlay-controller'
+import { SessionCenterController } from '../model/session-center-controller'
 import { TranscriptController } from '../model/transcript-controller'
 import { createTranscriptState, type TranscriptState } from '../model/transcript-reducer'
 import { TranscriptViewportController } from '../model/transcript-viewport-controller'
@@ -56,6 +58,10 @@ async function eventually(assertion: () => void): Promise<void> {
     }
   }
   throw error
+}
+
+function eventForPreview(): SessionEvent {
+  return { data: {}, seq: 0, time: 0, type: 'session/start' } as SessionEvent
 }
 
 describe('InteractiveTui input (M1.1–M1.3)', () => {
@@ -114,6 +120,22 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
             replacement: 'src/controller.ts',
           }],
     })
+    const switchSession = vi.fn(async () => undefined)
+    const sessionCenter = new SessionCenterController({
+      inspect: async id => ({
+        events: [eventForPreview()],
+        meta: { createdAt: 1, id, version: 0 },
+      }),
+      list: async () => [{
+        createdAt: 2,
+        id: SessionId('input-session'),
+        version: 0,
+      }, {
+        createdAt: 1,
+        id: SessionId('other-session'),
+        version: 0,
+      }],
+    }, { switchSession }, { currentSessionId: 'input-session' })
     const submit = vi.fn(async (text: string): Promise<InputSubmission> => text === '/fail'
       ? {
           execution: {
@@ -150,6 +172,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
         overlay={overlay}
         palette={palette}
         sessionId="input-session"
+        sessionCenter={sessionCenter}
         status={status}
         transcript={transcript}
         viewport={viewport}
@@ -224,6 +247,26 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
 
       stdin.write('\u0003')
       await eventually(() => expect(editor.getSnapshot().text).toBe(''))
+
+      stdin.write('\u001B[111;5u')
+      await eventually(() => expect(overlay.getSnapshot().active).toBe('session-center'))
+      await eventually(() => expect(sessionCenter.getSnapshot()).toMatchObject({
+        status: 'ready',
+        totalMatches: 2,
+      }))
+      stdin.write('\u001B[B')
+      await eventually(() => expect(sessionCenter.selected()?.id).toBe('other-session'))
+      stdin.write(' ')
+      await eventually(() => expect(sessionCenter.getSnapshot().preview).toMatchObject({
+        eventCount: 1,
+        id: 'other-session',
+      }))
+      stdin.write('\r')
+      await eventually(() => expect(switchSession).toHaveBeenCalledWith(
+        'other-session',
+        expect.any(AbortSignal),
+      ))
+      await eventually(() => expect(sessionCenter.selected()?.isCurrent).toBe(true))
       stdin.write('\u001B[112;5u')
       await eventually(() => expect(overlay.getSnapshot().active).toBe('command-palette'))
       stdin.write('fixture')
@@ -270,6 +313,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       await mounted.waitUntilExit()
       interaction.dispose()
       await completion.dispose()
+      await sessionCenter.dispose()
       palette.dispose()
       overlay.dispose()
       viewport.dispose()

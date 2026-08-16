@@ -72,6 +72,12 @@ Tab completes a leading slash-command, an explicit `@workspace/path`, or a
 path-like token containing a directory separator. Completion is bounded to the
 current workspace and never discards an existing draft.
 
+Ctrl-O opens the bounded session center. Type to filter persisted-session
+metadata, use arrows to select, Space to inspect durable event metadata, R to
+refresh, and Enter to switch. Switching is allowed only with an idle agent and
+empty composer; the old attachment is fully flushed and disposed before the
+selected session resumes.
+
 ## Documentation
 
 - [Product requirements](docs/product-requirements.md)

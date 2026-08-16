@@ -1,0 +1,11 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`SessionApplication (M1.4) > renders an unrecoverable attachment failure at a fixed width 1`] = `
+"dsh-tui · failed
+The previous session could not be restored."
+`;
+
+exports[`SessionApplication (M1.4) > renders the input-blocking switch transition at a fixed width 1`] = `
+"dsh-tui · switching
+Switching to target-session…"
+`;

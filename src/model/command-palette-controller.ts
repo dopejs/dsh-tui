@@ -9,6 +9,7 @@ type Listener = () => void
 
 export type TuiActionId =
   | 'composer.clear'
+  | 'session.center'
   | 'transcript.compact-tools'
   | 'transcript.copy-visible'
   | 'transcript.search'
@@ -66,6 +67,12 @@ export const DEFAULT_TUI_ACTIONS: readonly TuiActionDescriptor[] = Object.freeze
     id: 'composer.clear',
     keywords: Object.freeze(['draft', 'input']),
     title: 'Clear composer',
+  }),
+  Object.freeze({
+    description: 'Browse and resume persisted sessions',
+    id: 'session.center',
+    keywords: Object.freeze(['open', 'resume', 'switch']),
+    title: 'Open session center',
   }),
   Object.freeze({
     description: 'Fold or expand all retained tool result cards',
