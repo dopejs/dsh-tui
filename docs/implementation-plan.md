@@ -247,6 +247,12 @@ M2 exit gate:
 
 ### M3.1 Projection hub: todo, goal, plan, usage (+4)
 
+Status: **complete**. One owned projection subscription publishes immutable
+plan, todo, goal, usage, and bounded diagnostic snapshots behind a single
+overlay. Usage accounting moved out of `RuntimeStatusController` so no second
+event-folding truth competes with the registered projection values. Missing
+projections, malformed values, and disposal are tested states.
+
 - add one projection subscription owner with immutable snapshots and bounded
   diagnostics;
 - implement plan/todo/goal/usage panels from registered projection values;
