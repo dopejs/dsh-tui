@@ -136,6 +136,26 @@ describe('EditorController (M1.1)', () => {
     editor.dispose()
   })
 
+  it('applies bounded completion replacements without splitting Unicode characters', () => {
+    const editor = new EditorController({ initialText: 'run @src/old tail', textLimit: 30 })
+
+    expect(editor.replaceRange(5, 12, 'src/new.ts')).toBe('applied')
+    expect(editor.getSnapshot()).toMatchObject({
+      cursor: 15,
+      text: 'run @src/new.ts tail',
+    })
+    expect(editor.undo()).toBe(true)
+    expect(() => editor.replaceRange(-1, 1, 'x')).toThrow('replacement range')
+
+    const unicode = new EditorController({ initialText: 'A👩🏽‍💻B' })
+    expect(() => unicode.replaceRange(2, 8, 'x')).toThrow('Unicode character')
+    expect(unicode.replaceRange(1, 8, '🙂')).toBe('applied')
+    expect(unicode.getSnapshot().text).toBe('A🙂B')
+
+    editor.dispose()
+    unicode.dispose()
+  })
+
   it('preserves a newer draft when an older asynchronous submission is accepted', () => {
     const editor = new EditorController()
     editor.insert('first')

@@ -94,7 +94,11 @@ function runtimeFixture(): RuntimeFixture {
   ctx.provide('agentDefaultModel', {
     currentSelection: () => ({ model: 'fixture-model', provider: 'fixture-provider' }),
   } as never)
-  ctx.provide('commands', { execute: vi.fn(), register: vi.fn(() => unregisterCommand) } as never)
+  ctx.provide('commands', {
+    execute: vi.fn(),
+    list: vi.fn(() => []),
+    register: vi.fn(() => unregisterCommand),
+  } as never)
   ctx.provide('sessions', { flush } as never)
   ctx.provide('tools', {
     get: vi.fn(() => ({
@@ -171,11 +175,24 @@ describe('startTuiRuntime', () => {
     expect(fixture.mounted).toHaveLength(1)
     expect(fixture.mounted[0]?.sessionId).toBe('live-session')
     const editor = fixture.mounted[0]?.editor
-    if (editor === undefined) throw new Error('editor was not mounted')
+    const overlay = fixture.mounted[0]?.overlay
+    const palette = fixture.mounted[0]?.palette
+    const completion = fixture.mounted[0]?.completion
+    if (
+      editor === undefined
+      || overlay === undefined
+      || palette === undefined
+      || completion === undefined
+    ) {
+      throw new Error('interactive controllers were not mounted')
+    }
 
     await dispose()
     expect(editorWasActiveDuringRendererDisposal).toBe(true)
     expect(() => editor.insert('late')).toThrow('disposed')
+    expect(() => overlay.open('command-palette')).toThrow('disposed')
+    expect(() => palette.insertQuery('late')).toThrow('disposed')
+    expect(() => completion.request('/late', 5)).toThrow('disposed')
     expect(fixture.flush).toHaveBeenCalledWith(fixture.agent.session)
     expect(fixture.disposeHandle).toHaveBeenCalledOnce()
     expect(fixture.unregisterQuestions).toHaveBeenCalledOnce()

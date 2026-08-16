@@ -1,0 +1,113 @@
+import { Box, Text, renderToString } from 'ink'
+
+import type { CommandPaletteSnapshot } from '../model/command-palette-controller'
+import type { CompletionSnapshot } from '../model/completion-controller'
+import type { OverlayKind } from '../model/overlay-controller'
+
+interface OverlayWindow<T> {
+  readonly end: number
+  readonly rows: readonly T[]
+  readonly start: number
+}
+
+function selectedWindow<T>(
+  rows: readonly T[],
+  selectedIndex: number | undefined,
+  maximum: number,
+): OverlayWindow<T> {
+  const limit = Math.max(1, maximum)
+  if (rows.length <= limit) return { end: rows.length, rows, start: 0 }
+  const selected = Math.max(0, Math.min(rows.length - 1, selectedIndex ?? 0))
+  const start = Math.max(0, Math.min(rows.length - limit, selected - Math.floor(limit / 2)))
+  return { end: start + limit, rows: rows.slice(start, start + limit), start }
+}
+
+interface OverlayPanelProps {
+  readonly active: OverlayKind
+  readonly columns: number
+  readonly completion: CompletionSnapshot
+  readonly maxRows: number
+  readonly palette: CommandPaletteSnapshot
+}
+
+export function OverlayPanel({
+  active,
+  columns,
+  completion,
+  maxRows,
+  palette,
+}: OverlayPanelProps) {
+  if (active === 'command-palette') {
+    const window = selectedWindow(palette.items, palette.selectedIndex, maxRows - 5)
+    return (
+      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+        <Text bold wrap="truncate-end">Command palette</Text>
+        <Text wrap="truncate-end">
+          &gt; {palette.query}<Text inverse>█</Text>
+        </Text>
+        {palette.error === undefined ? null : (
+          <Text color="red" wrap="truncate-end">{palette.error}</Text>
+        )}
+        {window.rows.length === 0 && palette.error === undefined ? (
+          <Text dimColor wrap="truncate-end">No matching commands or actions</Text>
+        ) : window.rows.map((item, index) => {
+          const absolute = window.start + index
+          const selected = absolute === palette.selectedIndex
+          return (
+            <Text inverse={selected} key={item.id} wrap="truncate-end">
+              {selected ? '›' : ' '} {item.label}
+              {item.kind === 'command' && item.inputHint !== undefined ? ` ${item.inputHint}` : ''}
+              {' · '}{item.description}
+            </Text>
+          )
+        })}
+        <Text dimColor wrap="truncate-end">
+          {palette.items.length === 0
+            ? 'Esc close'
+            : `${String((palette.selectedIndex ?? 0) + 1)}/${String(palette.totalMatches)} · Enter select · Esc close`}
+          {palette.catalogTruncated ? ' · catalog truncated' : ''}
+          {window.start > 0 ? ` · ${String(window.start)} above` : ''}
+          {window.end < palette.items.length
+            ? ` · ${String(palette.items.length - window.end)} below`
+            : ''}
+        </Text>
+      </Box>
+    )
+  }
+
+  const window = selectedWindow(completion.items, completion.selectedIndex, maxRows - 4)
+  const kind = completion.kind === 'path' ? 'Path' : 'Command'
+  return (
+    <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+      <Text bold wrap="truncate-end">{kind} completion · {completion.query}</Text>
+      {completion.status === 'loading' ? <Text dimColor>Loading…</Text> : null}
+      {completion.error === undefined ? null : (
+        <Text color="red" wrap="truncate-end">{completion.error}</Text>
+      )}
+      {completion.status === 'ready' && window.rows.length === 0 ? (
+        <Text dimColor>No matching completion</Text>
+      ) : window.rows.map((item, index) => {
+        const absolute = window.start + index
+        const selected = absolute === completion.selectedIndex
+        return (
+          <Text inverse={selected} key={item.id} wrap="truncate-end">
+            {selected ? '›' : ' '} {item.label}
+            {item.description === undefined ? '' : ` · ${item.description}`}
+          </Text>
+        )
+      })}
+      <Text dimColor wrap="truncate-end">
+        {completion.items.length === 0
+          ? 'Esc close'
+          : `${String((completion.selectedIndex ?? 0) + 1)}/${String(completion.items.length)} · Enter apply · Esc close`}
+        {completion.truncated ? ' · results truncated' : ''}
+      </Text>
+    </Box>
+  )
+}
+
+export function renderOverlayPanel(
+  props: OverlayPanelProps,
+): string {
+  return renderToString(<OverlayPanel {...props} />, { columns: props.columns })
+}

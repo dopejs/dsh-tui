@@ -1,7 +1,10 @@
 import { PassThrough } from 'node:stream'
 import type { AgentStatusStore } from '../model/agent-status-controller'
+import { CommandPaletteController } from '../model/command-palette-controller'
+import { CompletionController } from '../model/completion-controller'
 import { EditorController } from '../model/editor-controller'
 import { InteractionController } from '../model/interaction-controller'
+import { OverlayController } from '../model/overlay-controller'
 import { TranscriptController } from '../model/transcript-controller'
 import { createTranscriptState, type TranscriptState } from '../model/transcript-reducer'
 import { TranscriptViewportController } from '../model/transcript-viewport-controller'
@@ -55,7 +58,7 @@ async function eventually(assertion: () => void): Promise<void> {
   throw error
 }
 
-describe('InteractiveTui input (M1.1–M1.2)', () => {
+describe('InteractiveTui input (M1.1–M1.3)', () => {
   it('edits multiline input, batches bracketed paste, submits once, and restores terminal modes', async () => {
     const stdin = new FixtureStdin()
     const stdout = new FixtureStdout()
@@ -87,25 +90,65 @@ describe('InteractiveTui input (M1.1–M1.2)', () => {
     const transcript = new TranscriptController({ projectBatch: () => seededTranscript })
     transcript.accept([])
     const viewport = new TranscriptViewportController(transcript)
-    const submit = vi.fn(async (text: string): Promise<InputSubmission> => ({
-      kind: 'message',
-      message: { text } as never,
-      mode: 'followup',
-    }))
+    const overlay = new OverlayController()
+    const palette = new CommandPaletteController({
+      list: () => [
+        { description: 'Fail for testing', name: 'fail' },
+        { description: 'Fixture command', name: 'fixture' },
+        { description: 'Review a path', input: { hint: '<path>' }, name: 'review' },
+      ],
+      subscribe: () => () => undefined,
+    })
+    const completion = new CompletionController({
+      complete: async request => request.kind === 'command'
+        ? [{
+            description: 'Review a path',
+            id: 'command:review',
+            label: '/review',
+            replacement: '/review ',
+          }]
+        : [{
+            description: 'file',
+            id: 'path:src/controller.ts',
+            label: 'src/controller.ts',
+            replacement: 'src/controller.ts',
+          }],
+    })
+    const submit = vi.fn(async (text: string): Promise<InputSubmission> => text === '/fail'
+      ? {
+          execution: {
+            result: { kind: 'error', text: 'fixture command failed' },
+          } as never,
+          kind: 'command',
+        }
+      : {
+          kind: 'message',
+          message: { text } as never,
+          mode: 'followup',
+        })
+    let commandPending = false
+    const cancelCommand = vi.fn(() => {
+      if (!commandPending) return false
+      commandPending = false
+      return true
+    })
     const input = {
       cancelAgent: vi.fn(),
-      cancelCommand: vi.fn(() => false),
-      commandPending: false,
+      cancelCommand,
+      get commandPending() { return commandPending },
       submit,
     } as unknown as InputController
 
     const mounted = render(
       <InteractiveTui
+        completion={completion}
         editor={editor}
         input={input}
         interaction={interaction}
         modelLabel="fixture/model"
         onQuit={() => undefined}
+        overlay={overlay}
+        palette={palette}
         sessionId="input-session"
         status={status}
         transcript={transcript}
@@ -178,10 +221,57 @@ describe('InteractiveTui input (M1.1–M1.2)', () => {
 
       stdin.write('\u001B[99;6u')
       await eventually(() => expect(output).toContain('\u001B]52;c;'))
+
+      stdin.write('\u0003')
+      await eventually(() => expect(editor.getSnapshot().text).toBe(''))
+      stdin.write('\u001B[112;5u')
+      await eventually(() => expect(overlay.getSnapshot().active).toBe('command-palette'))
+      stdin.write('fixture')
+      await eventually(() => expect(palette.getSnapshot().query).toBe('fixture'))
+      stdin.write('\r')
+      await eventually(() => expect(submit).toHaveBeenCalledTimes(2))
+      expect(submit).toHaveBeenLastCalledWith('/fixture', 'followup')
+      expect(overlay.getSnapshot().active).toBeUndefined()
+      await eventually(() => expect(editor.getSnapshot().text).toBe(''))
+
+      stdin.write('/rev')
+      await eventually(() => expect(editor.getSnapshot().text).toBe('/rev'))
+      stdin.write('\t')
+      await eventually(() => expect(completion.getSnapshot()).toMatchObject({
+        status: 'ready',
+      }))
+      expect(overlay.getSnapshot().active).toBe('completion')
+      stdin.write('\r')
+      await eventually(() => expect(editor.getSnapshot().text).toBe('/review '))
+      stdin.write('src/controller.ts')
+      await eventually(() => expect(editor.getSnapshot().text).toBe('/review src/controller.ts'))
+      stdin.write('\r')
+      await eventually(() => expect(submit).toHaveBeenCalledTimes(3))
+      expect(submit).toHaveBeenLastCalledWith('/review src/controller.ts', 'followup')
+      await eventually(() => expect(editor.getSnapshot().text).toBe(''))
+
+      stdin.write('\u001B[112;5u')
+      await eventually(() => expect(overlay.getSnapshot().active).toBe('command-palette'))
+      stdin.write('fail')
+      await eventually(() => expect(palette.getSnapshot().query).toBe('fail'))
+      stdin.write('\r')
+      await eventually(() => expect(submit).toHaveBeenCalledTimes(4))
+      await eventually(() => expect(output).toContain('fixture command failed'))
+      expect(editor.getSnapshot().text).toBe('/fail')
+
+      commandPending = true
+      stdin.write('\u0003')
+      await eventually(() => expect(cancelCommand).toHaveBeenCalledOnce())
+      expect(editor.getSnapshot().text).toBe('/fail')
+      stdin.write('\u0003')
+      await eventually(() => expect(editor.getSnapshot().text).toBe(''))
     } finally {
       mounted.unmount()
       await mounted.waitUntilExit()
       interaction.dispose()
+      await completion.dispose()
+      palette.dispose()
+      overlay.dispose()
       viewport.dispose()
       await transcript.dispose()
       editor.dispose()

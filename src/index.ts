@@ -8,8 +8,11 @@ import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-user-questions'
 
 import { AgentStatusController } from './model/agent-status-controller'
+import { CommandPaletteController } from './model/command-palette-controller'
+import { CompletionController } from './model/completion-controller'
 import { EditorController } from './model/editor-controller'
 import { InteractionController } from './model/interaction-controller'
+import { OverlayController } from './model/overlay-controller'
 import { TranscriptController } from './model/transcript-controller'
 import { reduceTranscriptBatch } from './model/transcript-reducer'
 import { TranscriptViewportController } from './model/transcript-viewport-controller'
@@ -19,6 +22,7 @@ import { createRuntimePlugin } from './runtime/cordis-runtime'
 import { InputController } from './runtime/input-controller'
 import { InteractionScheduler } from './runtime/interaction-scheduler'
 import { ResourceOwner } from './runtime/resource-owner'
+import { WorkspaceCompletionProvider } from './runtime/workspace-completion-provider'
 import type { TuiStartupValues } from './startup'
 import {
   mountInkApplication,
@@ -235,6 +239,19 @@ export async function startTuiRuntime(
       recordInput: false,
     })
     owner.own('exit command', unregisterExitCommand)
+    const overlay = new OverlayController()
+    owner.own('overlay controller', () => overlay.dispose())
+    const palette = new CommandPaletteController({
+      list: () => commands.list(attachment.agent),
+      subscribe: listener => ctx.on('commands/change', listener),
+    })
+    owner.own('command palette controller', () => palette.dispose())
+    const workspace = attachment.agent.session.header.cwd ?? dependencies.cwd()
+    const completion = new CompletionController(new WorkspaceCompletionProvider({
+      listCommands: () => commands.list(attachment.agent),
+      workspace,
+    }))
+    owner.own('completion controller', () => completion.dispose())
     const interaction = new InteractionController(diagnostics.report)
     owner.own('interaction controller', () => interaction.dispose())
     const scheduler = new InteractionScheduler({
@@ -245,6 +262,7 @@ export async function startTuiRuntime(
     owner.own('interaction scheduler', () => scheduler.dispose())
 
     const application = dependencies.mountApplication({
+      completion,
       editor,
       input,
       interaction,
@@ -252,11 +270,13 @@ export async function startTuiRuntime(
         .filter((value): value is string => value !== undefined && value !== '')
         .join('/'),
       onQuit: requestExit,
+      overlay,
+      palette,
       sessionId: String(attachment.agent.session.id),
       status,
       transcript,
       viewport,
-      workspace: attachment.agent.session.header.cwd ?? dependencies.cwd(),
+      workspace,
     })
     owner.own('Ink application and terminal state', () => application.dispose())
     void application.exited.catch((error: unknown) => {

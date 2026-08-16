@@ -105,6 +105,11 @@ Verification:
 
 ### M1.3 Overlay system, command palette, and completion (+3)
 
+Status: **complete**. Exclusive overlay focus, live exact-agent command
+discovery, bounded deterministic fuzzy ranking, discoverable local actions,
+generation-safe command/workspace completion, narrow/wide snapshots, command
+failure/cancellation routing, and clean-package PTY flows are implemented.
+
 Implementation:
 
 - introduce a framework-neutral overlay/focus state machine;

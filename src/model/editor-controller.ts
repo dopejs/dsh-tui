@@ -284,6 +284,36 @@ export class EditorController {
     return 'applied'
   }
 
+  replaceRange(start: number, end: number, value: string): EditorEditResult {
+    this.#assertActive()
+    if (
+      !Number.isSafeInteger(start)
+      || !Number.isSafeInteger(end)
+      || start < 0
+      || end < start
+      || end > this.#state.text.length
+    ) {
+      throw new RangeError('replacement range must be within the editor text')
+    }
+    const boundary = (offset: number): boolean => offset === 0
+      || offset === this.#state.text.length
+      || nextCharacterOffset(
+        this.#state.text,
+        previousCharacterOffset(this.#state.text, offset),
+      ) === offset
+    if (!boundary(start) || !boundary(end)) {
+      throw new RangeError('replacement range must not split a Unicode character')
+    }
+    if (start === end && value === '') return 'unchanged'
+    if (this.#state.text.length - (end - start) + value.length > this.#textLimit) {
+      return 'limit-exceeded'
+    }
+    const text = this.#state.text.slice(0, start) + value + this.#state.text.slice(end)
+    if (text === this.#state.text) return 'unchanged'
+    this.#applyEdit({ cursor: start + value.length, text })
+    return 'applied'
+  }
+
   backspace(): EditorEditResult {
     this.#assertActive()
     const range = selectedRange(this.#state)

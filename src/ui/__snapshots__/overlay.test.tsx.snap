@@ -1,0 +1,31 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`OverlayPanel (M1.3) > renders a bounded narrow command palette 1`] = `
+"╭──────────────────────────────────────╮
+│Command palette                       │
+│> com█                                │
+│  /command-3 · Description 3          │
+│  /command-4 · Description 4          │
+│› /command-5 · Description 5          │
+│  /command-6 · Description 6          │
+│6/8 · Enter select · Esc close · cata…│
+╰──────────────────────────────────────╯"
+`;
+
+exports[`OverlayPanel (M1.3) > renders a wide command palette without losing input metadata 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│Command palette                                                               │
+│> █                                                                           │
+│› /review <path> · Review current workspace changes before committing         │
+│  Search transcript · Search the retained transcript window                   │
+│1/2 · Enter select · Esc close                                                │
+╰──────────────────────────────────────────────────────────────────────────────╯"
+`;
+
+exports[`OverlayPanel (M1.3) > renders command/path completion states 1`] = `
+"╭──────────────────────────────────────────────────────────╮
+│Path completion · src/co                                  │
+│› src/controller.ts · file                                │
+│1/1 · Enter apply · Esc close                             │
+╰──────────────────────────────────────────────────────────╯"
+`;

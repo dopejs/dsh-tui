@@ -295,6 +295,37 @@ and only for a bounded UTF-8 payload. The copied value is a decoration-free
 plain-text projection of visible rows; terminal control sequences from durable
 content are base64 encoded rather than written as control data.
 
+### Overlay, palette, and completion ownership
+
+One framework-neutral overlay controller owns at most one overlay id. Input
+focus is derived in one place with the fixed priority `interaction > overlay >
+transcript search > composer`; an approval or question suspends an existing
+overlay without destroying it. Escape or Ctrl-C closes the active overlay
+before composer or agent cancellation can run.
+
+The command palette projects `commands.list(exactAgent)` together with a small
+bounded registry of local TUI actions. It listens for `commands/change`, copies
+only descriptor metadata, scans at most 1,000 commands, retains at most 100
+ranked results, and never calls a command handler itself. Selecting an
+argument-free command inserts its canonical slash invocation and routes it
+through the existing `InputController`; commands with input hints are inserted
+for editing. A non-empty composer draft is preserved and blocks palette command
+insertion rather than being overwritten. Local actions use the same discoverable
+palette item vocabulary as Harness commands.
+
+The completion controller parses only a leading slash-command, an explicit
+`@path`, or a path-like token containing a directory separator. Requests own an
+AbortController and monotonically increasing generation; a stale provider result
+cannot publish, and disposal aborts and awaits all admitted work. Results,
+metadata, replacements, and concurrent settling requests are bounded.
+
+The Node workspace provider lists only public command descriptors and filesystem
+entries under the session workspace. It scans at most 2,000 directory entries,
+uses `realpath` containment before listing, does not traverse a symlink outside
+the workspace, hides dotfiles unless explicitly requested, and checks the
+request signal throughout. The provider returns replacement intent only; the
+editor performs the final Unicode-boundary and text-limit validation.
+
 ## Human interaction
 
 The interaction scheduler serializes terminal ownership across the composer,

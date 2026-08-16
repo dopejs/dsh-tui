@@ -3,6 +3,12 @@ import { Box, Text, useInput, usePaste, useStdout } from 'ink'
 import type { AskUserQuestionAnswer } from '@deepseek-ai/dsh-user-questions'
 
 import type { AgentStatusStore } from '../model/agent-status-controller'
+import type {
+  CommandPaletteController,
+  PaletteItem,
+  TuiActionId,
+} from '../model/command-palette-controller'
+import type { CompletionController } from '../model/completion-controller'
 import type { EditorController } from '../model/editor-controller'
 import type {
   InteractionController,
@@ -10,6 +16,8 @@ import type {
   InteractionSnapshot,
 } from '../model/interaction-controller'
 import type { TranscriptStore } from '../model/transcript-controller'
+import type { OverlayController } from '../model/overlay-controller'
+import { resolveInputSurface } from '../model/overlay-controller'
 import type {
   TranscriptViewportController,
   TranscriptViewportSnapshot,
@@ -20,6 +28,7 @@ import type { InputController, InputSubmission, SubmissionMode } from '../runtim
 import { Composer, createComposerView } from './composer'
 import { writeOsc52Clipboard } from './clipboard'
 import { Frame } from './ink-renderer'
+import { OverlayPanel } from './overlay'
 
 interface QuestionDraft {
   readonly custom?: string
@@ -29,11 +38,14 @@ interface QuestionDraft {
 
 export interface InteractiveTuiProps {
   readonly columns?: number
+  readonly completion: CompletionController
   readonly editor: EditorController
   readonly input: InputController
   readonly interaction: InteractionController
   readonly modelLabel: string
   readonly onQuit: (code: number) => void
+  readonly overlay: OverlayController
+  readonly palette: CommandPaletteController
   readonly sessionId: string
   readonly status: AgentStatusStore
   readonly terminalRows?: number
@@ -135,11 +147,14 @@ function searchStatus(search: TranscriptViewportSnapshot['search']): string {
 
 export function InteractiveTui({
   columns: fixedColumns,
+  completion,
   editor,
   input,
   interaction,
   modelLabel,
   onQuit,
+  overlay,
+  palette,
   sessionId,
   status,
   terminalRows: fixedRows,
@@ -185,6 +200,21 @@ export function InteractiveTui({
     viewport.subscribe,
     viewport.getSnapshot,
     viewport.getSnapshot,
+  )
+  const overlaySnapshot = useSyncExternalStore(
+    overlay.subscribe,
+    overlay.getSnapshot,
+    overlay.getSnapshot,
+  )
+  const paletteSnapshot = useSyncExternalStore(
+    palette.subscribe,
+    palette.getSnapshot,
+    palette.getSnapshot,
+  )
+  const completionSnapshot = useSyncExternalStore(
+    completion.subscribe,
+    completion.getSnapshot,
+    completion.getSnapshot,
   )
 
   useEffect(() => {
@@ -269,6 +299,96 @@ export function InteractiveTui({
     }
   }
 
+  const copyVisibleTranscript = () => {
+    const plain = projectTranscriptPlainText(screen.rows, 100_000)
+    const result = writeOsc52Clipboard(stdout, plain.text)
+    setNotice(result === 'sent'
+      ? `Visible transcript copied${plain.truncated ? ' with truncation' : ''}.`
+      : result === 'too-large'
+        ? 'Visible transcript is too large for terminal clipboard transfer.'
+        : 'Terminal clipboard transfer is unavailable.')
+  }
+
+  const executeTuiAction = (action: TuiActionId) => {
+    switch (action) {
+      case 'composer.clear':
+        setNotice(editor.clear() ? 'Composer cleared.' : 'Composer is already empty.')
+        return
+      case 'transcript.compact-tools':
+        viewport.toggleCompactTools()
+        setNotice('Tool card density toggled.')
+        return
+      case 'transcript.copy-visible':
+        copyVisibleTranscript()
+        return
+      case 'transcript.search':
+        viewport.openSearch()
+        setNotice('Transcript search opened.')
+        return
+      case 'transcript.to-end':
+        viewport.toEnd()
+        setNotice('Following the live transcript tail.')
+        return
+      case 'transcript.to-start':
+        viewport.toStart()
+        setNotice('Moved to the oldest retained transcript row.')
+        return
+      case 'tui.exit':
+        onQuit(0)
+    }
+  }
+
+  const choosePaletteItem = (item: PaletteItem | undefined) => {
+    if (item === undefined) {
+      setNotice('No palette item is selected.')
+      return
+    }
+    overlay.close('command-palette')
+    if (item.kind === 'action') {
+      executeTuiAction(item.action)
+      return
+    }
+    if (editor.getSnapshot().text !== '') {
+      setNotice(`Composer draft retained; clear it before selecting /${item.name}.`)
+      return
+    }
+    const invocation = `/${item.name}${item.inputHint === undefined ? '' : ' '}`
+    if (editor.insert(invocation) === 'limit-exceeded') {
+      setNotice(`Command exceeds ${String(editor.textLimit)} code units.`)
+      return
+    }
+    if (item.inputHint !== undefined) {
+      setNotice(`Complete the ${item.inputHint} argument and press Enter.`)
+      return
+    }
+    void submitComposer('followup').catch((error: unknown) => {
+      setNotice(error instanceof Error ? error.message : String(error))
+    })
+  }
+
+  const applySelectedCompletion = () => {
+    const selectedCompletion = completion.selected()
+    if (selectedCompletion === undefined) {
+      setNotice('No completion is selected.')
+      return
+    }
+    try {
+      const result = editor.replaceRange(
+        selectedCompletion.start,
+        selectedCompletion.end,
+        selectedCompletion.replacement,
+      )
+      setNotice(result === 'limit-exceeded'
+        ? `Completion exceeds ${String(editor.textLimit)} code units.`
+        : 'Completion applied.')
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : String(error))
+    } finally {
+      completion.cancel()
+      overlay.close('completion')
+    }
+  }
+
   usePaste((pasted) => {
     const normalized = normalizeTerminalPaste(pasted)
     if (interactionSnapshot?.kind === 'approval') return
@@ -286,6 +406,25 @@ export function InteractiveTui({
       })
       return
     }
+    const pasteSurface = resolveInputSurface(overlay.getSnapshot(), {
+      interactionActive: false,
+      searchOpen: viewport.getSnapshot().search.open,
+    })
+    if (pasteSurface === 'overlay') {
+      if (overlay.getSnapshot().active === 'command-palette') {
+        if (palette.insertQuery(normalized.replaceAll('\n', ' ')) === 'limit-exceeded') {
+          setNotice('Palette query is too long.')
+        }
+        return
+      }
+      completion.cancel()
+      overlay.close('completion')
+      const result = editor.insert(normalized)
+      setNotice(result === 'limit-exceeded'
+        ? `Composer exceeds ${String(editor.textLimit)} code units.`
+        : `Pasted ${String(normalized.length)} code units.`)
+      return
+    }
     if (viewport.getSnapshot().search.open) {
       const result = viewport.insertSearch(normalized.replaceAll('\n', ' '))
       if (result === 'limit-exceeded') setNotice('Search query is too long.')
@@ -298,10 +437,6 @@ export function InteractiveTui({
   })
 
   useInput((typed, key) => {
-    if (key.ctrl && typed === 'q') {
-      onQuit(0)
-      return
-    }
     if (interactionSnapshot?.kind === 'approval') {
       if (typed.toLowerCase() === 'y') {
         interaction.answerApproval('allowed-once')
@@ -382,6 +517,63 @@ export function InteractiveTui({
       return
     }
 
+    if (key.ctrl && typed.toLowerCase() === 'p') {
+      if (overlay.getSnapshot().active === 'command-palette') {
+        overlay.close('command-palette')
+        setNotice('Command palette closed.')
+      } else {
+        completion.cancel()
+        palette.reset()
+        overlay.open('command-palette')
+        setNotice('Command palette opened.')
+      }
+      return
+    }
+
+    const inputSurface = resolveInputSurface(overlay.getSnapshot(), {
+      interactionActive: false,
+      searchOpen: viewport.getSnapshot().search.open,
+    })
+    if (inputSurface === 'overlay') {
+      const activeOverlay = overlay.getSnapshot().active
+      if (key.escape || (key.ctrl && typed.toLowerCase() === 'c')) {
+        if (activeOverlay === 'completion') completion.cancel()
+        overlay.close()
+        setNotice('Overlay closed.')
+        return
+      }
+      if (activeOverlay === 'command-palette') {
+        if (key.upArrow) palette.move('up')
+        else if (key.downArrow || key.tab) palette.move('down')
+        else if (key.return) choosePaletteItem(palette.selected())
+        else if (key.backspace || key.delete) palette.backspaceQuery()
+        else if (!key.ctrl && !key.meta && !key.super && typed !== '') {
+          if (palette.insertQuery(typed) === 'limit-exceeded') {
+            setNotice('Palette query is too long.')
+          }
+        }
+        return
+      }
+      if (key.upArrow) {
+        completion.move('up')
+        return
+      }
+      if (key.downArrow || key.tab) {
+        completion.move('down')
+        return
+      }
+      if (key.return) {
+        applySelectedCompletion()
+        return
+      }
+      completion.cancel()
+      overlay.close('completion')
+      if (key.backspace) editor.backspace()
+      else if (key.delete) editor.deleteForward()
+      else if (!key.ctrl && !key.meta && !key.super && typed !== '') editor.insert(typed)
+      return
+    }
+
     if (viewport.getSnapshot().search.open) {
       if (key.escape || (key.ctrl && typed === 'c')) {
         viewport.closeSearch()
@@ -447,20 +639,19 @@ export function InteractiveTui({
       return
     }
     if (key.ctrl && key.shift && typed.toLowerCase() === 'c') {
-      const plain = projectTranscriptPlainText(screen.rows, 100_000)
-      const result = writeOsc52Clipboard(stdout, plain.text)
-      setNotice(result === 'sent'
-        ? `Visible transcript copied${plain.truncated ? ' with truncation' : ''}.`
-        : result === 'too-large'
-          ? 'Visible transcript is too large for terminal clipboard transfer.'
-          : 'Terminal clipboard transfer is unavailable.')
+      copyVisibleTranscript()
+      return
+    }
+
+    if (key.ctrl && typed === 'q') {
+      onQuit(0)
       return
     }
 
     if (key.escape) {
       if (editor.clearSelection()) {
         setNotice('Selection cleared.')
-      } else if (editorSnapshot.text !== '') {
+      } else if (editor.getSnapshot().text !== '') {
         editor.clear()
         setNotice('Composer cleared.')
       } else if (agentStatus === 'running') {
@@ -476,7 +667,7 @@ export function InteractiveTui({
       if (input.commandPending) {
         input.cancelCommand()
         setNotice('Command cancellation requested.')
-      } else if (editorSnapshot.text !== '') {
+      } else if (editor.getSnapshot().text !== '') {
         editor.clear()
         setNotice('Composer cleared.')
       } else if (agentStatus === 'running') {
@@ -488,7 +679,7 @@ export function InteractiveTui({
       return
     }
     if (typed === '\u0004') {
-      if (editorSnapshot.text !== '') editor.deleteForward()
+      if (editor.getSnapshot().text !== '') editor.deleteForward()
       else if (agentStatus === 'idle') onQuit(0)
       return
     }
@@ -572,7 +763,11 @@ export function InteractiveTui({
       return
     }
     if (key.tab) {
-      if (editor.insert('\t') === 'limit-exceeded') {
+      const current = editor.getSnapshot()
+      if (completion.request(current.text, current.cursor)) {
+        overlay.open('completion')
+        setNotice('Completion opened.')
+      } else if (editor.insert('\t') === 'limit-exceeded') {
         setNotice(`Composer exceeds ${String(editor.textLimit)} code units.`)
       }
       return
@@ -592,8 +787,23 @@ export function InteractiveTui({
   )
   const composerRows = composerView.rows.length
     + (composerView.hiddenAbove > 0 || composerView.hiddenBelow > 0 ? 1 : 0)
-  const searchRows = viewportSnapshot.search.open ? 1 : 0
-  const screenRows = Math.max(4, dimensions.rows - composerRows - searchRows - 1)
+  const activeOverlay = modal === undefined ? overlaySnapshot.active : undefined
+  const fullScreenOverlay = activeOverlay !== undefined
+    && (dimensions.columns < 60 || dimensions.rows < 16)
+  const overlayMaxRows = activeOverlay === undefined
+      ? 0
+      : fullScreenOverlay
+      ? Math.max(4, dimensions.rows)
+      : Math.max(6, Math.min(10, Math.floor(dimensions.rows / 2)))
+  const searchRows = viewportSnapshot.search.open && activeOverlay === undefined ? 1 : 0
+  const screenRows = Math.max(
+    4,
+    dimensions.rows
+      - (fullScreenOverlay ? 0 : composerRows)
+      - searchRows
+      - overlayMaxRows
+      - 1,
+  )
   const maximumToolDetailLines = Math.max(
     1,
     screenRows - 5 - (modal === undefined ? 0 : modalRows(modal)),
@@ -620,10 +830,29 @@ export function InteractiveTui({
     modal,
   )
 
+  if (fullScreenOverlay && activeOverlay !== undefined) {
+    return <OverlayPanel
+      active={activeOverlay}
+      columns={dimensions.columns}
+      completion={completionSnapshot}
+      maxRows={overlayMaxRows}
+      palette={paletteSnapshot}
+    />
+  }
+
   return (
     <Box flexDirection="column">
       <Frame columns={dimensions.columns} model={screen} />
-      {viewportSnapshot.search.open ? (
+      {activeOverlay === undefined ? null : (
+        <OverlayPanel
+          active={activeOverlay}
+          columns={dimensions.columns}
+          completion={completionSnapshot}
+          maxRows={overlayMaxRows}
+          palette={paletteSnapshot}
+        />
+      )}
+      {viewportSnapshot.search.open && activeOverlay === undefined ? (
         <Text wrap="truncate-end">
           / {viewportSnapshot.search.query}<Text inverse>█</Text>
           <Text dimColor> · {searchStatus(viewportSnapshot.search)}</Text>

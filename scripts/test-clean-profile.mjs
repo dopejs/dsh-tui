@@ -136,6 +136,17 @@ async function waitForOutput(running, text, label) {
   }
 }
 
+async function waitForOutputSince(running, offset, text, label) {
+  const deadline = Date.now() + 10_000
+  while (!running.output().slice(offset).includes(text)) {
+    if (Date.now() >= deadline) {
+      running.child.kill()
+      throw new Error(`Installed TUI did not ${label}:\n${running.output()}`)
+    }
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+}
+
 async function exerciseMultilineComposer(running) {
   running.child.write('\u001B[200~first line\nsecond line\u001B[201~')
   await waitForOutput(running, 'second line', 'render bracketed multiline paste')
@@ -150,6 +161,35 @@ async function exerciseMultilineComposer(running) {
   await waitForOutput(running, '/ needle', 'edit the transcript search query')
   running.child.write('\u001B')
   await waitForOutput(running, 'Transcript search closed.', 'close transcript search')
+
+  let offset = running.output().length
+  running.child.write('\u0010')
+  await waitForOutputSince(running, offset, 'Command palette', 'open the command palette')
+  offset = running.output().length
+  running.child.write('\u001B')
+  await waitForOutputSince(running, offset, 'Overlay closed.', 'close the command palette')
+
+  running.child.write('/ex')
+  offset = running.output().length
+  running.child.write('\t')
+  await waitForOutputSince(running, offset, 'Command completion · ex', 'open command completion')
+  offset = running.output().length
+  running.child.write('\r')
+  await waitForOutputSince(running, offset, 'Completion applied.', 'apply command completion')
+  offset = running.output().length
+  running.child.write('\u0003')
+  await waitForOutputSince(running, offset, 'Composer cleared.', 'clear the completed command')
+
+  running.child.write('@cord')
+  offset = running.output().length
+  running.child.write('\t')
+  await waitForOutputSince(running, offset, 'Path completion · cord', 'open path completion')
+  offset = running.output().length
+  running.child.write('\r')
+  await waitForOutputSince(running, offset, '@cordis.patch.yml', 'apply workspace path completion')
+  offset = running.output().length
+  running.child.write('\u0003')
+  await waitForOutputSince(running, offset, 'Composer cleared.', 'clear the completed path')
 }
 
 async function quitAndAssert(running) {

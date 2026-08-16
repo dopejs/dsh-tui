@@ -65,6 +65,13 @@ and Alt-PageUp or Alt-PageDown pages through a long focused tool result.
 Ctrl-Shift-C requests an OSC 52 copy of the currently visible transcript when
 the terminal supports it.
 
+Ctrl-P opens a fuzzy command palette that combines the exact agent's Harness
+commands with TUI navigation actions. Selecting an argument-free command runs
+it; a command with an input hint is inserted into an empty composer for review.
+Tab completes a leading slash-command, an explicit `@workspace/path`, or a
+path-like token containing a directory separator. Completion is bounded to the
+current workspace and never discards an existing draft.
+
 ## Documentation
 
 - [Product requirements](docs/product-requirements.md)

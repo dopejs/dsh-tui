@@ -40,6 +40,10 @@ operation sequences must preserve valid cursor/selection bounds and undo/redo
 round trips. Async search/catalog tests use injected settlement rather than
 wall-clock sleeps and prove stale generations cannot publish.
 
+Workspace completion fixtures use temporary directories and prove realpath
+containment, hidden-file policy, missing paths, cancellation, and deterministic
+ranking without reading outside the fixture root.
+
 ### Presenter contract tests
 
 Use real tool presentation types and fixture definitions to verify:
@@ -79,6 +83,7 @@ time, paths, ids, and Unicode settings. Snapshots cover:
 - approval and question modals;
 - queued input and cancellation;
 - transcript focus, eviction/unseen state, search, and folded/expanded tools;
+- narrow/full-screen and wide palette plus completion loading/result states;
 - narrow terminal wrapping and resize;
 - errors, truncation, and unsupported content fallback.
 

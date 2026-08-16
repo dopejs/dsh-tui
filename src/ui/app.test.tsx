@@ -3,8 +3,11 @@ import { renderToString } from 'ink'
 import { describe, expect, it } from 'vitest'
 
 import type { AgentStatusStore } from '../model/agent-status-controller'
+import { CommandPaletteController } from '../model/command-palette-controller'
+import { CompletionController } from '../model/completion-controller'
 import { EditorController } from '../model/editor-controller'
 import { InteractionController } from '../model/interaction-controller'
+import { OverlayController } from '../model/overlay-controller'
 import { TranscriptController } from '../model/transcript-controller'
 import { TranscriptViewportController } from '../model/transcript-viewport-controller'
 import type { InputController } from '../runtime/input-controller'
@@ -31,20 +34,33 @@ function fakeInput(): InputController {
 function renderApp(
   transcript: TranscriptController,
   interaction: InteractionController,
-  configure?: (viewport: TranscriptViewportController) => void,
+  configure?: (
+    viewport: TranscriptViewportController,
+    overlay: OverlayController,
+    palette: CommandPaletteController,
+  ) => void,
 ) {
   const editor = new EditorController()
   const viewport = new TranscriptViewportController(transcript)
+  const overlay = new OverlayController()
+  const palette = new CommandPaletteController({
+    list: () => [{ description: 'Review changes', name: 'review' }],
+    subscribe: () => () => undefined,
+  })
+  const completion = new CompletionController({ complete: async () => [] })
   try {
-    configure?.(viewport)
+    configure?.(viewport, overlay, palette)
     return renderToString(
       <InteractiveTui
         columns={52}
+        completion={completion}
         editor={editor}
         input={fakeInput()}
         interaction={interaction}
         modelLabel="fixture/model"
         onQuit={() => undefined}
+        overlay={overlay}
+        palette={palette}
         sessionId="session-app"
         status={status}
         terminalRows={14}
@@ -55,6 +71,9 @@ function renderApp(
       { columns: 52 },
     )
   } finally {
+    void completion.dispose()
+    palette.dispose()
+    overlay.dispose()
     viewport.dispose()
     editor.dispose()
   }
@@ -147,6 +166,41 @@ describe('InteractiveTui', () => {
       Enter send · ^J newline · ^S steer · ^C cancel"
     `)
 
+    interaction.dispose()
+    await transcript.dispose()
+  })
+
+  it('renders a narrow command palette as a full-screen exclusive overlay', async () => {
+    const transcript = new TranscriptController()
+    const interaction = new InteractionController()
+
+    expect(renderApp(transcript, interaction, (_viewport, overlay, palette) => {
+      palette.insertQuery('rev')
+      overlay.open('command-palette')
+    })).toMatchSnapshot()
+
+    interaction.dispose()
+    await transcript.dispose()
+  })
+
+  it('visually suspends an existing overlay while an interaction owns focus', async () => {
+    const transcript = new TranscriptController()
+    const interaction = new InteractionController()
+    const abort = new AbortController()
+    const pending = interaction.askApproval({
+      agent: { id: 'exact-agent' } as unknown as Agent,
+      reason: 'confirm',
+      toolName: 'fixture',
+    }, abort.signal)
+
+    const rendered = renderApp(transcript, interaction, (_viewport, overlay) => {
+      overlay.open('command-palette')
+    })
+    expect(rendered).toContain('Approval · agent exact-agent')
+    expect(rendered).not.toContain('Command palette')
+
+    abort.abort(new Error('done'))
+    await expect(pending).rejects.toThrow('done')
     interaction.dispose()
     await transcript.dispose()
   })
