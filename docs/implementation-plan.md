@@ -339,6 +339,18 @@ edited document that fails it keeps the last good value and warns.
 
 ### M4.2 Skills and hooks (+3)
 
+Status: **complete**. Skill discovery runs through `ctx.skills.snapshot()` with
+the viewing scope, cwd, and an abort signal; a stale run cannot overwrite a
+fresher one, and an incomplete observation is shown as partial rather than
+cached as authoritative. Details load a skill body for reading, which is a read
+and not an invocation, and the panel only inserts `/name` into the composer for
+a user-invocable skill — the user still submits it.
+
+Hooks have no public inventory on this baseline: `dsh-base` mounts no hook
+service and no package owns one. The panel says so. Building one would require
+reading private configuration or running a hook to observe it, and the second
+has side effects the user did not ask for, so nothing is executed to test it.
+
 - add abortable skill catalog discovery, completeness/error state, details, and
   explicit invocation insertion;
 - show hook providers/configuration and observable failures through public

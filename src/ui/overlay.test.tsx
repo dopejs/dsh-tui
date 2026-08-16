@@ -6,6 +6,7 @@ import type { ChangeIndexSnapshot } from '../model/change-index-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
 import type { JobsSnapshot } from '../model/jobs-controller'
 import type { SessionCenterSnapshot } from '../model/session-center-controller'
+import type { SkillsSnapshot } from '../model/skills-controller'
 import type { SubagentTreeSnapshot } from '../model/subagent-tree-controller'
 import type { PermissionSnapshot } from '../model/permission-controller'
 import type { ProjectionHubSnapshot } from '../model/projection-hub-controller'
@@ -643,6 +644,71 @@ describe('OverlayPanel (M1.3)', () => {
       sessions: emptySessions,
     })
   }
+
+  function renderSkills(columns: number, overrides: Partial<SkillsSnapshot> = {}): string {
+    return renderOverlayPanel({
+      active: 'skills',
+      changes: emptyChanges,
+      columns,
+      completion: emptyCompletion,
+      maxRows: 12,
+      palette: {
+        catalogTruncated: false, items: [], query: '', revision: 0, totalMatches: 0,
+      },
+      permissions: emptyPermissions,
+      recovery: emptyRecovery,
+      sessions: emptySessions,
+      skills: {
+        complete: true,
+        hooks: 'unsupported-no-public-inventory',
+        query: 'rev',
+        revision: 2,
+        rows: [{
+          description: 'Review the diff for correctness',
+          modelInvocable: true,
+          name: 'review-code',
+          provider: 'filesystem',
+          source: 'project-dsh',
+          userInvocable: true,
+        }, {
+          description: 'Internal routing helper',
+          modelInvocable: true,
+          name: 'route-review',
+          provider: 'runtime',
+          source: 'runtime',
+          userInvocable: false,
+        }],
+        selectedIndex: 0,
+        status: 'ready',
+        totalMatches: 2,
+        truncated: false,
+        ...overrides,
+      },
+    })
+  }
+
+  it('renders the skill catalog with invocation controls and the hook boundary', () => {
+    expect(renderSkills(80)).toMatchSnapshot()
+  })
+
+  it('degrades the skill catalog at 40 columns', () => {
+    expect(renderSkills(40)).toMatchSnapshot()
+  })
+
+  it('marks partial skill discovery instead of presenting it as the whole catalog', () => {
+    expect(renderSkills(80, { complete: false })).toMatchSnapshot()
+  })
+
+  it('renders a loaded skill body without implying it was invoked', () => {
+    expect(renderSkills(80, {
+      detail: {
+        content: 'Read the diff first.\nThen check the tests.',
+        name: 'review-code',
+        path: '/skills/review-code/SKILL.md',
+        truncated: false,
+      },
+    })).toMatchSnapshot()
+  })
 
   it('renders coalesced activity from all three sources at 80 columns', () => {
     expect(renderActivity(80)).toMatchSnapshot()

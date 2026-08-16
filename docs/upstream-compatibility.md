@@ -52,6 +52,8 @@ is required by this bundle.
 - `ctx.jobs.list()` / `get()` / `kill()` / `onJobsChanged()` / `onJobDone()` for
   background-job observation and owned cancellation; the consuming `read()` and
   the admitting `attachController()` are deliberately not consumed.
+- `ctx.skills.snapshot()` / `get()` for abortable, completeness-aware skill
+  discovery and body reads.
 - `ctx.settings.register()` plus the returned scope's `get()` / `watch()` /
   `update()` for the `dsh-tui` preference namespace; `SettingsProvider.writable`
   gates whether persistence is promised at all.
@@ -81,6 +83,7 @@ exports.
 | Subagents | `@deepseek-ai/dsh-subagent` plus registered providers and projections | Available in `dsh-base`; `followup()` requires the exact live direct parent, so the TUI addresses only its own direct children |
 | Settings | `@deepseek-ai/dsh-settings` / `ctx.settings` | File-backed provider available in `dsh-base` |
 | Skills | `@deepseek-ai/dsh-skill` / `ctx.skills` | Filesystem provider available in `dsh-base` |
+| Hooks | None | No public inventory service on the baseline; must fail closed |
 | MCP tools | `@deepseek-ai/dsh-mcp-client` registrations in `ctx.tools` | Optional per user profile; no server-health registry on the baseline |
 | Plugin state | `@deepseek-ai/dsh-host-plugin-inventory` / loader projection | Public package exists but is not mounted by `dsh-base` |
 | Attachments | `@deepseek-ai/dsh-attachment` / `ctx.attachments` | Local provider available in `dsh-base` |

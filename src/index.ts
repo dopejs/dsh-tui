@@ -10,6 +10,7 @@ import type {} from '@deepseek-ai/dsh-permission-presets'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import type {} from '@deepseek-ai/dsh-session-projection'
+import type {} from '@deepseek-ai/dsh-skill'
 import { settingsNamespace } from '@deepseek-ai/dsh-settings'
 import z from '@deepseek-ai/schemastery'
 import type {} from '@deepseek-ai/dsh-subagent'
@@ -30,6 +31,7 @@ import { PermissionController } from './model/permission-controller'
 import { ProjectionHubController } from './model/projection-hub-controller'
 import { RecoveryController } from './model/recovery-controller'
 import { SessionCenterController } from './model/session-center-controller'
+import { SkillsController } from './model/skills-controller'
 import { SubagentTreeController } from './model/subagent-tree-controller'
 import { RuntimeStatusController } from './model/runtime-status-controller'
 import { TranscriptController } from './model/transcript-controller'
@@ -191,6 +193,7 @@ export async function startTuiRuntime(
   const jobs = ctx.get('jobs')
   const settings = ctx.get('settings')
   const subagentRuntime = ctx.get('subagents')
+  const skillRegistry = ctx.get('skills')
   const sessionProjections = ctx.get('sessionProjections')
   const sessions = ctx.get('sessions')
   const tools = ctx.get('tools')
@@ -376,6 +379,11 @@ export async function startTuiRuntime(
           { reportError: diagnostics.report },
         )
         bindingOwner.own('activity center controller', () => activity.dispose())
+        const skills = new SkillsController(attachment.agent, skillRegistry, {
+          cwd: dependencies.cwd,
+          reportError: diagnostics.report,
+        })
+        bindingOwner.own('skills controller', () => skills.dispose())
         const editor = new EditorController()
         bindingOwner.own('editor controller', () => editor.dispose())
         const input = new InputController({ agent: attachment.agent, commands })
@@ -515,6 +523,7 @@ export async function startTuiRuntime(
             recovery,
             sessionId,
             runtimeStatus,
+            skills,
             subagents,
             status,
             transcript,

@@ -12,6 +12,7 @@ import { PreferencesController } from '../model/preferences-controller'
 import { PermissionController } from '../model/permission-controller'
 import { ActivityCenterController } from '../model/activity-center-controller'
 import { JobsController } from '../model/jobs-controller'
+import { SkillsController } from '../model/skills-controller'
 import { SubagentTreeController } from '../model/subagent-tree-controller'
 import { ProjectionHubController } from '../model/projection-hub-controller'
 import { RecoveryController } from '../model/recovery-controller'
@@ -129,6 +130,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
     const projections = new ProjectionHubController({} as Agent['session'])
     const jobs = new JobsController({} as Agent)
     const subagents = new SubagentTreeController({} as Agent)
+    const skills = new SkillsController()
     const activity = new ActivityCenterController({ jobs, projections, subagents })
     const recovery = new RecoveryController({
       operations: {
@@ -221,6 +223,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
         preferences={preferences}
         activity={activity}
         jobs={jobs}
+        skills={skills}
         subagents={subagents}
         projections={projections}
         recovery={recovery}
@@ -456,6 +459,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       permission.dispose()
       activity.dispose()
     jobs.dispose()
+    skills.dispose()
     subagents.dispose()
       projections.dispose()
       await recovery.dispose()

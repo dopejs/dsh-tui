@@ -10,6 +10,7 @@ import type { PermissionSnapshot } from '../model/permission-controller'
 import type { ProjectionHubSnapshot } from '../model/projection-hub-controller'
 import type { RecoverySnapshot } from '../model/recovery-controller'
 import type { SessionCenterSnapshot } from '../model/session-center-controller'
+import type { SkillsSnapshot } from '../model/skills-controller'
 import type { SubagentTreeSnapshot } from '../model/subagent-tree-controller'
 import type { TuiTheme } from '../model/preferences-controller'
 import { toneStyle, type SemanticTone } from './theme'
@@ -45,6 +46,7 @@ interface OverlayPanelProps {
   readonly projections: ProjectionHubSnapshot
   readonly recovery: RecoverySnapshot
   readonly sessions: SessionCenterSnapshot
+  readonly skills: SkillsSnapshot
   readonly subagents: SubagentTreeSnapshot
   readonly theme: TuiTheme
 }
@@ -62,10 +64,64 @@ export function OverlayPanel({
   projections,
   recovery,
   sessions,
+  skills,
   subagents,
   theme,
 }: OverlayPanelProps) {
   const tone = (name: Parameters<typeof toneStyle>[1]) => toneStyle(theme, name)
+  if (active === 'skills') {
+    const detail = skills.detail
+    const window = selectedWindow(skills.rows, skills.selectedIndex, maxRows - (detail ? 9 : 6))
+    return (
+      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+        <Text bold wrap="truncate-end">
+          Skills · {skills.status} · {String(skills.totalMatches)} matching
+          {skills.complete ? '' : ' · partial discovery'}
+          {skills.truncated ? ' · truncated' : ''}
+        </Text>
+        <Text wrap="truncate-end">&gt; {skills.query}█</Text>
+        {skills.error === undefined ? null : (
+          <Text {...tone('danger')} wrap="truncate-end">{skills.error}</Text>
+        )}
+        {window.rows.map((row, index) => {
+          const absolute = window.start + index
+          const selected = absolute === skills.selectedIndex
+          return (
+            <Text
+              {...(row.userInvocable ? {} : tone('muted'))}
+              inverse={selected}
+              key={row.name}
+              wrap="truncate-end"
+            >
+              {selected ? '›' : ' '} /{row.name} · {row.description}
+              {row.userInvocable ? '' : ' · model only'} · {row.source}
+            </Text>
+          )
+        })}
+        {detail === undefined ? null : (
+          <Box flexDirection="column">
+            <Text {...tone('accent')} wrap="truncate-end">
+              {detail.name}{detail.path === undefined ? '' : ` · ${detail.path}`}
+              {detail.truncated ? ' · truncated' : ''}
+            </Text>
+            {detail.content.split('\n').slice(0, 3).map((line, index) => (
+              <Text dimColor key={`detail:${String(index)}`} wrap="truncate-end">  {line}</Text>
+            ))}
+          </Box>
+        )}
+        {/* rc.6 publishes no hook inventory; saying so beats guessing at one. */}
+        <Text {...tone('muted')} wrap="truncate-end">
+          Hooks: no public inventory on this Harness baseline
+        </Text>
+        <Text dimColor wrap="truncate-end">
+          {skills.rows.length === 0
+            ? 'type to filter · R refresh · Esc close'
+            : `${String((skills.selectedIndex ?? 0) + 1)}/${String(skills.rows.length)} · ↑/↓ select · Enter insert · ^D details · R refresh · Esc close`}
+        </Text>
+      </Box>
+    )
+  }
+
   if (active === 'activity') {
     const window = selectedWindow(activity.rows, activity.selectedIndex, maxRows - 4)
     return (
@@ -577,14 +633,25 @@ function textLines(value: string | null): readonly string[] {
 }
 
 export function renderOverlayPanel(
-  props: Omit<OverlayPanelProps, 'activity' | 'jobs' | 'projections' | 'subagents' | 'theme'> & {
+  props: Omit<OverlayPanelProps, 'activity' | 'jobs' | 'projections' | 'skills' | 'subagents' | 'theme'> & {
     readonly activity?: ActivityCenterSnapshot
+    readonly skills?: SkillsSnapshot
     readonly theme?: TuiTheme
     readonly jobs?: JobsSnapshot
     readonly projections?: ProjectionHubSnapshot
     readonly subagents?: SubagentTreeSnapshot
   },
 ): string {
+  const skills: SkillsSnapshot = props.skills ?? {
+    complete: true,
+    hooks: 'unsupported-no-public-inventory',
+    query: '',
+    revision: 0,
+    rows: [],
+    status: 'unavailable',
+    totalMatches: 0,
+    truncated: false,
+  }
   const activity: ActivityCenterSnapshot = props.activity ?? {
     counts: { jobsRunning: 0, subagentsUnread: 0, todosOpen: 0 },
     droppedNotifications: 0,
@@ -630,6 +697,7 @@ export function renderOverlayPanel(
       activity={activity}
       jobs={jobs}
       projections={projections}
+      skills={skills}
       subagents={subagents}
       theme={props.theme ?? 'default'}
     />,

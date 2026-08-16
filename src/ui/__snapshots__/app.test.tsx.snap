@@ -8,11 +8,11 @@ exports[`InteractiveTui > renders a narrow command palette as a full-screen excl
 │  Open changes · Review durable tool-presented fi…│
 │  Open activity · Review plan, job, and subagent …│
 │  Open recovery · Flush, export, fork, and inspec…│
+│  Open skills · Browse discovered skills and inse…│
 │  Exit TUI · Gracefully close the interactive TUI │
 │  Go to transcript end · Return to the live trans…│
 │  Copy visible transcript · Request terminal clip…│
 │  Open permissions · Inspect and change the exact…│
-│  Open projections · Inspect plan, todo, goal, us…│
-│1/9 · Enter select · Esc close                    │
+│1/10 · Enter select · Esc close · 1 below         │
 ╰──────────────────────────────────────────────────╯"
 `;

@@ -13,6 +13,7 @@ import { PreferencesController } from '../model/preferences-controller'
 import { PermissionController } from '../model/permission-controller'
 import { ActivityCenterController } from '../model/activity-center-controller'
 import { JobsController } from '../model/jobs-controller'
+import { SkillsController } from '../model/skills-controller'
 import { SubagentTreeController } from '../model/subagent-tree-controller'
 import { ProjectionHubController } from '../model/projection-hub-controller'
 import { RecoveryController } from '../model/recovery-controller'
@@ -65,6 +66,7 @@ function renderApp(
   const projections = new ProjectionHubController({} as Agent['session'])
   const jobs = new JobsController({} as Agent)
   const subagents = new SubagentTreeController({} as Agent)
+  const skills = new SkillsController()
   const activity = new ActivityCenterController({ jobs, projections, subagents })
   const recovery = new RecoveryController({
     operations: {
@@ -100,6 +102,7 @@ function renderApp(
         preferences={preferences}
         activity={activity}
         jobs={jobs}
+        skills={skills}
         subagents={subagents}
         projections={projections}
         recovery={recovery}
@@ -123,6 +126,7 @@ function renderApp(
     permission.dispose()
     activity.dispose()
   jobs.dispose()
+  skills.dispose()
   subagents.dispose()
     projections.dispose()
     void recovery.dispose()

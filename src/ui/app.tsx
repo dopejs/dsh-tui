@@ -26,6 +26,7 @@ import type { RecoveryController } from '../model/recovery-controller'
 import type { PreferencesController } from '../model/preferences-controller'
 import type { PermissionController } from '../model/permission-controller'
 import type { JobsController } from '../model/jobs-controller'
+import type { SkillsController } from '../model/skills-controller'
 import type { ProjectionHubController } from '../model/projection-hub-controller'
 import type { SubagentTreeController } from '../model/subagent-tree-controller'
 import type {
@@ -67,6 +68,7 @@ export interface InteractiveTuiProps {
   readonly recovery: RecoveryController
   readonly sessionId: string
   readonly sessionCenter: SessionCenterController
+  readonly skills: SkillsController
   readonly runtimeStatus: RuntimeStatusController
   readonly status: AgentStatusStore
   readonly subagents: SubagentTreeController
@@ -193,6 +195,7 @@ export function InteractiveTui({
   recovery,
   sessionId,
   sessionCenter,
+  skills,
   runtimeStatus,
   status,
   subagents,
@@ -299,6 +302,11 @@ export function InteractiveTui({
     activity.subscribe,
     activity.getSnapshot,
     activity.getSnapshot,
+  )
+  const skillSnapshot = useSyncExternalStore(
+    skills.subscribe,
+    skills.getSnapshot,
+    skills.getSnapshot,
   )
   const preferenceSnapshot = useSyncExternalStore(
     preferences.subscribe,
@@ -411,6 +419,11 @@ export function InteractiveTui({
         jobs.refresh()
         overlay.open('jobs')
         setNotice('Jobs opened.')
+        return
+      case 'skill.center':
+        void skills.refresh()
+        overlay.open('skills')
+        setNotice('Skills opened.')
         return
       case 'activity.center':
         activity.refresh()
@@ -882,6 +895,30 @@ export function InteractiveTui({
         }
         return
       }
+      if (activeOverlay === 'skills') {
+        if (key.upArrow) skills.move('up')
+        else if (key.downArrow) skills.move('down')
+        else if (key.ctrl && typed.toLowerCase() === 'd') {
+          void skills.inspect().then((ok) => {
+            setNotice(ok ? 'Skill body loaded.' : 'That skill could not be loaded.')
+          })
+        } else if (key.return) {
+          const invocation = skills.invocationFor()
+          if (invocation === undefined) {
+            setNotice('That skill is not user-invocable.')
+          } else if (editor.insert(invocation) === 'limit-exceeded') {
+            setNotice('Composer is full.')
+          } else {
+            overlay.close('skills')
+            setNotice('Skill invocation inserted; press Enter to run it.')
+          }
+        } else if (key.backspace || key.delete) {
+          skills.setQuery(removeLastCharacter(skills.getSnapshot().query))
+        } else if (!key.ctrl && !key.meta && !key.super && typed !== '') {
+          skills.setQuery(skills.getSnapshot().query + typed)
+        }
+        return
+      }
       if (activeOverlay === 'activity') {
         if (key.upArrow) activity.move('up')
         else if (key.downArrow || key.tab) activity.move('down')
@@ -1286,6 +1323,7 @@ export function InteractiveTui({
       activity={activitySnapshot}
       jobs={jobsSnapshot}
       projections={projectionSnapshot}
+      skills={skillSnapshot}
       subagents={subagentSnapshot}
       theme={preferenceSnapshot.theme}
       recovery={recoverySnapshot}
@@ -1308,6 +1346,7 @@ export function InteractiveTui({
           activity={activitySnapshot}
           jobs={jobsSnapshot}
           projections={projectionSnapshot}
+          skills={skillSnapshot}
           subagents={subagentSnapshot}
           theme={preferenceSnapshot.theme}
           recovery={recoverySnapshot}
