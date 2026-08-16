@@ -210,6 +210,13 @@ prompts. Presenter and index failures remain non-authoritative and contained.
 
 ### M2.3 Durable recovery and capability-gated rewind (+5)
 
+Status: **complete**. The Recovery workbench exposes an exact-session durability
+barrier, capability-gated raw export with atomic no-overwrite publication, and
+an explicitly confirmed conversation-only fork. Forking transfers a frozen
+durable seed and parent lineage through public agent creation while the session
+coordinator preserves no-overlap ownership and parent restoration. File rewind
+is visibly unavailable on rc.6; no diff is reverse-applied.
+
 - expose session durability, export, fork, and checkpoint capabilities as
   separate operations;
 - implement conversation fork only through a public lineage/session seam;

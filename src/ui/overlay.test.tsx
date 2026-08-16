@@ -5,6 +5,7 @@ import type { ChangeIndexSnapshot } from '../model/change-index-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
 import type { SessionCenterSnapshot } from '../model/session-center-controller'
 import type { PermissionSnapshot } from '../model/permission-controller'
+import type { RecoverySnapshot } from '../model/recovery-controller'
 import { renderOverlayPanel } from './overlay'
 
 const emptyCompletion: CompletionSnapshot = {
@@ -41,7 +42,81 @@ const emptyPermissions: PermissionSnapshot = {
   truncated: false,
 }
 
+const emptyRecovery: RecoverySnapshot = {
+  capabilities: [],
+  destination: '',
+  revision: 0,
+  selectedIndex: 0,
+  sessionId: 'session',
+  status: 'idle',
+  suggestedExportDestination: 'session.jsonl',
+}
+
 describe('OverlayPanel (M1.3)', () => {
+  it('renders distinct recovery capabilities and fail-closed fork confirmation', () => {
+    const recovery: RecoverySnapshot = {
+      capabilities: [{
+        available: true,
+        detail: 'Await persistence listeners.',
+        id: 'durability',
+        title: 'Durable session barrier',
+      }, {
+        available: true,
+        detail: 'Raw backend artifact: /sessions/current.jsonl',
+        id: 'export',
+        title: 'Raw session export',
+      }, {
+        available: true,
+        detail: 'Create a child conversation.',
+        id: 'fork',
+        title: 'Conversation fork',
+      }, {
+        available: false,
+        detail: 'Unavailable on Harness rc.6: no public file checkpoint owner.',
+        id: 'file-rewind',
+        title: 'File rewind',
+      }],
+      destination: '',
+      revision: 4,
+      selectedIndex: 2,
+      sessionId: 'current-session',
+      status: 'confirming-fork',
+      suggestedExportDestination: 'current-session.jsonl',
+    }
+    expect(renderOverlayPanel({
+      active: 'recovery',
+      changes: emptyChanges,
+      columns: 72,
+      completion: emptyCompletion,
+      maxRows: 12,
+      palette: {
+        catalogTruncated: false, items: [], query: '', revision: 0, totalMatches: 0,
+      },
+      permissions: emptyPermissions,
+      recovery,
+      sessions: emptySessions,
+    })).toMatchSnapshot()
+
+    expect(renderOverlayPanel({
+      active: 'recovery',
+      changes: emptyChanges,
+      columns: 72,
+      completion: emptyCompletion,
+      maxRows: 12,
+      palette: {
+        catalogTruncated: false, items: [], query: '', revision: 0, totalMatches: 0,
+      },
+      permissions: emptyPermissions,
+      recovery: {
+        ...recovery,
+        destination: 'backup.jsonl',
+        selectedIndex: 1,
+        status: 'export-input',
+      },
+      sessions: emptySessions,
+    })).toMatchSnapshot()
+  })
+
   it('renders file-grouped change review with bounded expanded detail', () => {
     const first = {
       callId: 'call-a',
@@ -86,6 +161,7 @@ describe('OverlayPanel (M1.3)', () => {
         catalogTruncated: false, items: [], query: '', revision: 0, totalMatches: 0,
       },
       permissions: emptyPermissions,
+      recovery: emptyRecovery,
       sessions: emptySessions,
     })).toMatchSnapshot()
   })
@@ -114,6 +190,7 @@ describe('OverlayPanel (M1.3)', () => {
       maxRows: 9,
       palette,
       permissions: emptyPermissions,
+      recovery: emptyRecovery,
       sessions: emptySessions,
     })).toMatchSnapshot()
   })
@@ -152,6 +229,7 @@ describe('OverlayPanel (M1.3)', () => {
       maxRows: 8,
       palette,
       permissions: emptyPermissions,
+      recovery: emptyRecovery,
       sessions: emptySessions,
     })).toMatchSnapshot()
   })
@@ -187,6 +265,7 @@ describe('OverlayPanel (M1.3)', () => {
       maxRows: 10,
       palette,
       permissions: emptyPermissions,
+      recovery: emptyRecovery,
       sessions: emptySessions,
     })).toMatchSnapshot()
   })
@@ -231,6 +310,7 @@ describe('OverlayPanel (M1.3)', () => {
       maxRows: 10,
       palette,
       permissions: emptyPermissions,
+      recovery: emptyRecovery,
       sessions,
     })).toMatchSnapshot()
   })
@@ -263,6 +343,7 @@ describe('OverlayPanel (M1.3)', () => {
       maxRows: 10,
       palette,
       permissions,
+      recovery: emptyRecovery,
       sessions: emptySessions,
     })).toMatchSnapshot()
 
@@ -296,6 +377,7 @@ describe('OverlayPanel (M1.3)', () => {
         status: 'ready',
         truncated: false,
       },
+      recovery: emptyRecovery,
       sessions: emptySessions,
     })).toMatchSnapshot()
   })

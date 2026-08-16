@@ -11,6 +11,7 @@ import { InteractionController } from '../model/interaction-controller'
 import { OverlayController } from '../model/overlay-controller'
 import { PreferencesController } from '../model/preferences-controller'
 import { PermissionController } from '../model/permission-controller'
+import { RecoveryController } from '../model/recovery-controller'
 import { SessionCenterController } from '../model/session-center-controller'
 import { RuntimeStatusController } from '../model/runtime-status-controller'
 import { TranscriptController } from '../model/transcript-controller'
@@ -57,6 +58,14 @@ function renderApp(
   })
   const preferences = new PreferencesController()
   const permission = new PermissionController({} as Agent)
+  const recovery = new RecoveryController({
+    operations: {
+      flush: async () => true,
+      fork: async () => ({ boundary: 0, sessionId: 'forked-session' }),
+    },
+    sessionId: 'session-app',
+    suggestedExportDestination: 'session-app.jsonl',
+  })
   const completion = new CompletionController({ complete: async () => [] })
   const sessionCenter = new SessionCenterController({
     inspect: async () => { throw new Error('not configured') },
@@ -81,6 +90,7 @@ function renderApp(
         overlay={overlay}
         palette={palette}
         preferences={preferences}
+        recovery={recovery}
         permission={permission}
         sessionId="session-app"
         sessionCenter={sessionCenter}
@@ -99,6 +109,7 @@ function renderApp(
     void sessionCenter.dispose()
     runtimeStatus.dispose()
     permission.dispose()
+    void recovery.dispose()
     palette.dispose()
     overlay.dispose()
     viewport.dispose()

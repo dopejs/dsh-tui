@@ -1,3 +1,6 @@
+import { mkdtemp, readFile, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { Context } from '@deepseek-ai/cordis'
 import type {
   Agent,
@@ -31,6 +34,7 @@ interface RuntimeFixture {
   readonly order: string[]
   readonly permissionSet: ReturnType<typeof vi.fn>
   readonly questionProvider: () => UserQuestionProvider | undefined
+  readonly readRaw: ReturnType<typeof vi.fn>
   readonly resume: ReturnType<typeof vi.fn>
   readonly resolveModel: ReturnType<typeof vi.fn>
   readonly session: FixtureSession
@@ -63,7 +67,7 @@ class FixtureSession {
   }
 }
 
-function runtimeFixture(): RuntimeFixture {
+function runtimeFixture(options: { readonly rawArtifacts?: boolean } = {}): RuntimeFixture {
   const ctx = new Context()
   const agentCtx = new Context()
   const session = new FixtureSession(agentCtx)
@@ -84,6 +88,29 @@ function runtimeFixture(): RuntimeFixture {
   })
   const handle: AgentHandle = { agent, dispose: disposeHandle }
   const create = vi.fn(async (options: CreateAgentOptions) => {
+    if (options.meta?.parentSession !== undefined) {
+      const childCtx = new Context()
+      const childSessionId = String(options.sessionId)
+      const childSession = new FixtureSession(childCtx, childSessionId)
+      const childAgent = {
+        cancel: vi.fn(),
+        ctx: childCtx,
+        followup: vi.fn(),
+        id: childSessionId,
+        options: options.agentOptions ?? {},
+        session: childSession as unknown as Session,
+        status: 'idle',
+        steer: vi.fn(),
+      } as unknown as Agent
+      await options.setup?.(childCtx)
+      return {
+        agent: childAgent,
+        dispose: async () => {
+          order.push(`handle:${childSessionId}`)
+          await childCtx.fiber.dispose()
+        },
+      }
+    }
     await options.setup?.(agentCtx)
     return handle
   })
@@ -153,9 +180,21 @@ function runtimeFixture(): RuntimeFixture {
       meta: { createdAt: 0, cwd: '/fixture/workspace', id, version: 0 },
     }))
   const listSessions = vi.fn(async () => [])
+  const readRaw = vi.fn(async () => options.rawArtifacts === true
+    ? {
+        content: 'durable raw session\n',
+        filename: 'live-session.jsonl',
+        meta: { id: 'live-session' },
+      }
+    : undefined)
   ctx.provide('sessionPersistence', {
     inspect: inspectSession,
     list: listSessions,
+    locate: () => options.rawArtifacts === true
+      ? { kind: 'jsonl', path: '/fixture/sessions/live-session.jsonl' }
+      : undefined,
+    readRaw,
+    supportsRawArtifacts: options.rawArtifacts === true,
   } as never)
   ctx.provide('sessions', { flush } as never)
   ctx.provide('tools', {
@@ -187,6 +226,7 @@ function runtimeFixture(): RuntimeFixture {
     order,
     permissionSet,
     questionProvider: () => questionProvider,
+    readRaw,
     resume,
     resolveModel,
     session,
@@ -253,12 +293,14 @@ describe('startTuiRuntime', () => {
     const palette = currentApplication(fixture)?.palette
     const completion = currentApplication(fixture)?.completion
     const permission = currentApplication(fixture)?.permission
+    const recovery = currentApplication(fixture)?.recovery
     if (
       editor === undefined
       || overlay === undefined
       || palette === undefined
       || completion === undefined
       || permission === undefined
+      || recovery === undefined
     ) {
       throw new Error('interactive controllers were not mounted')
     }
@@ -270,11 +312,132 @@ describe('startTuiRuntime', () => {
     expect(() => palette.insertQuery('late')).toThrow('disposed')
     expect(() => completion.request('/late', 5)).toThrow('disposed')
     expect(() => permission.requestSelected()).toThrow('disposed')
+    expect(() => recovery.activateSelected()).toThrow('disposed')
     expect(fixture.flush).toHaveBeenCalledWith(fixture.agent.session)
     expect(fixture.disposeHandle).toHaveBeenCalledOnce()
     expect(fixture.unregisterQuestions).toHaveBeenCalledOnce()
     expect(fixture.order).toEqual(['flush', 'handle'])
     await fixture.ctx.fiber.dispose()
+  })
+
+  it('routes durability through the exact session and gates unsupported recovery', async () => {
+    const fixture = runtimeFixture()
+    const dispose = await startTuiRuntime(
+      fixture.ctx,
+      {},
+      new AbortController().signal,
+      dependencies(fixture),
+    )
+    const recovery = currentApplication(fixture)?.recovery
+    if (recovery === undefined) throw new Error('recovery controller was not mounted')
+
+    expect(recovery.getSnapshot().capabilities).toEqual(expect.arrayContaining([
+      expect.objectContaining({ available: false, id: 'export' }),
+      expect.objectContaining({ available: false, id: 'file-rewind' }),
+    ]))
+    expect(recovery.activateSelected()).toBe('started')
+    await vi.waitFor(() => expect(recovery.getSnapshot().status).toBe('success'))
+    expect(fixture.flush).toHaveBeenCalledWith(fixture.agent.session)
+
+    await dispose()
+    await fixture.ctx.fiber.dispose()
+  })
+
+  it('forks through public agent seed/lineage creation without overlapping bindings', async () => {
+    const fixture = runtimeFixture()
+    const dispose = await startTuiRuntime(
+      fixture.ctx,
+      {},
+      new AbortController().signal,
+      dependencies(fixture),
+    )
+    const recovery = currentApplication(fixture)?.recovery
+    const sessions = fixture.mounted[0]?.sessions
+    if (recovery === undefined || sessions === undefined) {
+      throw new Error('recovery runtime was not mounted')
+    }
+
+    recovery.move('down')
+    recovery.move('down')
+    expect(recovery.activateSelected()).toBe('confirmation-required')
+    expect(recovery.confirm()).toBe(true)
+    await vi.waitFor(() => expect(sessions.getSnapshot()).toMatchObject({
+      binding: { sessionId: 'new-session' },
+      status: 'attached',
+    }))
+
+    expect(fixture.create).toHaveBeenCalledTimes(2)
+    expect(fixture.create.mock.calls[1]?.[0]).toMatchObject({
+      meta: {
+        cwd: '/fixture/workspace',
+        parentSession: 'live-session',
+        seedLength: 0,
+      },
+      seed: [],
+      sessionId: 'new-session',
+    })
+    expect(fixture.order).toEqual(['flush', 'flush', 'handle'])
+    fixture.listSessions.mockResolvedValue([{
+      createdAt: 2,
+      cwd: '/fixture/workspace',
+      id: 'new-session',
+      parentSession: 'live-session',
+      seedLength: 0,
+      version: 0,
+    }, {
+      createdAt: 1,
+      cwd: '/fixture/workspace',
+      id: 'live-session',
+      version: 0,
+    }])
+    fixture.mounted[0]?.sessionCenter.refresh()
+    await vi.waitFor(() => expect(
+      fixture.mounted[0]?.sessionCenter.getSnapshot().items[0],
+    ).toMatchObject({ id: 'new-session', isCurrent: true }))
+
+    await dispose()
+    expect(fixture.order).toEqual([
+      'flush',
+      'flush',
+      'handle',
+      'flush',
+      'handle:new-session',
+    ])
+    await fixture.ctx.fiber.dispose()
+  })
+
+  it('exports the exact backend-owned raw artifact through the recovery adapter', async () => {
+    const workspace = await mkdtemp(join(tmpdir(), 'dsh-tui-runtime-export-'))
+    const fixture = runtimeFixture({ rawArtifacts: true })
+    let dispose: (() => Promise<void>) | undefined
+    try {
+      dispose = await startTuiRuntime(
+        fixture.ctx,
+        {},
+        new AbortController().signal,
+        dependencies(fixture),
+      )
+      const recovery = currentApplication(fixture)?.recovery
+      if (recovery === undefined) throw new Error('recovery controller was not mounted')
+      recovery.move('down')
+      expect(recovery.activateSelected()).toBe('input-required')
+      const destination = join(workspace, 'export.jsonl')
+      recovery.insertDestination(destination)
+      recovery.confirm()
+      await vi.waitFor(() => expect(recovery.getSnapshot().status).toBe('success'))
+
+      expect(await readFile(destination, 'utf8')).toBe('durable raw session\n')
+      expect(fixture.readRaw).toHaveBeenCalledWith(
+        'live-session',
+        expect.any(AbortSignal),
+      )
+      await dispose()
+      dispose = undefined
+    } finally {
+      await dispose?.()
+      await fixture.ctx.fiber.dispose()
+      await rm(workspace, { recursive: true })
+    }
   })
 
   it('resumes the requested session and makes application quit use launcher exit', async () => {

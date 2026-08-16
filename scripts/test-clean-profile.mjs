@@ -229,6 +229,31 @@ async function exerciseMultilineComposer(running) {
   await waitForOutputSince(running, offset, 'Overlay closed.', 'close changes')
 
   offset = running.output().length
+  running.child.write('\u0010')
+  await waitForOutputSince(running, offset, 'Command palette', 'open recovery discovery')
+  running.child.write('open recovery')
+  await waitForOutputSince(running, offset, 'Open recovery', 'discover recovery')
+  offset = running.output().length
+  running.child.write('\r')
+  await waitForOutputSince(running, offset, 'Recovery · session-', 'open recovery')
+  running.child.write('\u001B[B')
+  running.child.write('\u001B[B')
+  running.child.write('\u001B[B')
+  await waitForOutputSince(running, offset, 'File rewind · unavailable', 'gate file rewind')
+  running.child.write('\u001B[A')
+  offset = running.output().length
+  running.child.write('\r')
+  await waitForOutputSince(
+    running,
+    offset,
+    'Fork conversation only; current workspace files are not rewound.',
+    'confirm the conversation-only fork boundary',
+  )
+  offset = running.output().length
+  running.child.write('\r')
+  await waitForOutputSince(running, offset, 'dsh-tui · session-', 'attach the conversation fork')
+
+  offset = running.output().length
   running.child.write('/ex')
   await waitForOutputSince(running, offset, '/ex', 'render the command completion query')
   offset = running.output().length
@@ -260,7 +285,20 @@ async function exerciseSessionSwitch(running, targetSessionId) {
   await waitForOutputSince(running, offset, 'Session center · ready', 'load persisted sessions')
   offset = running.output().length
   running.child.write(targetSessionId)
-  await waitForOutputSince(running, offset, targetSessionId, 'filter the target session')
+  await waitForOutputSince(
+    running,
+    offset,
+    `> ${targetSessionId}`,
+    'apply the target session filter',
+  )
+  offset = running.output().length
+  running.child.write(' ')
+  await waitForOutputSince(
+    running,
+    offset,
+    `Preview ${targetSessionId}`,
+    'preview the filtered target session',
+  )
   offset = running.output().length
   running.child.write('\r')
   await waitForOutputSince(

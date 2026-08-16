@@ -25,6 +25,14 @@ export type AgentAttachmentRequest =
       readonly kind: 'resume'
       readonly sessionId: string
     }
+  | {
+      readonly cwd: string
+      readonly kind: 'fork'
+      readonly modelSelection?: ModelSelection
+      readonly parentSessionId: string
+      readonly seed: readonly SessionEvent[]
+      readonly sessionId: string
+    }
 
 export interface SessionEventBatch {
   readonly events: readonly SessionEvent[]
@@ -279,7 +287,7 @@ export async function attachAgent(
 
   const owner = new ResourceOwner()
   try {
-    const selection = options.request.kind === 'create'
+    const selection = options.request.kind !== 'resume'
       ? (options.request.modelSelection ?? defaultModel.currentSelection())
       : defaultModel.currentSelection()
     const selectionRef: ModelSelectionRef = {
@@ -293,10 +301,19 @@ export async function attachAgent(
       model: selection.model,
       provider: selection.provider,
     }
-    const handle: AgentHandle = options.request.kind === 'create'
+    const handle: AgentHandle = options.request.kind !== 'resume'
       ? await agents.create({
           agentOptions,
-          meta: { cwd: options.request.cwd },
+          meta: {
+            cwd: options.request.cwd,
+            ...(options.request.kind === 'fork'
+              ? {
+                  parentSession: SessionId(options.request.parentSessionId),
+                  seedLength: options.request.seed.length,
+                }
+              : {}),
+          },
+          ...(options.request.kind === 'fork' ? { seed: options.request.seed } : {}),
           sessionId: SessionId(options.request.sessionId),
           setup,
           signal: lifecycleAbort.signal,

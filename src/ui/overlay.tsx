@@ -5,6 +5,7 @@ import type { CommandPaletteSnapshot } from '../model/command-palette-controller
 import type { CompletionSnapshot } from '../model/completion-controller'
 import type { OverlayKind } from '../model/overlay-controller'
 import type { PermissionSnapshot } from '../model/permission-controller'
+import type { RecoverySnapshot } from '../model/recovery-controller'
 import type { SessionCenterSnapshot } from '../model/session-center-controller'
 
 interface OverlayWindow<T> {
@@ -33,6 +34,7 @@ interface OverlayPanelProps {
   readonly maxRows: number
   readonly palette: CommandPaletteSnapshot
   readonly permissions: PermissionSnapshot
+  readonly recovery: RecoverySnapshot
   readonly sessions: SessionCenterSnapshot
 }
 
@@ -44,8 +46,69 @@ export function OverlayPanel({
   maxRows,
   palette,
   permissions,
+  recovery,
   sessions,
 }: OverlayPanelProps) {
+  if (active === 'recovery') {
+    const window = selectedWindow(
+      recovery.capabilities,
+      recovery.selectedIndex,
+      Math.max(1, maxRows - 7),
+    )
+    const selected = recovery.capabilities[recovery.selectedIndex]
+    return (
+      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+        <Text bold wrap="truncate-end">
+          Recovery · {recovery.sessionId} · {recovery.status}
+        </Text>
+        {window.rows.map((capability, index) => {
+          const absolute = window.start + index
+          const isSelected = absolute === recovery.selectedIndex
+          return (
+            <Text inverse={isSelected} key={capability.id} wrap="truncate-end">
+              {isSelected ? '›' : ' '} {capability.available ? '●' : '○'} {capability.title}
+              {' · '}{capability.available ? 'available' : 'unavailable'}
+            </Text>
+          )
+        })}
+        {selected === undefined ? null : (
+          <Text dimColor wrap="truncate-end">{selected.detail}</Text>
+        )}
+        {recovery.status === 'export-input' ? (
+          <>
+            <Text wrap="truncate-end">Destination (existing files are never overwritten)</Text>
+            <Text wrap="truncate-end">
+              &gt; {recovery.destination}<Text inverse>█</Text>
+              {recovery.destination === ''
+                ? <Text dimColor> {recovery.suggestedExportDestination}</Text>
+                : null}
+            </Text>
+          </>
+        ) : null}
+        {recovery.status === 'confirming-fork' ? (
+          <Text color="yellow" wrap="truncate-end">
+            Fork conversation only; current workspace files are not rewound. Enter confirms.
+          </Text>
+        ) : null}
+        {recovery.error === undefined ? null : (
+          <Text color="red" wrap="truncate-end">{recovery.error}</Text>
+        )}
+        {recovery.result === undefined ? null : (
+          <Text color="green" wrap="truncate-end">{recovery.result}</Text>
+        )}
+        <Text dimColor wrap="truncate-end">
+          {recovery.status === 'export-input'
+            ? 'Enter export · Esc cancel'
+            : recovery.status === 'confirming-fork'
+              ? 'Enter fork · Esc cancel'
+              : recovery.status === 'running'
+                ? `Running ${recovery.activeOperation ?? 'recovery'}… · Esc cancel`
+                : '↑/↓ select · Enter activate · Esc close'}
+        </Text>
+      </Box>
+    )
+  }
+
   if (active === 'changes') {
     const flattened = changes.groups.flatMap(group => group.changes.map((change, index) => ({
       change,

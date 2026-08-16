@@ -60,7 +60,10 @@ exports.
 | Product capability | Public Harness owner on the baseline | Baseline state |
 | --- | --- | --- |
 | Session list and inspection | `@deepseek-ai/dsh-session-persistence` / `ctx.sessionPersistence` | Available in `dsh-base` |
-| Session metadata search and export reads | `@deepseek-ai/dsh-session-query`, `@deepseek-ai/dsh-session-log-export` | Query mounted in `dsh-base`; full-text search disabled by default |
+| Exact-session durability barrier | `@deepseek-ai/dsh-session` / `ctx.sessions.flush()` | Available; zero listeners is reported as failure |
+| Raw session export | `ctx.sessionPersistence.supportsRawArtifacts` / `readRaw()` | Backend-gated; unavailable without a verbatim artifact |
+| Conversation fork with live agent | `ctx.agents.create()` seed plus `parentSession` lineage | Available at the current idle balanced boundary |
+| Session metadata search | `@deepseek-ai/dsh-session-query` | Query mounted in `dsh-base`; full-text search disabled by default |
 | Model catalog and default selection | `ctx.llm`, `@deepseek-ai/dsh-agent-default-model` | Available in `dsh-base` |
 | Permission modes | `@deepseek-ai/dsh-permission-presets` / `ctx.permissionPresets` | Available in `dsh-base` |
 | Sandbox enforcement | `@deepseek-ai/dsh-sandbox-policy` and selected sandbox provider | Available in `dsh-base`; enforcement stays upstream-owned |

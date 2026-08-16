@@ -11,6 +11,10 @@ export interface SessionBindingFactory<TBinding extends SwitchableSessionBinding
   resume(sessionId: string, signal: AbortSignal): Promise<TBinding>
 }
 
+export type SessionBindingCreator<TBinding extends SwitchableSessionBinding> = (
+  signal: AbortSignal,
+) => Promise<TBinding>
+
 export interface SessionAttachmentSnapshot<TBinding extends SwitchableSessionBinding> {
   readonly binding?: TBinding
   readonly error?: string
@@ -92,6 +96,33 @@ export class SessionAttachmentCoordinator<TBinding extends SwitchableSessionBind
   }
 
   switchSession(sessionId: string, signal: AbortSignal): Promise<void> {
+    return this.#startTransition(
+      sessionId,
+      signal,
+      transitionSignal => this.#factory.preflight(sessionId, transitionSignal),
+      transitionSignal => this.#factory.resume(sessionId, transitionSignal),
+    )
+  }
+
+  createSession(
+    sessionId: string,
+    create: SessionBindingCreator<TBinding>,
+    signal: AbortSignal,
+  ): Promise<void> {
+    return this.#startTransition(
+      sessionId,
+      signal,
+      () => Promise.resolve(),
+      transitionSignal => create(transitionSignal),
+    )
+  }
+
+  #startTransition(
+    sessionId: string,
+    signal: AbortSignal,
+    preflight: (signal: AbortSignal) => Promise<void>,
+    attach: (signal: AbortSignal) => Promise<TBinding>,
+  ): Promise<void> {
     this.#assertActive()
     if (this.#binding?.sessionId === sessionId && this.#transition === undefined) {
       return Promise.resolve()
@@ -106,7 +137,12 @@ export class SessionAttachmentCoordinator<TBinding extends SwitchableSessionBind
     this.#lifecycleAbort.signal.addEventListener('abort', forwardLifecycle, { once: true })
     if (signal.aborted) forwardCaller()
     if (this.#lifecycleAbort.signal.aborted) forwardLifecycle()
-    const task = this.#performSwitch(sessionId, transitionAbort.signal).finally(() => {
+    const task = this.#performSwitch(
+      sessionId,
+      transitionAbort.signal,
+      preflight,
+      attach,
+    ).finally(() => {
       signal.removeEventListener('abort', forwardCaller)
       this.#lifecycleAbort.signal.removeEventListener('abort', forwardLifecycle)
       if (this.#transition === task) this.#transition = undefined
@@ -146,7 +182,12 @@ export class SessionAttachmentCoordinator<TBinding extends SwitchableSessionBind
     }
   }
 
-  async #performSwitch(sessionId: string, signal: AbortSignal): Promise<void> {
+  async #performSwitch(
+    sessionId: string,
+    signal: AbortSignal,
+    preflight: (signal: AbortSignal) => Promise<void>,
+    attach: (signal: AbortSignal) => Promise<TBinding>,
+  ): Promise<void> {
     if (signal.aborted) throw abortError(signal)
     const previous = this.#binding
     if (previous === undefined) throw new Error('No attached session is available to switch')
@@ -157,7 +198,7 @@ export class SessionAttachmentCoordinator<TBinding extends SwitchableSessionBind
     previous.setAcceptingInput(false)
     this.#publish()
     try {
-      await this.#factory.preflight(sessionId, signal)
+      await preflight(signal)
       if (signal.aborted) throw abortError(signal)
     } catch (error) {
       previous.setAcceptingInput(true)
@@ -182,7 +223,7 @@ export class SessionAttachmentCoordinator<TBinding extends SwitchableSessionBind
     let unsafeToRestore = false
     try {
       if (signal.aborted) throw abortError(signal)
-      const next = await this.#factory.resume(sessionId, signal)
+      const next = await attach(signal)
       if (signal.aborted) {
         try {
           await next.dispose()

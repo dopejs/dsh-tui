@@ -21,6 +21,7 @@ import type { OverlayController } from '../model/overlay-controller'
 import { resolveInputSurface } from '../model/overlay-controller'
 import type { SessionCenterController } from '../model/session-center-controller'
 import type { RuntimeStatusController } from '../model/runtime-status-controller'
+import type { RecoveryController } from '../model/recovery-controller'
 import type { PreferencesController } from '../model/preferences-controller'
 import type { PermissionController } from '../model/permission-controller'
 import type {
@@ -56,6 +57,7 @@ export interface InteractiveTuiProps {
   readonly palette: CommandPaletteController
   readonly permission: PermissionController
   readonly preferences: PreferencesController
+  readonly recovery: RecoveryController
   readonly sessionId: string
   readonly sessionCenter: SessionCenterController
   readonly runtimeStatus: RuntimeStatusController
@@ -176,6 +178,7 @@ export function InteractiveTui({
   palette,
   permission,
   preferences,
+  recovery,
   sessionId,
   sessionCenter,
   runtimeStatus,
@@ -258,6 +261,11 @@ export function InteractiveTui({
     runtimeStatus.subscribe,
     runtimeStatus.getSnapshot,
     runtimeStatus.getSnapshot,
+  )
+  const recoverySnapshot = useSyncExternalStore(
+    recovery.subscribe,
+    recovery.getSnapshot,
+    recovery.getSnapshot,
   )
 
   useEffect(() => {
@@ -364,6 +372,10 @@ export function InteractiveTui({
       case 'permission.center':
         overlay.open('permissions')
         setNotice('Permissions opened.')
+        return
+      case 'recovery.center':
+        overlay.open('recovery')
+        setNotice('Recovery opened.')
         return
       case 'session.center':
         sessionCenter.resetQuery()
@@ -485,6 +497,13 @@ export function InteractiveTui({
         if (permission.getSnapshot().status !== 'confirming') return
         if (permission.insertConfirmation(normalized) === 'limit-exceeded') {
           setNotice('Permission confirmation is too long.')
+        }
+        return
+      }
+      if (overlay.getSnapshot().active === 'recovery') {
+        if (recovery.getSnapshot().status !== 'export-input') return
+        if (recovery.insertDestination(normalized) === 'limit-exceeded') {
+          setNotice('Export destination is too long.')
         }
         return
       }
@@ -635,6 +654,25 @@ export function InteractiveTui({
         setNotice('Dangerous permission change cancelled.')
         return
       }
+      if (
+        activeOverlay === 'recovery'
+        && (recovery.getSnapshot().status === 'export-input'
+          || recovery.getSnapshot().status === 'confirming-fork')
+        && (key.escape || (key.ctrl && typed.toLowerCase() === 'c'))
+      ) {
+        recovery.cancelMode()
+        setNotice('Recovery action cancelled.')
+        return
+      }
+      if (
+        activeOverlay === 'recovery'
+        && recovery.getSnapshot().status === 'running'
+        && (key.escape || (key.ctrl && typed.toLowerCase() === 'c'))
+      ) {
+        recovery.cancelOperation()
+        setNotice('Recovery cancellation requested.')
+        return
+      }
       if (key.escape || (key.ctrl && typed.toLowerCase() === 'c')) {
         if (activeOverlay === 'completion') completion.cancel()
         overlay.close()
@@ -701,6 +739,28 @@ export function InteractiveTui({
               : result === 'unavailable'
                 ? 'Permission preset service is unavailable.'
                 : 'Permission preset is already active or could not be changed.')
+        }
+        return
+      }
+      if (activeOverlay === 'recovery') {
+        const recoveryStatus = recovery.getSnapshot().status
+        if (recoveryStatus === 'export-input') {
+          if (key.return) recovery.confirm()
+          else if (key.backspace || key.delete) recovery.backspaceDestination()
+          else if (!key.ctrl && !key.meta && !key.super && typed !== '') {
+            if (recovery.insertDestination(typed) === 'limit-exceeded') {
+              setNotice('Export destination is too long.')
+            }
+          }
+        } else if (recoveryStatus === 'confirming-fork') {
+          if (key.return) recovery.confirm()
+        } else if (recoveryStatus !== 'running') {
+          if (key.upArrow) recovery.move('up')
+          else if (key.downArrow || key.tab) recovery.move('down')
+          else if (key.return) {
+            const result = recovery.activateSelected()
+            if (result === 'unavailable') setNotice('Selected recovery capability is unavailable.')
+          }
         }
         return
       }
@@ -1018,6 +1078,7 @@ export function InteractiveTui({
       maxRows={overlayMaxRows}
       palette={paletteSnapshot}
       permissions={permissionSnapshot}
+      recovery={recoverySnapshot}
       sessions={sessionCenterSnapshot}
     />
   }
@@ -1034,6 +1095,7 @@ export function InteractiveTui({
           maxRows={overlayMaxRows}
           palette={paletteSnapshot}
           permissions={permissionSnapshot}
+          recovery={recoverySnapshot}
           sessions={sessionCenterSnapshot}
         />
       )}

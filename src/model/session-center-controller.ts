@@ -366,9 +366,16 @@ export class SessionCenterController {
 
   #filteredItems(limit = true): SessionCenterItem[] {
     const query = this.#query.toLowerCase()
-    const matches = query === ''
+    let matches = query === ''
       ? [...this.#items]
       : this.#items.filter(item => searchText(item).includes(query))
+    if (query !== '') {
+      matches = matches.sort((left, right) => {
+        const leftExact = left.id.toLowerCase() === query
+        const rightExact = right.id.toLowerCase() === query
+        return Number(rightExact) - Number(leftExact)
+      })
+    }
     return limit ? matches.slice(0, this.#maxResults) : matches
   }
 

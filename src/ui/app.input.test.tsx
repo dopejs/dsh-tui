@@ -10,6 +10,7 @@ import { InteractionController } from '../model/interaction-controller'
 import { OverlayController } from '../model/overlay-controller'
 import { PreferencesController } from '../model/preferences-controller'
 import { PermissionController } from '../model/permission-controller'
+import { RecoveryController } from '../model/recovery-controller'
 import { SessionCenterController } from '../model/session-center-controller'
 import { RuntimeStatusController } from '../model/runtime-status-controller'
 import { TranscriptController } from '../model/transcript-controller'
@@ -121,6 +122,14 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
     })
     const preferences = new PreferencesController()
     const permission = new PermissionController({} as Agent)
+    const recovery = new RecoveryController({
+      operations: {
+        flush: async () => true,
+        fork: async () => ({ boundary: 0, sessionId: 'forked-session' }),
+      },
+      sessionId: 'input-session',
+      suggestedExportDestination: 'input-session.jsonl',
+    })
     const completion = new CompletionController({
       complete: async request => request.kind === 'command'
         ? [{
@@ -190,6 +199,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
         overlay={overlay}
         palette={palette}
         preferences={preferences}
+        recovery={recovery}
         permission={permission}
         sessionId="input-session"
         sessionCenter={sessionCenter}
@@ -328,6 +338,27 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
 
       stdin.write('\u001B[112;5u')
       await eventually(() => expect(overlay.getSnapshot().active).toBe('command-palette'))
+      stdin.write('open recovery')
+      await eventually(() => expect(palette.getSnapshot().query).toBe('open recovery'))
+      stdin.write('\r')
+      await eventually(() => expect(overlay.getSnapshot().active).toBe('recovery'))
+      stdin.write('\r')
+      await eventually(() => expect(recovery.getSnapshot().status).toBe('success'))
+      stdin.write('\u001B[B\u001B[B')
+      await eventually(() => expect(recovery.getSnapshot().selectedIndex).toBe(2))
+      stdin.write('\r')
+      await eventually(() => expect(recovery.getSnapshot().status).toBe('confirming-fork'))
+      stdin.write('\u001B[27u')
+      await eventually(() => expect(recovery.getSnapshot().status).toBe('idle'))
+      expect(recovery.getSnapshot().capabilities[3]).toMatchObject({
+        available: false,
+        id: 'file-rewind',
+      })
+      stdin.write('\u001B[27u')
+      await eventually(() => expect(overlay.getSnapshot().active).toBeUndefined())
+
+      stdin.write('\u001B[112;5u')
+      await eventually(() => expect(overlay.getSnapshot().active).toBe('command-palette'))
       stdin.write('fail')
       await eventually(() => expect(palette.getSnapshot().query).toBe('fail'))
       stdin.write('\r')
@@ -349,6 +380,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       await sessionCenter.dispose()
       runtimeStatus.dispose()
       permission.dispose()
+      await recovery.dispose()
       palette.dispose()
       overlay.dispose()
       viewport.dispose()

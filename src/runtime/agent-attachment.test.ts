@@ -198,6 +198,42 @@ describe('attachAgent', () => {
     await ctx.fiber.dispose()
   })
 
+  it('creates a lineage-preserving agent from an immutable fork seed', async () => {
+    const ctx = new Context()
+    const fixture = createAgentFixture()
+    const services = provideAgentServices(ctx, fixture)
+    const seed = Object.freeze([event(0)])
+
+    const attachment = await attachAgent(ctx, {
+      onEvents: () => undefined,
+      request: {
+        cwd: resolve('fixture-workspace'),
+        kind: 'fork',
+        modelSelection: { model: 'fork-model', provider: 'fork-provider' },
+        parentSessionId: 'parent-session',
+        seed,
+        sessionId: 'child-session',
+      },
+      signal: new AbortController().signal,
+    })
+
+    expect(services.resume).not.toHaveBeenCalled()
+    expect(services.create).toHaveBeenCalledOnce()
+    expect(services.create.mock.calls[0]?.[0]).toMatchObject({
+      agentOptions: { model: 'fork-model', provider: 'fork-provider' },
+      meta: {
+        cwd: resolve('fixture-workspace'),
+        parentSession: 'parent-session',
+        seedLength: 1,
+      },
+      seed,
+      sessionId: 'child-session',
+    })
+
+    await attachment.dispose()
+    await ctx.fiber.dispose()
+  })
+
   it('performs listener-first replay/live handoff without duplicates or gaps', async () => {
     const ctx = new Context()
     const first = event(0)

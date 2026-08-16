@@ -90,6 +90,30 @@ describe('SessionCenterController (M1.4)', () => {
     await center.dispose()
   })
 
+  it('ranks an exact session id above a newer child lineage match', async () => {
+    const parent = header('parent-session', 1)
+    const child: SessionHeader = {
+      ...header('child-session', 2),
+      parentSession: SessionId('parent-session'),
+      seedLength: 1,
+    }
+    const source = fixture([parent, child])
+    const center = new SessionCenterController(source.persistence, source.target, {
+      currentSessionId: 'unmaterialized-current',
+    })
+    center.refresh()
+    await vi.waitFor(() => expect(center.getSnapshot().status).toBe('ready'))
+
+    center.insertQuery('parent-session')
+    expect(center.getSnapshot().items.map(item => item.id)).toEqual([
+      'parent-session',
+      'child-session',
+    ])
+    expect(center.selected()?.id).toBe('parent-session')
+
+    await center.dispose()
+  })
+
   it('switches only to a non-current selected session and updates exact identity', async () => {
     const source = fixture([header('current', 2), header('target', 1)])
     const center = new SessionCenterController(source.persistence, source.target, {

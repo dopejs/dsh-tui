@@ -11,6 +11,7 @@ export type TuiActionId =
   | 'changes.center'
   | 'composer.clear'
   | 'permission.center'
+  | 'recovery.center'
   | 'session.center'
   | 'transcript.compact-tools'
   | 'transcript.copy-visible'
@@ -81,6 +82,12 @@ export const DEFAULT_TUI_ACTIONS: readonly TuiActionDescriptor[] = Object.freeze
     id: 'permission.center',
     keywords: Object.freeze(['approval', 'sandbox', 'safety']),
     title: 'Open permissions',
+  }),
+  Object.freeze({
+    description: 'Flush, export, fork, and inspect recovery boundaries',
+    id: 'recovery.center',
+    keywords: Object.freeze(['checkpoint', 'durability', 'rewind']),
+    title: 'Open recovery',
   }),
   Object.freeze({
     description: 'Browse and resume persisted sessions',

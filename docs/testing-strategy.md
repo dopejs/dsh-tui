@@ -135,6 +135,9 @@ Post-MVP fixtures also cover:
 - parallel and repeated public diff presentations, planned-to-result
   replacement, malformed diff containment, bounded change-index eviction,
   approval context, and retained-row navigation;
+- exact-session durability participation, raw-export absence/abort/no-overwrite,
+  conversation-fork lineage, no-overlap attachment transfer, parent recovery,
+  and explicit rc.6 file-rewind unavailability;
 - model/default selection and permission-preset transitions;
 - exact startup-model preflight, 40/80/120-column status degradation, missing
   status facts, and atomic preference collision/fallback behavior;

@@ -41,6 +41,33 @@ exports[`OverlayPanel (M1.3) > renders command/path completion states 1`] = `
 ╰──────────────────────────────────────────────────────────╯"
 `;
 
+exports[`OverlayPanel (M1.3) > renders distinct recovery capabilities and fail-closed fork confirmation 1`] = `
+"╭──────────────────────────────────────────────────────────────────────╮
+│Recovery · current-session · confirming-fork                          │
+│  ● Durable session barrier · available                               │
+│  ● Raw session export · available                                    │
+│› ● Conversation fork · available                                     │
+│  ○ File rewind · unavailable                                         │
+│Create a child conversation.                                          │
+│Fork conversation only; current workspace files are not rewound. Ente…│
+│Enter fork · Esc cancel                                               │
+╰──────────────────────────────────────────────────────────────────────╯"
+`;
+
+exports[`OverlayPanel (M1.3) > renders distinct recovery capabilities and fail-closed fork confirmation 2`] = `
+"╭──────────────────────────────────────────────────────────────────────╮
+│Recovery · current-session · export-input                             │
+│  ● Durable session barrier · available                               │
+│› ● Raw session export · available                                    │
+│  ● Conversation fork · available                                     │
+│  ○ File rewind · unavailable                                         │
+│Raw backend artifact: /sessions/current.jsonl                         │
+│Destination (existing files are never overwritten)                    │
+│> backup.jsonl█                                                       │
+│Enter export · Esc cancel                                             │
+╰──────────────────────────────────────────────────────────────────────╯"
+`;
+
 exports[`OverlayPanel (M1.3) > renders file-grouped change review with bounded expanded detail 1`] = `
 "╭──────────────────────────────────────────────────────────────╮
 │Changes · 1 files · 2 edits                                   │

@@ -220,6 +220,29 @@ file mutation was applied. It owns only review navigation and fold state; the
 durable transcript remains the history source of truth. Approval prompts may
 look up planned paths only by the exact call id.
 
+## Recovery capabilities
+
+Durability, raw export, conversation fork, and file rewind are independent
+capabilities. The recovery controller never infers one from another.
+
+`ctx.sessions.flush(exactSession)` is the manual durability barrier. Raw export
+is enabled only when `ctx.sessionPersistence.supportsRawArtifacts` is true; the
+adapter reads that backend-owned artifact and atomically links a private
+temporary file to the user's explicit destination, refusing existing files and
+symlinks.
+
+At an idle balanced boundary, a conversation fork snapshots the immutable live
+event prefix after flushing and transfers it to `ctx.agents.create()` with a
+fresh session id and durable parent/seed metadata. The attachment coordinator
+owns the transition: parent disposal completes before child creation, and a
+failed child creation restores the persisted parent. The child shares the
+current workspace path; it does not rewind files. See
+[ADR-0005](decisions/0005-separate-conversation-recovery-from-file-rewind.md).
+
+Harness rc.6 exposes no file-checkpoint owner, so file rewind is an explicit
+unavailable state. Tool diff intents are review evidence only and are never
+reverse-applied.
+
 ## Live state
 
 Live state is deliberately separate from durable transcript state:

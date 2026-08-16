@@ -20,6 +20,7 @@ import { InteractionController } from './model/interaction-controller'
 import { OverlayController } from './model/overlay-controller'
 import { PreferencesController } from './model/preferences-controller'
 import { PermissionController } from './model/permission-controller'
+import { RecoveryController } from './model/recovery-controller'
 import { SessionCenterController } from './model/session-center-controller'
 import { RuntimeStatusController } from './model/runtime-status-controller'
 import { TranscriptController } from './model/transcript-controller'
@@ -32,6 +33,7 @@ import { InputController } from './runtime/input-controller'
 import { InteractionScheduler } from './runtime/interaction-scheduler'
 import { ResourceOwner } from './runtime/resource-owner'
 import { SessionAttachmentCoordinator } from './runtime/session-attachment-coordinator'
+import { exportRawSession } from './runtime/session-export'
 import { WorkspaceCompletionProvider } from './runtime/workspace-completion-provider'
 import type { TuiStartupValues } from './startup'
 import {
@@ -244,6 +246,7 @@ export async function startTuiRuntime(
     })
     owner.own('exit command', unregisterExitCommand)
     const preferences = new PreferencesController()
+    const coordinatorRef: { current?: SessionAttachmentCoordinator<TuiSessionBinding> } = {}
 
     const createBinding = async (
       request: AgentAttachmentRequest,
@@ -298,6 +301,96 @@ export async function startTuiRuntime(
         bindingOwner.own('editor controller', () => editor.dispose())
         const input = new InputController({ agent: attachment.agent, commands })
         bindingOwner.own('input controller', () => input.dispose())
+        let exportLocation: string | undefined
+        try {
+          exportLocation = sessionPersistence.locate(attachment.agent.session.header)?.path
+        } catch (error) {
+          diagnostics.report(error)
+        }
+        const recovery = new RecoveryController({
+          exportDetail: sessionPersistence.supportsRawArtifacts
+            ? `Raw backend artifact${exportLocation === undefined ? '' : `: ${exportLocation}`}`
+            : 'The configured backend has no verbatim per-session artifact.',
+          operations: {
+            ...(sessionPersistence.supportsRawArtifacts
+              ? {
+                  exportRaw: async (destination: string, operationSignal: AbortSignal) => {
+                    if (operationSignal.aborted) throw operationSignal.reason
+                    const participated = await sessions.flush(attachment.agent.session)
+                    if (!participated) {
+                      throw new Error('No durability listener participated before export')
+                    }
+                    if (operationSignal.aborted) throw operationSignal.reason
+                    return exportRawSession({
+                      destination,
+                      persistence: sessionPersistence,
+                      sessionId: String(attachment.agent.session.id),
+                      signal: operationSignal,
+                      workspace: attachment.agent.session.header.cwd ?? dependencies.cwd(),
+                    })
+                  },
+                }
+              : {}),
+            flush: async (operationSignal) => {
+              if (operationSignal.aborted) throw operationSignal.reason
+              const participated = await sessions.flush(attachment.agent.session)
+              if (operationSignal.aborted) throw operationSignal.reason
+              return participated
+            },
+            fork: async (operationSignal) => {
+              if (attachment.agent.status !== 'idle') {
+                throw new Error('Conversation fork requires an idle agent')
+              }
+              const participated = await sessions.flush(attachment.agent.session)
+              if (!participated) {
+                throw new Error('No durability listener participated before fork')
+              }
+              if (operationSignal.aborted) throw operationSignal.reason
+              if (attachment.agent.status !== 'idle') {
+                throw new Error('Agent became busy while preparing the conversation fork')
+              }
+              const seed = attachment.agent.session.events
+              const childSessionId = dependencies.sessionId()
+              const parentSessionId = String(attachment.agent.session.id)
+              if (childSessionId === parentSessionId) {
+                throw new Error('Session id provider returned the current session id for a fork')
+              }
+              const activeCoordinator = coordinatorRef.current
+              if (activeCoordinator === undefined) {
+                throw new Error('Session transition coordinator is not ready')
+              }
+              if (activeCoordinator.getSnapshot().status !== 'attached') {
+                throw new Error('Another session transition is already running')
+              }
+              const provider = attachment.agent.options.provider
+              const model = attachment.agent.options.model
+              const forkRequest: AgentAttachmentRequest = {
+                cwd: attachment.agent.session.header.cwd ?? dependencies.cwd(),
+                kind: 'fork',
+                ...(provider === undefined || model === undefined
+                  ? {}
+                  : { modelSelection: { model, provider } }),
+                parentSessionId,
+                seed,
+                sessionId: childSessionId,
+              }
+              const transition = activeCoordinator.createSession(
+                childSessionId,
+                transitionSignal => createBinding(forkRequest, transitionSignal),
+                signal,
+              )
+              void transition.catch(diagnostics.report)
+              return {
+                boundary: seed.at(-1)?.seq ?? -1,
+                sessionId: childSessionId,
+              }
+            },
+          },
+          sessionId: String(attachment.agent.session.id),
+          suggestedExportDestination: `session-${String(attachment.agent.session.id)
+            .replaceAll(/[^a-zA-Z0-9._-]/gu, '_')}.jsonl`,
+        })
+        bindingOwner.own('recovery controller', () => recovery.dispose())
         const overlay = new OverlayController()
         bindingOwner.own('overlay controller', () => overlay.dispose())
         const palette = new CommandPaletteController({
@@ -337,6 +430,7 @@ export async function startTuiRuntime(
             palette,
             permission,
             preferences,
+            recovery,
             sessionId,
             runtimeStatus,
             status,
@@ -397,11 +491,21 @@ export async function startTuiRuntime(
       },
       signal,
     })
+    coordinatorRef.current = coordinator
     owner.own('session attachment coordinator', () => coordinator.dispose())
     const sessionCenter = new SessionCenterController(sessionPersistence, coordinator, {
       currentSessionId: initialBinding.sessionId,
     })
     owner.own('session center controller', () => sessionCenter.dispose())
+    const syncSessionCenter = () => {
+      const snapshot = coordinator.getSnapshot()
+      if (snapshot.status === 'attached' && snapshot.binding !== undefined) {
+        sessionCenter.setCurrentSession(snapshot.binding.sessionId)
+      }
+    }
+    const stopSessionCenterSync = coordinator.subscribe(syncSessionCenter)
+    owner.own('session center identity sync', stopSessionCenterSync)
+    syncSessionCenter()
     const application = dependencies.mountApplication({
       onQuit: requestExit,
       sessionCenter,

@@ -76,6 +76,65 @@ describe('SessionAttachmentCoordinator (M1.4)', () => {
     expect(fixture.active()).toBe(0)
   })
 
+  it('transfers ownership to a newly created session without treating it as a resume', async () => {
+    const fixture = harness()
+    const coordinator = new SessionAttachmentCoordinator({
+      factory: fixture.factory,
+      initial: fixture.binding('parent'),
+      onFatal: vi.fn(),
+      signal: new AbortController().signal,
+    })
+    const create = vi.fn(async (signal: AbortSignal) => {
+      expect(signal.aborted).toBe(false)
+      fixture.order.push('create:child')
+      if (fixture.active() !== 0) throw new Error('overlapping fork binding')
+      return fixture.binding('child')
+    })
+
+    await coordinator.createSession('child', create, new AbortController().signal)
+
+    expect(fixture.order).toEqual(['dispose:parent', 'create:child'])
+    expect(fixture.preflight).not.toHaveBeenCalled()
+    expect(fixture.resume).not.toHaveBeenCalled()
+    expect(coordinator.getSnapshot()).toMatchObject({
+      binding: { sessionId: 'child' },
+      status: 'attached',
+    })
+    await coordinator.dispose()
+  })
+
+  it('restores the persisted parent when child-session creation fails', async () => {
+    const fixture = harness()
+    const coordinator = new SessionAttachmentCoordinator({
+      factory: fixture.factory,
+      initial: fixture.binding('parent'),
+      onFatal: vi.fn(),
+      signal: new AbortController().signal,
+    })
+    const create = vi.fn(async () => {
+      fixture.order.push('create:child')
+      throw new Error('child creation failed')
+    })
+
+    await expect(coordinator.createSession(
+      'child',
+      create,
+      new AbortController().signal,
+    )).rejects.toThrow('child creation failed')
+
+    expect(fixture.order).toEqual([
+      'dispose:parent',
+      'create:child',
+      'resume:parent',
+    ])
+    expect(coordinator.getSnapshot()).toMatchObject({
+      binding: { sessionId: 'parent' },
+      error: 'child creation failed',
+      status: 'attached',
+    })
+    await coordinator.dispose()
+  })
+
   it('disables the attached application during preflight and restores it on failure', async () => {
     const fixture = harness()
     let rejectPreflight!: (error: unknown) => void
