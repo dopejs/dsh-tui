@@ -8,6 +8,7 @@ import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-user-questions'
 
 import { AgentStatusController } from './model/agent-status-controller'
+import { EditorController } from './model/editor-controller'
 import { InteractionController } from './model/interaction-controller'
 import { TranscriptController } from './model/transcript-controller'
 import { reduceTranscriptBatch } from './model/transcript-reducer'
@@ -214,6 +215,8 @@ export async function startTuiRuntime(
 
     const status = new AgentStatusController(attachment.agent, diagnostics.report)
     owner.own('agent status controller', () => status.dispose())
+    const editor = new EditorController()
+    owner.own('editor controller', () => editor.dispose())
     const input = new InputController({ agent: attachment.agent, commands })
     owner.own('input controller', () => input.dispose())
     const unregisterExitCommand = commands.register({
@@ -239,6 +242,7 @@ export async function startTuiRuntime(
     owner.own('interaction scheduler', () => scheduler.dispose())
 
     const application = dependencies.mountApplication({
+      editor,
       input,
       interaction,
       modelLabel: [attachment.agent.options.provider, attachment.agent.options.model]

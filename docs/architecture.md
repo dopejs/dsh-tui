@@ -63,6 +63,7 @@ src/
 │   └── interaction-scheduler.ts
 ├── model/
 │   ├── transcript-reducer.ts  pure durable-event fold
+│   ├── editor-controller.ts    bounded multiline editor and history
 │   ├── live-state.ts          status/inbox/pending UI state
 │   └── view-model.ts          framework-neutral terminal model
 ├── presentation/
@@ -247,6 +248,30 @@ default, and permits only one asynchronous slash command at a time. Command
 cancellation has its own owned signal; agent cancellation always calls the
 exact attached agent with `{ kind: 'user' }`. Disposal aborts and awaits the
 owned command request before releasing the controller.
+
+### Composer ownership
+
+The multiline composer is an owned framework-neutral editor controller. It
+stores text, UTF-16 offsets that always move across complete Unicode scalar and
+common joined emoji sequences, selection anchor, bounded undo/redo, bounded
+process-local history, and a monotonically increasing text revision. The Ink
+adapter alone translates terminal keys and bracketed-paste events into editor
+operations and converts offsets into terminal-cell layout.
+
+Submission captures `{ text, revision }`. A successful message or command adds
+the submitted text to history and clears the composer only if no later text
+edit changed that revision. This prevents an asynchronously completing command
+from erasing a newer draft. Rejected, failed, and cancelled submissions retain
+the draft. History changes from an older concurrent submission do not invalidate
+a newer submission token.
+
+Ink's bracketed-paste hook owns the terminal mode and restores it during
+renderer unmount. Terminal CRLF/CR paste boundaries normalize to LF, and pasted
+newlines are inserted as one edit transaction that can never trigger
+submission. Composer text, undo, and history are bounded by both entry count
+and aggregate code units; the
+horizontal projector scans only a small window around the cursor instead of a
+100,000-code-unit line.
 
 ## Human interaction
 

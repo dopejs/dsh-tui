@@ -49,10 +49,13 @@ pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.6 \
   --profile tui --resume <session-id>
 ```
 
-Press Enter to submit, Ctrl-S to steer, and Ctrl-C to clear or cancel according
-to the current state. Use `/exit` for a graceful, durable shutdown. Approval
-prompts accept `y` or `n`; structured questions use arrows, Space, Tab, and
-Enter.
+The composer supports multiple lines, Unicode cursor movement, selection,
+undo/redo, bounded command history, and bracketed paste. Press Enter to submit,
+Ctrl-J or Alt-Enter to insert a newline, Ctrl-S to steer, and Ctrl-C to clear or
+cancel according to the current state. Use arrows/Home/End to edit, Up/Down at
+the document boundary to recall history, and `/exit` for a graceful, durable
+shutdown. Approval prompts accept `y` or `n`; structured questions use arrows,
+Space, Tab, and Enter.
 
 ## Documentation
 

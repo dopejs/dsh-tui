@@ -150,11 +150,16 @@ function dependencies(
 describe('startTuiRuntime', () => {
   it('composes a fresh exact-agent application and flushes before handle disposal', async () => {
     const fixture = runtimeFixture()
+    let editorWasActiveDuringRendererDisposal = false
     const dispose = await startTuiRuntime(
       fixture.ctx,
       {},
       new AbortController().signal,
-      dependencies(fixture),
+      dependencies(fixture, {
+        dispose: async () => {
+          editorWasActiveDuringRendererDisposal = fixture.mounted[0]?.editor.insert('closing') === 'applied'
+        },
+      }),
     )
 
     expect(fixture.create).toHaveBeenCalledOnce()
@@ -165,8 +170,12 @@ describe('startTuiRuntime', () => {
     })
     expect(fixture.mounted).toHaveLength(1)
     expect(fixture.mounted[0]?.sessionId).toBe('live-session')
+    const editor = fixture.mounted[0]?.editor
+    if (editor === undefined) throw new Error('editor was not mounted')
 
     await dispose()
+    expect(editorWasActiveDuringRendererDisposal).toBe(true)
+    expect(() => editor.insert('late')).toThrow('disposed')
     expect(fixture.flush).toHaveBeenCalledWith(fixture.agent.session)
     expect(fixture.disposeHandle).toHaveBeenCalledOnce()
     expect(fixture.unregisterQuestions).toHaveBeenCalledOnce()

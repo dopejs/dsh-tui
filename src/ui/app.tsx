@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
-import { Box, Text, useInput, useStdout } from 'ink'
+import { Box, Text, useInput, usePaste, useStdout } from 'ink'
 import type { AskUserQuestionAnswer } from '@deepseek-ai/dsh-user-questions'
 
 import type { AgentStatusStore } from '../model/agent-status-controller'
+import type { EditorController } from '../model/editor-controller'
 import type {
   InteractionController,
   InteractionQuestion,
@@ -11,6 +12,7 @@ import type {
 import type { TranscriptStore } from '../model/transcript-controller'
 import { createScreenModel, type InteractionModal } from '../model/view-model'
 import type { InputController, InputSubmission, SubmissionMode } from '../runtime/input-controller'
+import { Composer, createComposerView } from './composer'
 import { Frame } from './ink-renderer'
 
 interface QuestionDraft {
@@ -21,6 +23,7 @@ interface QuestionDraft {
 
 export interface InteractiveTuiProps {
   readonly columns?: number
+  readonly editor: EditorController
   readonly input: InputController
   readonly interaction: InteractionController
   readonly modelLabel: string
@@ -108,8 +111,13 @@ function appendTypedText(current: string, input: string): string {
   return current + input
 }
 
+function normalizeTerminalPaste(value: string): string {
+  return value.replaceAll('\r\n', '\n').replaceAll('\r', '\n')
+}
+
 export function InteractiveTui({
   columns: fixedColumns,
+  editor,
   input,
   interaction,
   modelLabel,
@@ -125,9 +133,8 @@ export function InteractiveTui({
     columns: fixedColumns ?? stdout.columns ?? 80,
     rows: fixedRows ?? stdout.rows ?? 24,
   }))
-  const [composer, setComposer] = useState('')
   const [notice, setNotice] = useState(
-    'Enter send · ^S steer · ^C cancel · /exit quit',
+    'Enter send · ^J newline · ^S steer · ^C cancel',
   )
   const [questionIndex, setQuestionIndex] = useState(0)
   const [cursor, setCursor] = useState(0)
@@ -149,6 +156,11 @@ export function InteractiveTui({
     status.subscribe,
     status.getSnapshot,
     status.getSnapshot,
+  )
+  const editorSnapshot = useSyncExternalStore(
+    editor.subscribe,
+    editor.getSnapshot,
+    editor.getSnapshot,
   )
 
   useEffect(() => {
@@ -195,9 +207,14 @@ export function InteractiveTui({
   }, [cursor, customMode, customText, interactionSnapshot, questionIndex, selected])
 
   const submitComposer = async (mode: SubmissionMode) => {
-    const line = composer
-    if (line.trim() !== '') setComposer('')
-    const submission = await input.submit(line, mode)
+    const draft = editor.captureSubmission()
+    const submission = await input.submit(draft.text, mode)
+    if (
+      submission.kind === 'message'
+      || (submission.kind === 'command' && submission.execution.result.kind === 'success')
+    ) {
+      editor.acceptSubmission(draft)
+    }
     setNotice(submissionNotice(submission))
   }
 
@@ -227,6 +244,29 @@ export function InteractiveTui({
       setNotice(error instanceof Error ? error.message : String(error))
     }
   }
+
+  usePaste((pasted) => {
+    const normalized = normalizeTerminalPaste(pasted)
+    if (interactionSnapshot?.kind === 'approval') return
+    if (interactionSnapshot?.kind === 'questions') {
+      if (!customMode) {
+        setNotice('Press Tab before pasting an Other answer.')
+        return
+      }
+      setCustomText((current) => {
+        if (current.length + normalized.length > editor.textLimit) {
+          setNotice(`Other answer exceeds ${String(editor.textLimit)} code units.`)
+          return current
+        }
+        return current + normalized
+      })
+      return
+    }
+    const result = editor.insert(normalized)
+    setNotice(result === 'limit-exceeded'
+      ? `Composer exceeds ${String(editor.textLimit)} code units.`
+      : `Pasted ${String(normalized.length)} code units.`)
+  })
 
   useInput((typed, key) => {
     if (key.ctrl && typed === 'q') {
@@ -314,8 +354,10 @@ export function InteractiveTui({
     }
 
     if (key.escape) {
-      if (composer !== '') {
-        setComposer('')
+      if (editor.clearSelection()) {
+        setNotice('Selection cleared.')
+      } else if (editorSnapshot.text !== '') {
+        editor.clear()
         setNotice('Composer cleared.')
       } else if (agentStatus === 'running') {
         input.cancelAgent()
@@ -330,8 +372,8 @@ export function InteractiveTui({
       if (input.commandPending) {
         input.cancelCommand()
         setNotice('Command cancellation requested.')
-      } else if (composer !== '') {
-        setComposer('')
+      } else if (editorSnapshot.text !== '') {
+        editor.clear()
         setNotice('Composer cleared.')
       } else if (agentStatus === 'running') {
         input.cancelAgent()
@@ -341,14 +383,21 @@ export function InteractiveTui({
       }
       return
     }
-    if (typed === '\u0004' && composer === '' && agentStatus === 'idle') {
-      onQuit(0)
+    if (typed === '\u0004') {
+      if (editorSnapshot.text !== '') editor.deleteForward()
+      else if (agentStatus === 'idle') onQuit(0)
       return
     }
     if (key.ctrl && typed === 's') {
       void submitComposer('steer').catch((error: unknown) => {
         setNotice(error instanceof Error ? error.message : String(error))
       })
+      return
+    }
+    if (key.return && (key.ctrl || key.meta)) {
+      if (editor.insert('\n') === 'limit-exceeded') {
+        setNotice(`Composer exceeds ${String(editor.textLimit)} code units.`)
+      }
       return
     }
     if (key.return) {
@@ -358,15 +407,92 @@ export function InteractiveTui({
       return
     }
     if (key.backspace || key.delete) {
-      setComposer(removeLastCharacter)
+      if (key.delete) editor.deleteForward()
+      else editor.backspace()
       return
     }
-    if (!key.ctrl && !key.meta && !key.upArrow && !key.downArrow) {
-      setComposer(value => appendTypedText(value, typed))
+    if (key.leftArrow) {
+      editor.move(key.meta ? 'word-left' : 'left', key.shift)
+      return
+    }
+    if (key.rightArrow) {
+      editor.move(key.meta ? 'word-right' : 'right', key.shift)
+      return
+    }
+    if (key.upArrow) {
+      if (!editor.move('up', key.shift) && !key.shift) editor.previousHistory()
+      return
+    }
+    if (key.downArrow) {
+      if (!editor.move('down', key.shift) && !key.shift) editor.nextHistory()
+      return
+    }
+    if (key.home) {
+      editor.move(key.ctrl ? 'document-start' : 'line-start', key.shift)
+      return
+    }
+    if (key.end) {
+      editor.move(key.ctrl ? 'document-end' : 'line-end', key.shift)
+      return
+    }
+    if ((key.super || key.ctrl) && typed.toLowerCase() === 'a') {
+      if (key.super) editor.selectAll()
+      else editor.move('line-start', key.shift)
+      return
+    }
+    if (key.ctrl && typed.toLowerCase() === 'e') {
+      editor.move('line-end', key.shift)
+      return
+    }
+    if (key.ctrl && typed.toLowerCase() === 'b') {
+      editor.move('left', key.shift)
+      return
+    }
+    if (key.ctrl && typed.toLowerCase() === 'f') {
+      editor.move('right', key.shift)
+      return
+    }
+    if (key.ctrl && typed.toLowerCase() === 'k') {
+      editor.killToLineEnd()
+      return
+    }
+    if (key.ctrl && typed.toLowerCase() === 'w') {
+      editor.deleteWordBackward()
+      return
+    }
+    if (key.ctrl && typed.toLowerCase() === 'y') {
+      if (editor.yank() === 'limit-exceeded') {
+        setNotice(`Composer exceeds ${String(editor.textLimit)} code units.`)
+      }
+      return
+    }
+    if ((key.ctrl || key.super) && typed.toLowerCase() === 'z') {
+      if (key.shift) editor.redo()
+      else editor.undo()
+      return
+    }
+    if (key.tab) {
+      if (editor.insert('\t') === 'limit-exceeded') {
+        setNotice(`Composer exceeds ${String(editor.textLimit)} code units.`)
+      }
+      return
+    }
+    if (!key.ctrl && !key.meta && !key.super && typed !== '') {
+      if (editor.insert(typed) === 'limit-exceeded') {
+        setNotice(`Composer exceeds ${String(editor.textLimit)} code units.`)
+      }
     }
   })
 
-  const screenRows = Math.max(4, dimensions.rows - 2)
+  const composerMaxRows = Math.max(1, Math.min(6, Math.floor(dimensions.rows / 3)))
+  const composerView = createComposerView(
+    editorSnapshot,
+    Math.max(1, dimensions.columns - 2),
+    composerMaxRows,
+  )
+  const composerRows = composerView.rows.length
+    + (composerView.hiddenAbove > 0 || composerView.hiddenBelow > 0 ? 1 : 0)
+  const screenRows = Math.max(4, dimensions.rows - composerRows - 1)
   const screen = createScreenModel(
     transcriptSnapshot.rows,
     {
@@ -383,7 +509,11 @@ export function InteractiveTui({
   return (
     <Box flexDirection="column">
       <Frame columns={dimensions.columns} model={screen} />
-      <Text wrap="truncate-end">› {composer}<Text inverse> </Text></Text>
+      <Composer
+        columns={dimensions.columns}
+        maxRows={composerMaxRows}
+        snapshot={editorSnapshot}
+      />
       <Text dimColor wrap="truncate-end">{notice}</Text>
     </Box>
   )

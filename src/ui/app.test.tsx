@@ -3,6 +3,7 @@ import { renderToString } from 'ink'
 import { describe, expect, it } from 'vitest'
 
 import type { AgentStatusStore } from '../model/agent-status-controller'
+import { EditorController } from '../model/editor-controller'
 import { InteractionController } from '../model/interaction-controller'
 import { TranscriptController } from '../model/transcript-controller'
 import type { InputController } from '../runtime/input-controller'
@@ -26,22 +27,31 @@ function fakeInput(): InputController {
   } as unknown as InputController
 }
 
-function renderApp(transcript: TranscriptController, interaction: InteractionController) {
-  return renderToString(
-    <InteractiveTui
-      columns={52}
-      input={fakeInput()}
-      interaction={interaction}
-      modelLabel="fixture/model"
-      onQuit={() => undefined}
-      sessionId="session-app"
-      status={status}
-      terminalRows={14}
-      transcript={transcript}
-      workspace="/fixture/workspace"
-    />,
-    { columns: 52 },
-  )
+function renderApp(
+  transcript: TranscriptController,
+  interaction: InteractionController,
+) {
+  const editor = new EditorController()
+  try {
+    return renderToString(
+      <InteractiveTui
+        columns={52}
+        editor={editor}
+        input={fakeInput()}
+        interaction={interaction}
+        modelLabel="fixture/model"
+        onQuit={() => undefined}
+        sessionId="session-app"
+        status={status}
+        terminalRows={14}
+        transcript={transcript}
+        workspace="/fixture/workspace"
+      />,
+      { columns: 52 },
+    )
+  } finally {
+    editor.dispose()
+  }
 }
 
 describe('InteractiveTui', () => {
@@ -53,8 +63,8 @@ describe('InteractiveTui', () => {
       "dsh-tui · session-app · idle
       fixture/model · /fixture/workspace
       transcript empty
-      ›
-      Enter send · ^S steer · ^C cancel · /exit quit"
+      › █
+      Enter send · ^J newline · ^S steer · ^C cancel"
     `)
 
     interaction.dispose()
@@ -81,8 +91,8 @@ describe('InteractiveTui', () => {
       │ outside sandbox                                  │
       │ Y allow once · N reject                          │
       ╰──────────────────────────────────────────────────╯
-      ›
-      Enter send · ^S steer · ^C cancel · /exit quit"
+      › █
+      Enter send · ^J newline · ^S steer · ^C cancel"
     `)
 
     abort.abort(new Error('done'))

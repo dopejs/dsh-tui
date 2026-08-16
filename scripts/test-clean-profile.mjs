@@ -125,6 +125,27 @@ async function waitForScreen(running) {
   }
 }
 
+async function waitForOutput(running, text, label) {
+  const deadline = Date.now() + 10_000
+  while (!running.output().includes(text)) {
+    if (Date.now() >= deadline) {
+      running.child.kill()
+      throw new Error(`Installed TUI did not ${label}:\n${running.output()}`)
+    }
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+}
+
+async function exerciseMultilineComposer(running) {
+  running.child.write('\u001B[200~first line\nsecond line\u001B[201~')
+  await waitForOutput(running, 'second line', 'render bracketed multiline paste')
+  if (!running.output().includes('first line')) {
+    throw new Error(`Installed TUI lost the first pasted line:\n${running.output()}`)
+  }
+  running.child.write('\u0003')
+  await waitForOutput(running, 'Composer cleared.', 'clear the multiline draft')
+}
+
 async function quitAndAssert(running) {
   running.child.write('/exit')
   await new Promise(resolve => setTimeout(resolve, 50))
@@ -153,6 +174,7 @@ const fresh = runTui([])
 await waitForScreen(fresh)
 const sessionId = /dsh-tui · (session-[^ ·\r\n]+)/.exec(fresh.output())?.[1]
 if (sessionId === undefined) throw new Error('Fresh TUI did not display its session id')
+await exerciseMultilineComposer(fresh)
 await quitAndAssert(fresh)
 
 const resumed = runTui(['--resume', sessionId])

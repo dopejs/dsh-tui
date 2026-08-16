@@ -58,6 +58,11 @@ Exit criteria:
 
 ### M1.1 Editor core and multiline composer (+5)
 
+Status: **complete**. The owned editor controller, cell-bounded composer,
+bracketed-paste path, async submission revision guard, history/undo limits,
+fixed-size snapshots, interactive input fixture, clean-tarball PTY flow, and
+100,000-code-unit benchmark are implemented.
+
 Implementation:
 
 - add a pure `EditorController` with Unicode cursor/selection operations,

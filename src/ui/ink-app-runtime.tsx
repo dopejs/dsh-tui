@@ -1,12 +1,14 @@
 import { render } from 'ink'
 
 import type { AgentStatusStore } from '../model/agent-status-controller'
+import type { EditorController } from '../model/editor-controller'
 import type { InteractionController } from '../model/interaction-controller'
 import type { TranscriptStore } from '../model/transcript-controller'
 import type { InputController } from '../runtime/input-controller'
 import { InteractiveTui } from './app'
 
 export interface InkApplicationOptions {
+  readonly editor: EditorController
   readonly input: InputController
   readonly interaction: InteractionController
   readonly modelLabel: string
