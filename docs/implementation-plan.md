@@ -147,6 +147,10 @@ Verification:
 
 ### M1.5 Status, model, permission entry points, and preferences shell (+4)
 
+Status: **complete**. Exact startup model resolution, durable runtime-status
+projection, width-prioritized metadata, permission-command discovery, and an
+atomically validated process-local preference/keymap shell are implemented.
+
 Implementation:
 
 - add immutable status projections for model, permission, usage/context

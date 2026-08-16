@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import { appendFileSync } from 'node:fs'
 import type { Context } from '@deepseek-ai/cordis'
+import type { ModelSelection } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
 import type {} from '@deepseek-ai/dsh-commands'
+import type {} from '@deepseek-ai/dsh-llm'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
 import type {} from '@deepseek-ai/dsh-tools'
@@ -14,7 +16,9 @@ import { CompletionController } from './model/completion-controller'
 import { EditorController } from './model/editor-controller'
 import { InteractionController } from './model/interaction-controller'
 import { OverlayController } from './model/overlay-controller'
+import { PreferencesController } from './model/preferences-controller'
 import { SessionCenterController } from './model/session-center-controller'
+import { RuntimeStatusController } from './model/runtime-status-controller'
 import { TranscriptController } from './model/transcript-controller'
 import { reduceTranscriptBatch } from './model/transcript-reducer'
 import { TranscriptViewportController } from './model/transcript-viewport-controller'
@@ -39,6 +43,7 @@ export const inject = [
   'agentDefaultModel',
   'agents',
   'commands',
+  'llm',
   'sessionPersistence',
   'sessions',
   'tools',
@@ -119,14 +124,32 @@ class DiagnosticBuffer {
   }
 }
 
-function requestFor(startup: TuiStartupValues, dependencies: RuntimeDependencies): AgentAttachmentRequest {
+function requestFor(
+  startup: TuiStartupValues,
+  dependencies: RuntimeDependencies,
+  modelSelection?: ModelSelection,
+): AgentAttachmentRequest {
   return startup.resumeSessionId === undefined
     ? {
         cwd: dependencies.cwd(),
         kind: 'create',
+        ...(modelSelection === undefined ? {} : { modelSelection }),
         sessionId: dependencies.sessionId(),
       }
     : { kind: 'resume', sessionId: startup.resumeSessionId }
+}
+
+export function parseModelSelector(value: string): ModelSelection {
+  const separator = value.indexOf('/')
+  if (
+    separator < 1
+    || separator === value.length - 1
+    || value.trim() !== value
+    || /\s/.test(value)
+  ) {
+    throw new Error('--model must use a non-empty provider/model value')
+  }
+  return { provider: value.slice(0, separator), model: value.slice(separator + 1) }
 }
 
 function combineStartupFailure(error: unknown, cleanupError: unknown): AggregateError {
@@ -147,6 +170,7 @@ export async function startTuiRuntime(
   }
   const appExit = ctx.get('appExit')
   const commands = ctx.get('commands')
+  const llm = ctx.get('llm')
   const sessionPersistence = ctx.get('sessionPersistence')
   const sessions = ctx.get('sessions')
   const tools = ctx.get('tools')
@@ -154,6 +178,7 @@ export async function startTuiRuntime(
   if (appExit === undefined) throw new Error('dsh-tui requires the launcher appExit service')
   if (
     commands === undefined
+    || llm === undefined
     || sessionPersistence === undefined
     || sessions === undefined
     || tools === undefined
@@ -214,6 +239,7 @@ export async function startTuiRuntime(
       recordInput: false,
     })
     owner.own('exit command', unregisterExitCommand)
+    const preferences = new PreferencesController()
 
     const createBinding = async (
       request: AgentAttachmentRequest,
@@ -229,9 +255,12 @@ export async function startTuiRuntime(
       bindingOwner.own('transcript controller', () => transcript.dispose())
       const viewport = new TranscriptViewportController(transcript)
       bindingOwner.own('transcript viewport controller', () => viewport.dispose())
+      const runtimeStatus = new RuntimeStatusController()
+      bindingOwner.own('runtime status controller', () => runtimeStatus.dispose())
       try {
         const attachment = await attachAgent(ctx, {
           onAttached: (agent) => {
+            runtimeStatus.setModel(agent.options)
             projector = new ToolTranscriptProjector({
               agent,
               reportError: diagnostics.report,
@@ -243,6 +272,7 @@ export async function startTuiRuntime(
             requestExit(1)
           },
           onEvents: ({ events }, eventSignal) => {
+            runtimeStatus.accept(events, eventSignal)
             transcript.accept(events, eventSignal)
           },
           request,
@@ -295,7 +325,9 @@ export async function startTuiRuntime(
               .join('/'),
             overlay,
             palette,
+            preferences,
             sessionId,
+            runtimeStatus,
             status,
             transcript,
             viewport,
@@ -321,7 +353,22 @@ export async function startTuiRuntime(
       }
     }
 
-    const initialBinding = await createBinding(requestFor(startup, dependencies), signal)
+    let startupSelection: ModelSelection | undefined
+    if (startup.model !== undefined) {
+      startupSelection = parseModelSelector(startup.model)
+      const resolved = await llm.resolveModelInfo(
+        startupSelection.provider,
+        startupSelection.model,
+        signal,
+      )
+      if (resolved.provider !== startupSelection.provider || resolved.id !== startupSelection.model) {
+        throw new Error('Model resolver returned a different provider/model identity')
+      }
+    }
+    const initialBinding = await createBinding(
+      requestFor(startup, dependencies, startupSelection),
+      signal,
+    )
     const coordinator = new SessionAttachmentCoordinator<TuiSessionBinding>({
       factory: {
         preflight: async (sessionId, preflightSignal) => {

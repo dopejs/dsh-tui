@@ -40,6 +40,8 @@ is required by this bundle.
 - Durable `Session.events` and `session/event`, including event sequence.
 - `ctx.tools.get()` and provider-neutral `presentCall` / `presentResult` intents.
 - `ctx.commands.list()` / `execute()`.
+- `ctx.llm.resolveModelInfo()` and `ctx.agentDefaultModel.currentSelection()`
+  for pre-creation model selection and fallback.
 - `approval/request` answerer waterfall.
 - `ctx.userQuestions.registerProvider()`.
 - `ctx.sessionPersistence.list()` / `inspect()` where session browsing needs

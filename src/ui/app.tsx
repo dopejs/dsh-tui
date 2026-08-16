@@ -19,6 +19,8 @@ import type { TranscriptStore } from '../model/transcript-controller'
 import type { OverlayController } from '../model/overlay-controller'
 import { resolveInputSurface } from '../model/overlay-controller'
 import type { SessionCenterController } from '../model/session-center-controller'
+import type { RuntimeStatusController } from '../model/runtime-status-controller'
+import type { PreferencesController } from '../model/preferences-controller'
 import type {
   TranscriptViewportController,
   TranscriptViewportSnapshot,
@@ -49,8 +51,10 @@ export interface InteractiveTuiProps {
   readonly onQuit: (code: number) => void
   readonly overlay: OverlayController
   readonly palette: CommandPaletteController
+  readonly preferences: PreferencesController
   readonly sessionId: string
   readonly sessionCenter: SessionCenterController
+  readonly runtimeStatus: RuntimeStatusController
   readonly status: AgentStatusStore
   readonly terminalRows?: number
   readonly transcript: TranscriptStore
@@ -161,8 +165,10 @@ export function InteractiveTui({
   onQuit,
   overlay,
   palette,
+  preferences,
   sessionId,
   sessionCenter,
+  runtimeStatus,
   status,
   terminalRows: fixedRows,
   transcript,
@@ -227,6 +233,11 @@ export function InteractiveTui({
     sessionCenter.subscribe,
     sessionCenter.getSnapshot,
     sessionCenter.getSnapshot,
+  )
+  const runtimeStatusSnapshot = useSyncExternalStore(
+    runtimeStatus.subscribe,
+    runtimeStatus.getSnapshot,
+    runtimeStatus.getSnapshot,
   )
 
   useEffect(() => {
@@ -463,6 +474,10 @@ export function InteractiveTui({
 
   useInput((typed, key) => {
     if (!acceptsInput()) return
+    const chord = typed.length === 1 && (key.ctrl || key.meta)
+      ? `${key.ctrl ? 'ctrl' : 'alt'}${key.shift ? '+shift' : ''}+${typed.toLowerCase()}`
+      : undefined
+    const preferenceAction = chord === undefined ? undefined : preferences.actionForChord(chord)
     if (interactionSnapshot?.kind === 'approval') {
       if (typed.toLowerCase() === 'y') {
         interaction.answerApproval('allowed-once')
@@ -543,7 +558,7 @@ export function InteractiveTui({
       return
     }
 
-    if (key.ctrl && typed.toLowerCase() === 'p') {
+    if (preferenceAction === 'command.palette') {
       if (overlay.getSnapshot().active === 'command-palette') {
         overlay.close('command-palette')
         setNotice('Command palette closed.')
@@ -556,7 +571,7 @@ export function InteractiveTui({
       return
     }
 
-    if (key.ctrl && typed.toLowerCase() === 'o') {
+    if (preferenceAction === 'session.center') {
       if (overlay.getSnapshot().active === 'session-center') {
         overlay.close('session-center')
         setNotice('Session center closed.')
@@ -665,7 +680,7 @@ export function InteractiveTui({
       return
     }
 
-    if (key.ctrl && typed.toLowerCase() === 'f') {
+    if (preferenceAction === 'transcript.search') {
       viewport.openSearch()
       setNotice('Transcript search opened.')
       return
@@ -884,11 +899,23 @@ export function InteractiveTui({
         ? {}
         : { focusedRowId: viewportSnapshot.focusedRowId }),
       ...(modal === undefined ? {} : { modalRows: modalRows(modal) }),
-      modelLabel,
+      modelLabel: runtimeStatusSnapshot.model ?? modelLabel,
+      ...(runtimeStatusSnapshot.approvalPolicy === undefined
+        ? {}
+        : { approvalPolicy: runtimeStatusSnapshot.approvalPolicy }),
+      ...(runtimeStatusSnapshot.contextWindow === undefined
+        ? {}
+        : { contextWindow: runtimeStatusSnapshot.contextWindow }),
+      ...(runtimeStatusSnapshot.permissionPreset === undefined
+        ? {}
+        : { permissionPreset: runtimeStatusSnapshot.permissionPreset }),
       sessionId,
       scrollOffset: viewportSnapshot.scrollOffset,
       status: agentStatus === 'running' ? 'busy' : 'idle',
       terminalRows: screenRows,
+      ...(runtimeStatusSnapshot.totalTokens === undefined
+        ? {}
+        : { totalTokens: runtimeStatusSnapshot.totalTokens }),
       unseenRows: viewportSnapshot.unseenRows,
       workspace,
     },

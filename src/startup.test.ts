@@ -32,12 +32,16 @@ function runProvider(args: readonly string[]) {
 }
 
 describe('parseStartupArguments', () => {
-  it('parses help and resume', () => {
+  it('parses help, model, and resume', () => {
     expect(parseStartupArguments(['--resume', 'session-1'])).toEqual({
       help: false,
       resumeSessionId: 'session-1',
     })
     expect(parseStartupArguments(['-h'])).toEqual({ help: true })
+    expect(parseStartupArguments(['--model', 'provider/model'])).toEqual({
+      help: false,
+      model: 'provider/model',
+    })
   })
 
   it('rejects incomplete and unknown arguments', () => {
@@ -47,12 +51,16 @@ describe('parseStartupArguments', () => {
     expect(() => parseStartupArguments(['--unknown'])).toThrow(
       'Unknown argument: --unknown',
     )
+    expect(() => parseStartupArguments([
+      '--model', 'provider/model', '--resume', 'session-1',
+    ])).toThrow('--model cannot be combined with --resume')
   })
 })
 
 describe('formatHelp', () => {
   it('documents the supported startup surface', () => {
     expect(formatHelp()).toContain('--resume <session-id>')
+    expect(formatHelp()).toContain('--model <provider/model>')
   })
 })
 
@@ -67,6 +75,18 @@ describe('tui command-line provider', () => {
     expect(resumed.values()).toEqual({ resumeSessionId: 'session-1' })
     expect(resumed.exits).toEqual([])
     await resumed.dispose()
+
+    const selected = runProvider(['--model', 'provider/model'])
+    expect(selected.values()).toEqual({ model: 'provider/model' })
+    await selected.dispose()
+  })
+
+  it('rejects model override when resuming a persisted session', async () => {
+    const mounted = runProvider(['--model', 'provider/model', '--resume', 'session-1'])
+    expect(mounted.values()).toBeUndefined()
+    expect(mounted.exits).toEqual([1])
+    expect(mounted.output()).toContain('--model cannot be combined with --resume')
+    await mounted.dispose()
   })
 
   it('prints app-owned help without publishing startup values', async () => {

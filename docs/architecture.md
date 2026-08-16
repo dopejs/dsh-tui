@@ -326,6 +326,26 @@ the workspace, hides dotfiles unless explicitly requested, and checks the
 request signal throughout. The provider returns replacement intent only; the
 editor performs the final Unicode-boundary and text-limit validation.
 
+### Startup model and runtime status
+
+For a fresh session, `--model provider/model` is parsed at the first slash so
+provider-owned model ids may contain further slashes. The runtime calls the
+public `ctx.llm.resolveModelInfo()` contract before acquiring an Agent handle,
+then passes the exact selection into the Agent-scoped model-selection seam.
+Model override and resume are mutually exclusive at the launcher boundary.
+
+The runtime-status controller consumes the same ordered durable event batches
+as the transcript without retaining them. It projects the latest request model
+and context capacity, permission preset, approval policy, and bounded cumulative
+reported token usage. Unknown or unavailable facts remain absent. Rendering
+drops workspace first, then usage, at narrow widths instead of relying on a
+single truncated metadata string.
+
+M1 installs a process-local, atomically validated preference shell for semantic
+theme names and global action chords. Invalid startup input falls back to the
+documented defaults; a collision rejects the entire replacement. Persistent
+settings registration and user-editable themes/keymaps remain owned by M4.1.
+
 ## Human interaction
 
 The interaction scheduler serializes terminal ownership across the composer,

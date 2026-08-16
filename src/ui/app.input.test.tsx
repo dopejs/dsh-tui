@@ -6,7 +6,9 @@ import { CompletionController } from '../model/completion-controller'
 import { EditorController } from '../model/editor-controller'
 import { InteractionController } from '../model/interaction-controller'
 import { OverlayController } from '../model/overlay-controller'
+import { PreferencesController } from '../model/preferences-controller'
 import { SessionCenterController } from '../model/session-center-controller'
+import { RuntimeStatusController } from '../model/runtime-status-controller'
 import { TranscriptController } from '../model/transcript-controller'
 import { createTranscriptState, type TranscriptState } from '../model/transcript-reducer'
 import { TranscriptViewportController } from '../model/transcript-viewport-controller'
@@ -105,6 +107,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       ],
       subscribe: () => () => undefined,
     })
+    const preferences = new PreferencesController()
     const completion = new CompletionController({
       complete: async request => request.kind === 'command'
         ? [{
@@ -136,6 +139,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
         version: 0,
       }],
     }, { switchSession }, { currentSessionId: 'input-session' })
+    const runtimeStatus = new RuntimeStatusController({ model: 'model', provider: 'fixture' })
     const submit = vi.fn(async (text: string): Promise<InputSubmission> => text === '/fail'
       ? {
           execution: {
@@ -171,8 +175,10 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
         onQuit={() => undefined}
         overlay={overlay}
         palette={palette}
+        preferences={preferences}
         sessionId="input-session"
         sessionCenter={sessionCenter}
+        runtimeStatus={runtimeStatus}
         status={status}
         transcript={transcript}
         viewport={viewport}
@@ -314,6 +320,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       interaction.dispose()
       await completion.dispose()
       await sessionCenter.dispose()
+      runtimeStatus.dispose()
       palette.dispose()
       overlay.dispose()
       viewport.dispose()

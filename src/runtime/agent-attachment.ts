@@ -3,6 +3,7 @@ import {
   installModelSelection,
   type Agent,
   type AgentHandle,
+  type ModelSelection,
   type ModelSelectionRef,
 } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
@@ -17,6 +18,7 @@ export type AgentAttachmentRequest =
   | {
       readonly cwd: string
       readonly kind: 'create'
+      readonly modelSelection?: ModelSelection
       readonly sessionId: string
     }
   | {
@@ -277,7 +279,9 @@ export async function attachAgent(
 
   const owner = new ResourceOwner()
   try {
-    const selection = defaultModel.currentSelection()
+    const selection = options.request.kind === 'create'
+      ? (options.request.modelSelection ?? defaultModel.currentSelection())
+      : defaultModel.currentSelection()
     const selectionRef: ModelSelectionRef = {
       assembled: undefined,
       current: selection,

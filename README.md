@@ -49,6 +49,17 @@ pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.6 \
   --profile tui --resume <session-id>
 ```
 
+Select an exact provider/model before creating a new session with:
+
+```bash
+pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.6 \
+  --profile tui --model deepseek-official/deepseek-v4-flash
+```
+
+The route is resolved through the public Harness model registry before any
+agent or session is created. `--model` is intentionally rejected with
+`--resume`; resumed sessions retain their established selection semantics.
+
 The composer supports multiple lines, Unicode cursor movement, selection,
 undo/redo, bounded command history, and bracketed paste. Press Enter to submit,
 Ctrl-J or Alt-Enter to insert a newline, Ctrl-S to steer, and Ctrl-C to clear or
@@ -71,6 +82,13 @@ it; a command with an input hint is inserted into an empty composer for review.
 Tab completes a leading slash-command, an explicit `@workspace/path`, or a
 path-like token containing a directory separator. Completion is bounded to the
 current workspace and never discards an existing draft.
+
+The header degrades by terminal width and shows only available facts: exact
+model, permission/approval state, cumulative reported tokens and context
+capacity, then workspace. Missing upstream facts are omitted rather than
+guessed. Default key bindings and the `default`/`no-color` theme vocabulary are
+validated as one atomic preference object; persistence and user editing arrive
+with the M4 preference workbench.
 
 Ctrl-O opens the bounded session center. Type to filter persisted-session
 metadata, use arrows to select, Space to inspect durable event metadata, R to

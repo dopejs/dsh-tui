@@ -8,7 +8,9 @@ import { CompletionController } from '../model/completion-controller'
 import { EditorController } from '../model/editor-controller'
 import { InteractionController } from '../model/interaction-controller'
 import { OverlayController } from '../model/overlay-controller'
+import { PreferencesController } from '../model/preferences-controller'
 import { SessionCenterController } from '../model/session-center-controller'
+import { RuntimeStatusController } from '../model/runtime-status-controller'
 import { TranscriptController } from '../model/transcript-controller'
 import { TranscriptViewportController } from '../model/transcript-viewport-controller'
 import type { InputController } from '../runtime/input-controller'
@@ -49,6 +51,7 @@ function renderApp(
     list: () => [{ description: 'Review changes', name: 'review' }],
     subscribe: () => () => undefined,
   })
+  const preferences = new PreferencesController()
   const completion = new CompletionController({ complete: async () => [] })
   const sessionCenter = new SessionCenterController({
     inspect: async () => { throw new Error('not configured') },
@@ -56,6 +59,7 @@ function renderApp(
   }, {
     switchSession: async () => undefined,
   }, { currentSessionId: 'session-app' })
+  const runtimeStatus = new RuntimeStatusController({ model: 'model', provider: 'fixture' })
   try {
     configure?.(viewport, overlay, palette)
     return renderToString(
@@ -70,8 +74,10 @@ function renderApp(
         onQuit={() => undefined}
         overlay={overlay}
         palette={palette}
+        preferences={preferences}
         sessionId="session-app"
         sessionCenter={sessionCenter}
+        runtimeStatus={runtimeStatus}
         status={status}
         terminalRows={14}
         transcript={transcript}
@@ -83,6 +89,7 @@ function renderApp(
   } finally {
     void completion.dispose()
     void sessionCenter.dispose()
+    runtimeStatus.dispose()
     palette.dispose()
     overlay.dispose()
     viewport.dispose()
@@ -97,7 +104,7 @@ describe('InteractiveTui', () => {
 
     expect(renderApp(transcript, interaction)).toMatchInlineSnapshot(`
       "dsh-tui · session-app · idle
-      fixture/model · /fixture/workspace
+      fixture/model
       transcript empty
       › █
       Enter send · ^J newline · ^S steer · ^C cancel"
@@ -118,7 +125,7 @@ describe('InteractiveTui', () => {
       'Target session failed; restored session-app.',
     )).toMatchInlineSnapshot(`
       "dsh-tui · session-app · idle
-      fixture/model · /fixture/workspace
+      fixture/model
       transcript empty
       › █
       Target session failed; restored session-app."
@@ -140,7 +147,7 @@ describe('InteractiveTui', () => {
 
     expect(renderApp(transcript, interaction)).toMatchInlineSnapshot(`
       "dsh-tui · session-app · idle
-      fixture/model · /fixture/workspace
+      fixture/model
       transcript empty
       ╭──────────────────────────────────────────────────╮
       │ Approval · agent root-agent                      │
@@ -191,7 +198,7 @@ describe('InteractiveTui', () => {
       viewport.insertSearch('needle')
     })).toMatchInlineSnapshot(`
       "dsh-tui · session-app · idle
-      fixture/model · /fixture/workspace
+      fixture/model
       transcript empty
       / needle█ · 0/0
       › █

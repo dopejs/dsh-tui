@@ -131,6 +131,8 @@ Post-MVP fixtures also cover:
 - preflight input blocking, no-overlap A → B switching, old-session recovery,
   and fail-closed double-resume failure;
 - model/default selection and permission-preset transitions;
+- exact startup-model preflight, 40/80/120-column status degradation, missing
+  status facts, and atomic preference collision/fallback behavior;
 - projection refresh and missing optional units;
 - jobs and subagent list/control races;
 - skills, MCP-qualified tools, settings, and plugin inventory invalidation;

@@ -25,15 +25,28 @@ const ROW_STATUS: Record<NonNullable<ScreenModel['rows'][number]['status']>, str
   streaming: ' [streaming]',
 }
 
+function metadata(model: ScreenModel, columns: number): readonly string[] {
+  const permission = model.permissionPreset === undefined
+    ? (model.approvalPolicy === undefined ? undefined : `approval ${model.approvalPolicy}`)
+    : `permission ${model.permissionPreset}`
+  const usage = model.totalTokens === undefined ? undefined : `tokens ${String(model.totalTokens)}`
+  const context = model.contextWindow === undefined ? undefined : `ctx ${String(model.contextWindow)}`
+  if (columns < 60) return [model.modelLabel, permission].filter((value): value is string => value !== undefined)
+  if (columns < 100) return [model.modelLabel, permission, usage, context]
+    .filter((value): value is string => value !== undefined)
+  return [model.modelLabel, permission, usage, context, model.workspace]
+    .filter((value): value is string => value !== undefined)
+}
+
 export function Frame({ columns, model }: FrameProps) {
   return (
     <Box flexDirection="column" width={columns}>
       <Text bold wrap="truncate-end">
         dsh-tui · {model.sessionId} · {model.status}
       </Text>
-      {model.modelLabel === undefined && model.workspace === undefined ? null : (
+      {metadata(model, columns).length === 0 ? null : (
         <Text dimColor wrap="truncate-end">
-          {[model.modelLabel, model.workspace].filter(Boolean).join(' · ')}
+          {metadata(model, columns).join(' · ')}
         </Text>
       )}
       <Text dimColor>

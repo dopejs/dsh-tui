@@ -65,7 +65,11 @@ const help = run('pnpm', [
   'tui',
   '--help',
 ], { env: environment })
-if (!help.includes('dsh --profile tui') || !help.includes('--resume <session-id>')) {
+if (
+  !help.includes('dsh --profile tui')
+  || !help.includes('--resume <session-id>')
+  || !help.includes('--model <provider/model>')
+) {
   throw new Error(`Installed startup help is incomplete:\n${help}`)
 }
 
@@ -249,7 +253,7 @@ if (sessionId === undefined) throw new Error('Fresh TUI did not display its sess
 await exerciseMultilineComposer(fresh)
 await quitAndAssert(fresh)
 
-const switching = runTui([])
+const switching = runTui(['--model', 'deepseek-official/deepseek-v4-flash'])
 await waitForScreen(switching)
 const switchingSessionId = /dsh-tui · (session-[^ ·\r\n]+)/.exec(switching.output())?.[1]
 if (switchingSessionId === undefined || switchingSessionId === sessionId) {

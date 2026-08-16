@@ -11,6 +11,22 @@ import { renderInkFrame, TranscriptFrame } from './ink-renderer'
 type MessageId = SessionEvent<'assistant/message'>['data']['message']['id']
 
 describe('renderInkFrame', () => {
+  it.each([40, 80, 120])('degrades status metadata deterministically at %i columns', (columns) => {
+    const model = createScreenModel([], {
+      approvalPolicy: 'ask',
+      contextWindow: 128_000,
+      modelLabel: 'provider/model',
+      permissionPreset: 'workspace-write',
+      sessionId: 'status-session',
+      status: 'idle',
+      terminalRows: 8,
+      totalTokens: 1_234,
+      workspace: '/very/long/workspace/path',
+    })
+
+    expect(renderInkFrame(model, columns)).toMatchSnapshot()
+  })
+
   it('renders deterministic mixed-width output and agent-scoped interaction', () => {
     const rows: TranscriptRow[] = [
       { content: 'hello', id: '1', kind: 'user' },

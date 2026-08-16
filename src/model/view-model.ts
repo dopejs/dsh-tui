@@ -26,12 +26,16 @@ export interface ScreenModel {
   readonly droppedRows?: number
   readonly focusedRowId?: string
   readonly modelLabel?: string
+  readonly approvalPolicy?: string
+  readonly contextWindow?: number
   readonly modal?: InteractionModal
   readonly rows: readonly TranscriptRow[]
   readonly sessionId: string
+  readonly permissionPreset?: string
   readonly status: 'busy' | 'idle'
   readonly totalRows: number
   readonly unseenRows?: number
+  readonly totalTokens?: number
   readonly workspace?: string
   readonly visibleRange?: {
     readonly end: number
@@ -43,12 +47,16 @@ export interface WindowOptions {
   readonly droppedRows?: number
   readonly focusedRowId?: string
   readonly modelLabel?: string
+  readonly approvalPolicy?: string
+  readonly contextWindow?: number
   readonly modalRows?: number
   readonly scrollOffset?: number
   readonly sessionId: string
+  readonly permissionPreset?: string
   readonly status: 'busy' | 'idle'
   readonly terminalRows: number
   readonly unseenRows?: number
+  readonly totalTokens?: number
   readonly workspace?: string
 }
 
@@ -67,7 +75,14 @@ export function createScreenModel(
 ): ScreenModel {
   const scrollOffset = Math.max(0, options.scrollOffset ?? 0)
   const modalRows = modal === undefined ? 0 : Math.max(0, options.modalRows ?? 4)
-  const metadataRows = options.modelLabel === undefined && options.workspace === undefined ? 0 : 1
+  const metadataRows = [
+    options.modelLabel,
+    options.workspace,
+    options.permissionPreset,
+    options.approvalPolicy,
+    options.contextWindow,
+    options.totalTokens,
+  ].every(value => value === undefined) ? 0 : 1
   const visibleHeight = Math.max(
     1,
     options.terminalRows - CHROME_ROWS - metadataRows - modalRows,
@@ -89,14 +104,18 @@ export function createScreenModel(
       : { droppedRows: options.droppedRows }),
     ...(options.focusedRowId === undefined ? {} : { focusedRowId: options.focusedRowId }),
     ...(options.modelLabel === undefined ? {} : { modelLabel: options.modelLabel }),
+    ...(options.approvalPolicy === undefined ? {} : { approvalPolicy: options.approvalPolicy }),
+    ...(options.contextWindow === undefined ? {} : { contextWindow: options.contextWindow }),
     ...(modal === undefined ? {} : { modal }),
     rows: rows.slice(start, end),
     sessionId: options.sessionId,
+    ...(options.permissionPreset === undefined ? {} : { permissionPreset: options.permissionPreset }),
     status: options.status,
     totalRows: rows.length,
     ...(options.unseenRows === undefined || options.unseenRows === 0
       ? {}
       : { unseenRows: options.unseenRows }),
+    ...(options.totalTokens === undefined ? {} : { totalTokens: options.totalTokens }),
     ...(options.workspace === undefined ? {} : { workspace: options.workspace }),
     ...(end === start ? {} : { visibleRange: { end, start: start + 1 } }),
   }

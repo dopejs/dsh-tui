@@ -12,6 +12,7 @@ import type { UserQuestionProvider } from '@deepseek-ai/dsh-user-questions'
 import { describe, expect, it, vi } from 'vitest'
 
 import {
+  parseModelSelector,
   startTuiRuntime,
   type RuntimeDependencies,
 } from './index'
@@ -30,6 +31,7 @@ interface RuntimeFixture {
   readonly order: string[]
   readonly questionProvider: () => UserQuestionProvider | undefined
   readonly resume: ReturnType<typeof vi.fn>
+  readonly resolveModel: ReturnType<typeof vi.fn>
   readonly session: FixtureSession
   readonly unregisterQuestions: ReturnType<typeof vi.fn>
 }
@@ -125,6 +127,12 @@ function runtimeFixture(): RuntimeFixture {
     list: vi.fn(() => []),
     register: vi.fn(() => unregisterCommand),
   } as never)
+  const resolveModel = vi.fn(async (provider: string, model: string) => ({
+    id: model,
+    name: model,
+    provider,
+  }))
+  ctx.provide('llm', { resolveModelInfo: resolveModel } as never)
   const inspectSession = vi.fn(async (id) => ({
       events: session.events,
       meta: { createdAt: 0, cwd: '/fixture/workspace', id, version: 0 },
@@ -164,6 +172,7 @@ function runtimeFixture(): RuntimeFixture {
     order,
     questionProvider: () => questionProvider,
     resume,
+    resolveModel,
     session,
     unregisterQuestions,
   }
@@ -193,6 +202,14 @@ function currentApplication(fixture: RuntimeFixture) {
 }
 
 describe('startTuiRuntime', () => {
+  it('parses a provider and slash-containing model without changing identity', () => {
+    expect(parseModelSelector('gateway/org/model')).toEqual({
+      model: 'org/model',
+      provider: 'gateway',
+    })
+    expect(() => parseModelSelector('model-only')).toThrow('provider/model')
+  })
+
   it('composes a fresh exact-agent application and flushes before handle disposal', async () => {
     const fixture = runtimeFixture()
     let editorWasActiveDuringRendererDisposal = false
@@ -259,6 +276,45 @@ describe('startTuiRuntime', () => {
       expect(fixture.exits).toEqual([0])
     })
     await dispose()
+    await fixture.ctx.fiber.dispose()
+  })
+
+  it('resolves and applies an exact model selection before creating a fresh agent', async () => {
+    const fixture = runtimeFixture()
+    const dispose = await startTuiRuntime(
+      fixture.ctx,
+      { model: 'selected-provider/org/selected-model' },
+      new AbortController().signal,
+      dependencies(fixture),
+    )
+
+    expect(fixture.resolveModel).toHaveBeenCalledWith(
+      'selected-provider',
+      'org/selected-model',
+      expect.any(AbortSignal),
+    )
+    expect(fixture.create).toHaveBeenCalledWith(expect.objectContaining({
+      agentOptions: {
+        model: 'org/selected-model',
+        provider: 'selected-provider',
+      },
+    }))
+    await dispose()
+    await fixture.ctx.fiber.dispose()
+  })
+
+  it('does not create a session when exact model preflight fails', async () => {
+    const fixture = runtimeFixture()
+    fixture.resolveModel.mockRejectedValueOnce(new Error('model route unavailable'))
+
+    await expect(startTuiRuntime(
+      fixture.ctx,
+      { model: 'missing/model' },
+      new AbortController().signal,
+      dependencies(fixture),
+    )).rejects.toThrow('model route unavailable')
+    expect(fixture.create).not.toHaveBeenCalled()
+    expect(fixture.mounted).toHaveLength(0)
     await fixture.ctx.fiber.dispose()
   })
 
