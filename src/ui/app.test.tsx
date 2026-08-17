@@ -168,7 +168,9 @@ describe('InteractiveTui', () => {
       │ ^Y  activity · ^B jobs · ^G subagents            │
       │ /exit  quit with a durable teardown              │
       ╰──────────────────────────────────────────────────╯
-      › █
+      ╭──────────────────────────────────────────────────╮
+      │  Try "explain this repository" · ^P for the com… │
+      ╰──────────────────────────────────────────────────╯
       Enter send · ^J newline · ^S steer · ^C cancel"
     `)
 
@@ -199,7 +201,9 @@ describe('InteractiveTui', () => {
       │ ^Y  activity · ^B jobs · ^G subagents            │
       │ /exit  quit with a durable teardown              │
       ╰──────────────────────────────────────────────────╯
-      › █
+      ╭──────────────────────────────────────────────────╮
+      │  Try "explain this repository" · ^P for the com… │
+      ╰──────────────────────────────────────────────────╯
       Target session failed; restored session-app."
     `)
 
@@ -237,7 +241,9 @@ describe('InteractiveTui', () => {
       │ outside sandbox                                  │
       │ Y allow once · N reject                          │
       ╰──────────────────────────────────────────────────╯
-      › █
+      ╭──────────────────────────────────────────────────╮
+      │  Try "explain this repository" · ^P for the com… │
+      ╰──────────────────────────────────────────────────╯
       Enter send · ^J newline · ^S steer · ^C cancel"
     `)
 
@@ -323,7 +329,9 @@ describe('InteractiveTui', () => {
       │ /exit  quit with a durable teardown              │
       ╰──────────────────────────────────────────────────╯
       / needle█ · 0/0
-      › █
+      ╭──────────────────────────────────────────────────╮
+      │  Try "explain this repository" · ^P for the com… │
+      ╰──────────────────────────────────────────────────╯
       Enter send · ^J newline · ^S steer · ^C cancel"
     `)
 

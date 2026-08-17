@@ -190,15 +190,41 @@ export function createComposerView(
 interface ComposerProps {
   readonly columns: number
   readonly maxRows: number
+  /** Shown only while the draft is empty; it is a hint, never real content. */
+  readonly placeholder?: string
+  /** Drop box drawing for screen readers. */
+  readonly screenReader?: boolean
   readonly snapshot: EditorSnapshot
 }
 
-export function Composer({ columns, maxRows, snapshot }: ComposerProps) {
-  const contentColumns = Math.max(1, columns - 2)
+export function Composer({
+  columns,
+  maxRows,
+  placeholder,
+  screenReader = false,
+  snapshot,
+}: ComposerProps) {
+  // Two cells for the row prefix, plus four for the frame's border and padding
+  // when it is drawn. Getting this wrong crops long lines early, which the
+  // cell-width test catches but a snapshot update would silently accept.
+  const framePadding = screenReader ? 0 : 4
+  const contentColumns = Math.max(1, columns - 2 - framePadding)
   const view = createComposerView(snapshot, contentColumns, maxRows)
+  // A hint is drawn only on a genuinely empty draft, so it can never be
+  // mistaken for text that would be sent.
+  const showPlaceholder = placeholder !== undefined && snapshot.text === ''
+  const frame = screenReader
+    ? {}
+    : { borderColor: 'gray' as const, borderStyle: 'round' as const, paddingX: 1 }
   return (
-    <Box flexDirection="column">
-      {view.rows.map(row => (
+    <Box {...frame} flexDirection="column">
+      {showPlaceholder ? (
+        <Text wrap="truncate-end">
+          <Text inverse> </Text>
+          <Text dimColor>{placeholder}</Text>
+        </Text>
+      ) : null}
+      {showPlaceholder ? null : view.rows.map(row => (
         <Text key={row.line} wrap="truncate-end">
           {row.line === view.cursorLine ? '› ' : '│ '}
           {row.leadingEllipsis ? <Text dimColor>…</Text> : null}

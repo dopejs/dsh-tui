@@ -40,6 +40,12 @@ import { projectTranscriptPlainText } from '../model/transcript-viewport-control
 import { createScreenModel, type InteractionModal } from '../model/view-model'
 import type { InputController, InputSubmission, SubmissionMode } from '../runtime/input-controller'
 import { Composer, createComposerView } from './composer'
+
+/**
+ * The empty-composer hint. It names a real task rather than describing the
+ * box, because the first thing a new user needs is an example of what to say.
+ */
+const COMPOSER_PLACEHOLDER = 'Try "explain this repository" · ^P for the command palette'
 import { writeOsc52Clipboard } from './clipboard'
 import { Frame } from './ink-renderer'
 import { OverlayPanel } from './overlay'
@@ -1516,6 +1522,8 @@ export function InteractiveTui({
       <Composer
         columns={dimensions.columns}
         maxRows={composerMaxRows}
+        placeholder={COMPOSER_PLACEHOLDER}
+        screenReader={preferenceSnapshot.screenReader}
         snapshot={editorSnapshot}
       />
       <Text dimColor wrap="truncate-end">{notice}</Text>

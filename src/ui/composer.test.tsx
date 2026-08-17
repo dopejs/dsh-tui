@@ -3,6 +3,11 @@ import stringWidth from 'string-width'
 import { describe, expect, it } from 'vitest'
 
 import { EditorController } from '../model/editor-controller'
+
+/** Widest rendered line: a multi-line frame must fit the terminal per row. */
+function widestLine(output: string): number {
+  return Math.max(...output.split('\n').map(line => stringWidth(line)))
+}
 import { Composer, createComposerView } from './composer'
 
 describe('Composer (M1.1)', () => {
@@ -12,7 +17,11 @@ describe('Composer (M1.1)', () => {
     expect(renderToString(
       <Composer columns={40} maxRows={5} snapshot={editor.getSnapshot()} />,
       { columns: 40 },
-    )).toMatchInlineSnapshot('"› █"')
+    )).toMatchInlineSnapshot(`
+      "╭──────────────────────────────────────╮
+      │ › █                                  │
+      ╰──────────────────────────────────────╯"
+    `)
 
     editor.dispose()
   })
@@ -32,10 +41,12 @@ describe('Composer (M1.1)', () => {
       <Composer columns={32} maxRows={3} snapshot={editor.getSnapshot()} />,
       { columns: 32 },
     )).toMatchInlineSnapshot(`
-      "│ four
-      │ five
-      › six
-      ↑3"
+      "╭──────────────────────────────╮
+      │ │ four                       │
+      │ │ five                       │
+      │ › six                        │
+      │ ↑3                           │
+      ╰──────────────────────────────╯"
     `)
 
     editor.dispose()
@@ -53,7 +64,7 @@ describe('Composer (M1.1)', () => {
     )
     expect(output).toContain('…')
     expect(output).toContain('hij')
-    expect(stringWidth(output)).toBeLessThanOrEqual(12)
+    expect(widestLine(output)).toBeLessThanOrEqual(12)
 
     editor.dispose()
   })
@@ -89,4 +100,41 @@ describe('Composer (M1.1)', () => {
     expect(() => createComposerView(editor.getSnapshot(), 1, 0)).toThrow('maxRows')
     editor.dispose()
   })
+
+  // A hint that survived one keystroke would read as text about to be sent.
+  it('shows the placeholder only while the draft is empty', () => {
+    const empty = new EditorController()
+    const withPlaceholder = renderToString(
+      <Composer columns={60} maxRows={3} placeholder="Try something" snapshot={empty.getSnapshot()} />,
+      { columns: 60 },
+    )
+    expect(withPlaceholder).toContain('Try something')
+
+    empty.insert('h')
+    const typed = renderToString(
+      <Composer columns={60} maxRows={3} placeholder="Try something" snapshot={empty.getSnapshot()} />,
+      { columns: 60 },
+    )
+    expect(typed).not.toContain('Try something')
+    expect(typed).toContain('h')
+  })
+
+  it('omits the placeholder when none is given', () => {
+    const empty = new EditorController()
+    const output = renderToString(
+      <Composer columns={60} maxRows={3} snapshot={empty.getSnapshot()} />,
+      { columns: 60 },
+    )
+    expect(output).not.toContain('Try')
+  })
+
+  it('drops the frame in screen-reader mode', () => {
+    const empty = new EditorController()
+    const plain = renderToString(
+      <Composer columns={60} maxRows={3} screenReader snapshot={empty.getSnapshot()} />,
+      { columns: 60 },
+    )
+    expect(plain).not.toMatch(/[\u2500-\u257F]/)
+  })
 })
+
