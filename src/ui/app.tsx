@@ -26,6 +26,7 @@ import type { RecoveryController } from '../model/recovery-controller'
 import type { PreferencesController } from '../model/preferences-controller'
 import type { PermissionController } from '../model/permission-controller'
 import type { JobsController } from '../model/jobs-controller'
+import type { McpInventoryController } from '../model/mcp-inventory-controller'
 import type { SkillsController } from '../model/skills-controller'
 import type { ProjectionHubController } from '../model/projection-hub-controller'
 import type { SubagentTreeController } from '../model/subagent-tree-controller'
@@ -58,6 +59,7 @@ export interface InteractiveTuiProps {
   readonly initialNotice?: string
   readonly interaction: InteractionController
   readonly jobs: JobsController
+  readonly mcp: McpInventoryController
   readonly modelLabel: string
   readonly onQuit: (code: number) => void
   readonly overlay: OverlayController
@@ -185,6 +187,7 @@ export function InteractiveTui({
   initialNotice,
   interaction,
   jobs,
+  mcp,
   modelLabel,
   onQuit,
   overlay,
@@ -303,6 +306,11 @@ export function InteractiveTui({
     activity.getSnapshot,
     activity.getSnapshot,
   )
+  const mcpSnapshot = useSyncExternalStore(
+    mcp.subscribe,
+    mcp.getSnapshot,
+    mcp.getSnapshot,
+  )
   const skillSnapshot = useSyncExternalStore(
     skills.subscribe,
     skills.getSnapshot,
@@ -419,6 +427,11 @@ export function InteractiveTui({
         jobs.refresh()
         overlay.open('jobs')
         setNotice('Jobs opened.')
+        return
+      case 'mcp.center':
+        mcp.refresh()
+        overlay.open('mcp')
+        setNotice('MCP inventory opened.')
         return
       case 'skill.center':
         void skills.refresh()
@@ -895,6 +908,14 @@ export function InteractiveTui({
         }
         return
       }
+      if (activeOverlay === 'mcp') {
+        if (key.upArrow) mcp.move('up')
+        else if (key.downArrow || key.tab) mcp.move('down')
+        else if (!key.ctrl && typed.toLowerCase() === 'r') {
+          setNotice(mcp.refresh() ? 'MCP inventory refreshed.' : 'The tool registry is unavailable.')
+        }
+        return
+      }
       if (activeOverlay === 'skills') {
         if (key.upArrow) skills.move('up')
         else if (key.downArrow) skills.move('down')
@@ -1322,6 +1343,7 @@ export function InteractiveTui({
       permissions={permissionSnapshot}
       activity={activitySnapshot}
       jobs={jobsSnapshot}
+      mcp={mcpSnapshot}
       projections={projectionSnapshot}
       skills={skillSnapshot}
       subagents={subagentSnapshot}
@@ -1345,6 +1367,7 @@ export function InteractiveTui({
           permissions={permissionSnapshot}
           activity={activitySnapshot}
           jobs={jobsSnapshot}
+          mcp={mcpSnapshot}
           projections={projectionSnapshot}
           skills={skillSnapshot}
           subagents={subagentSnapshot}

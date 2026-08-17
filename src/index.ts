@@ -25,6 +25,7 @@ import { CompletionController } from './model/completion-controller'
 import { EditorController } from './model/editor-controller'
 import { InteractionController } from './model/interaction-controller'
 import { JobsController } from './model/jobs-controller'
+import { McpInventoryController } from './model/mcp-inventory-controller'
 import { OverlayController } from './model/overlay-controller'
 import { PreferencesController, resolvePreferences } from './model/preferences-controller'
 import { PermissionController } from './model/permission-controller'
@@ -379,6 +380,14 @@ export async function startTuiRuntime(
           { reportError: diagnostics.report },
         )
         bindingOwner.own('activity center controller', () => activity.dispose())
+        const mcp = new McpInventoryController(
+          { schemas: () => tools.schemas(attachment.agent) },
+          // A reconnect re-registers the server's tools, so the registry's own
+          // change event is what makes a stale inventory visible.
+          listener => ctx.on('tools/change', listener),
+          { reportError: diagnostics.report },
+        )
+        bindingOwner.own('mcp inventory controller', () => mcp.dispose())
         const skills = new SkillsController(attachment.agent, skillRegistry, {
           cwd: dependencies.cwd,
           reportError: diagnostics.report,
@@ -516,6 +525,7 @@ export async function startTuiRuntime(
             overlay,
             activity,
             jobs: jobsPanel,
+            mcp,
             palette,
             permission,
             preferences,

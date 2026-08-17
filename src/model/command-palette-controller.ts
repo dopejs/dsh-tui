@@ -12,6 +12,7 @@ export type TuiActionId =
   | 'changes.center'
   | 'composer.clear'
   | 'jobs.center'
+  | 'mcp.center'
   | 'permission.center'
   | 'projection.center'
   | 'recovery.center'
@@ -93,6 +94,12 @@ export const DEFAULT_TUI_ACTIONS: readonly TuiActionDescriptor[] = Object.freeze
     id: 'jobs.center',
     keywords: Object.freeze(['background', 'cancel', 'jobs', 'kill', 'tasks']),
     title: 'Open jobs',
+  }),
+  Object.freeze({
+    description: 'Inspect MCP servers and their bridged tools',
+    id: 'mcp.center',
+    keywords: Object.freeze(['mcp', 'servers', 'tools']),
+    title: 'Open MCP inventory',
   }),
   Object.freeze({
     description: 'Inspect and change the exact session permission preset',

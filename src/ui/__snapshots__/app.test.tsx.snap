@@ -9,10 +9,10 @@ exports[`InteractiveTui > renders a narrow command palette as a full-screen excl
 │  Open activity · Review plan, job, and subagent …│
 │  Open recovery · Flush, export, fork, and inspec…│
 │  Open skills · Browse discovered skills and inse…│
+│  Open MCP inventory · Inspect MCP servers and th…│
 │  Exit TUI · Gracefully close the interactive TUI │
 │  Go to transcript end · Return to the live trans…│
 │  Copy visible transcript · Request terminal clip…│
-│  Open permissions · Inspect and change the exact…│
-│1/10 · Enter select · Esc close · 1 below         │
+│1/11 · Enter select · Esc close · 2 below         │
 ╰──────────────────────────────────────────────────╯"
 `;

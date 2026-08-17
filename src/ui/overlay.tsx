@@ -5,6 +5,7 @@ import type { ChangeIndexSnapshot, IndexedChange } from '../model/change-index-c
 import type { CommandPaletteSnapshot } from '../model/command-palette-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
 import type { JobsSnapshot } from '../model/jobs-controller'
+import type { McpInventorySnapshot } from '../model/mcp-inventory-controller'
 import type { OverlayKind } from '../model/overlay-controller'
 import type { PermissionSnapshot } from '../model/permission-controller'
 import type { ProjectionHubSnapshot } from '../model/projection-hub-controller'
@@ -41,6 +42,7 @@ interface OverlayPanelProps {
   readonly completion: CompletionSnapshot
   readonly jobs: JobsSnapshot
   readonly maxRows: number
+  readonly mcp: McpInventorySnapshot
   readonly palette: CommandPaletteSnapshot
   readonly permissions: PermissionSnapshot
   readonly projections: ProjectionHubSnapshot
@@ -59,6 +61,7 @@ export function OverlayPanel({
   completion,
   jobs,
   maxRows,
+  mcp,
   palette,
   permissions,
   projections,
@@ -69,6 +72,52 @@ export function OverlayPanel({
   theme,
 }: OverlayPanelProps) {
   const tone = (name: Parameters<typeof toneStyle>[1]) => toneStyle(theme, name)
+  if (active === 'mcp') {
+    const selected = mcp.servers[mcp.selectedIndex ?? -1]
+    const window = selectedWindow(mcp.servers, mcp.selectedIndex, maxRows - 6)
+    return (
+      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+        <Text bold wrap="truncate-end">
+          MCP · {mcp.status} · {String(mcp.servers.length)} servers
+          {mcp.droppedServers > 0 ? ` · ${String(mcp.droppedServers)} not shown` : ''}
+        </Text>
+        {mcp.error === undefined ? null : (
+          <Text {...tone('danger')} wrap="truncate-end">{mcp.error}</Text>
+        )}
+        {window.rows.map((server, index) => {
+          const absolute = window.start + index
+          const isSelected = absolute === mcp.selectedIndex
+          return (
+            <Text inverse={isSelected} key={server.name} wrap="truncate-end">
+              {isSelected ? '›' : ' '} {server.name} · {String(server.toolCount)} tools
+              {server.droppedTools > 0 ? ` · ${String(server.droppedTools)} not shown` : ''}
+            </Text>
+          )
+        })}
+        {selected === undefined ? null : (
+          <Box flexDirection="column">
+            {selected.tools.slice(0, 4).map(row => (
+              <Text dimColor key={row.qualifiedName} wrap="truncate-end">
+                {'  '}{row.rawName} · {row.description}
+              </Text>
+            ))}
+          </Box>
+        )}
+        {/* The baseline publishes no MCP health registry; a tool list says
+            nothing about the transport, so no state is inferred from it. */}
+        <Text {...tone('muted')} wrap="truncate-end">
+          Connection health: no public registry on this Harness baseline
+          {' · '}{String(mcp.nonMcpToolCount)} non-MCP tools
+        </Text>
+        <Text dimColor wrap="truncate-end">
+          {mcp.servers.length === 0
+            ? 'No MCP servers registered · R refresh · Esc close'
+            : `${String((mcp.selectedIndex ?? 0) + 1)}/${String(mcp.servers.length)} · ↑/↓ select · R refresh · Esc close`}
+        </Text>
+      </Box>
+    )
+  }
+
   if (active === 'skills') {
     const detail = skills.detail
     const window = selectedWindow(skills.rows, skills.selectedIndex, maxRows - (detail ? 9 : 6))
@@ -633,8 +682,9 @@ function textLines(value: string | null): readonly string[] {
 }
 
 export function renderOverlayPanel(
-  props: Omit<OverlayPanelProps, 'activity' | 'jobs' | 'projections' | 'skills' | 'subagents' | 'theme'> & {
+  props: Omit<OverlayPanelProps, 'activity' | 'jobs' | 'mcp' | 'projections' | 'skills' | 'subagents' | 'theme'> & {
     readonly activity?: ActivityCenterSnapshot
+    readonly mcp?: McpInventorySnapshot
     readonly skills?: SkillsSnapshot
     readonly theme?: TuiTheme
     readonly jobs?: JobsSnapshot
@@ -642,6 +692,14 @@ export function renderOverlayPanel(
     readonly subagents?: SubagentTreeSnapshot
   },
 ): string {
+  const mcp: McpInventorySnapshot = props.mcp ?? {
+    droppedServers: 0,
+    health: 'unsupported-no-public-registry',
+    nonMcpToolCount: 0,
+    revision: 0,
+    servers: [],
+    status: 'unavailable',
+  }
   const skills: SkillsSnapshot = props.skills ?? {
     complete: true,
     hooks: 'unsupported-no-public-inventory',
@@ -696,6 +754,7 @@ export function renderOverlayPanel(
       {...props}
       activity={activity}
       jobs={jobs}
+      mcp={mcp}
       projections={projections}
       skills={skills}
       subagents={subagents}

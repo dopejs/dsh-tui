@@ -6,6 +6,7 @@ import type { ChangeIndexSnapshot } from '../model/change-index-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
 import type { JobsSnapshot } from '../model/jobs-controller'
 import type { SessionCenterSnapshot } from '../model/session-center-controller'
+import type { McpInventorySnapshot } from '../model/mcp-inventory-controller'
 import type { SkillsSnapshot } from '../model/skills-controller'
 import type { SubagentTreeSnapshot } from '../model/subagent-tree-controller'
 import type { PermissionSnapshot } from '../model/permission-controller'
@@ -686,6 +687,60 @@ describe('OverlayPanel (M1.3)', () => {
       },
     })
   }
+
+  function renderMcp(columns: number, overrides: Partial<McpInventorySnapshot> = {}): string {
+    return renderOverlayPanel({
+      active: 'mcp',
+      changes: emptyChanges,
+      columns,
+      completion: emptyCompletion,
+      maxRows: 12,
+      mcp: {
+        droppedServers: 0,
+        health: 'unsupported-no-public-registry',
+        nonMcpToolCount: 7,
+        revision: 3,
+        selectedIndex: 0,
+        servers: [{
+          droppedTools: 0,
+          name: 'github',
+          toolCount: 2,
+          tools: [
+            { description: 'Open an issue', qualifiedName: 'mcp__github__create_issue', rawName: 'create_issue' },
+            { description: 'List repositories', qualifiedName: 'mcp__github__list_repos', rawName: 'list_repos' },
+          ],
+        }, {
+          droppedTools: 3,
+          name: 'figma',
+          toolCount: 4,
+          tools: [
+            { description: 'Read a file', qualifiedName: 'mcp__figma__get_file', rawName: 'get_file' },
+          ],
+        }],
+        status: 'ready',
+        ...overrides,
+      },
+      palette: {
+        catalogTruncated: false, items: [], query: '', revision: 0, totalMatches: 0,
+      },
+      permissions: emptyPermissions,
+      recovery: emptyRecovery,
+      sessions: emptySessions,
+    })
+  }
+
+  it('renders MCP servers grouped by name with the health boundary', () => {
+    expect(renderMcp(80)).toMatchSnapshot()
+  })
+
+  it('degrades the MCP inventory at 40 columns', () => {
+    expect(renderMcp(40)).toMatchSnapshot()
+  })
+
+  it('states that no MCP servers are registered rather than implying a failure', () => {
+    expect(renderMcp(80, { nonMcpToolCount: 12, servers: [], status: 'ready' }))
+      .toMatchSnapshot()
+  })
 
   it('renders the skill catalog with invocation controls and the hook boundary', () => {
     expect(renderSkills(80)).toMatchSnapshot()

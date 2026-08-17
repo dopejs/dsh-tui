@@ -13,6 +13,7 @@ import { PreferencesController } from '../model/preferences-controller'
 import { PermissionController } from '../model/permission-controller'
 import { ActivityCenterController } from '../model/activity-center-controller'
 import { JobsController } from '../model/jobs-controller'
+import { McpInventoryController } from '../model/mcp-inventory-controller'
 import { SkillsController } from '../model/skills-controller'
 import { SubagentTreeController } from '../model/subagent-tree-controller'
 import { ProjectionHubController } from '../model/projection-hub-controller'
@@ -67,6 +68,7 @@ function renderApp(
   const jobs = new JobsController({} as Agent)
   const subagents = new SubagentTreeController({} as Agent)
   const skills = new SkillsController()
+  const mcp = new McpInventoryController()
   const activity = new ActivityCenterController({ jobs, projections, subagents })
   const recovery = new RecoveryController({
     operations: {
@@ -102,6 +104,7 @@ function renderApp(
         preferences={preferences}
         activity={activity}
         jobs={jobs}
+        mcp={mcp}
         skills={skills}
         subagents={subagents}
         projections={projections}
@@ -126,6 +129,7 @@ function renderApp(
     permission.dispose()
     activity.dispose()
   jobs.dispose()
+  mcp.dispose()
   skills.dispose()
   subagents.dispose()
     projections.dispose()

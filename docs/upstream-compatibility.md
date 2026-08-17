@@ -52,6 +52,8 @@ is required by this bundle.
 - `ctx.jobs.list()` / `get()` / `kill()` / `onJobsChanged()` / `onJobDone()` for
   background-job observation and owned cancellation; the consuming `read()` and
   the admitting `attachController()` are deliberately not consumed.
+- `ctx.tools.schemas()` plus the `tools/change` event for the MCP inventory;
+  server grouping uses only the documented `mcp__<server>__<raw>` name grammar.
 - `ctx.skills.snapshot()` / `get()` for abortable, completeness-aware skill
   discovery and body reads.
 - `ctx.settings.register()` plus the returned scope's `get()` / `watch()` /

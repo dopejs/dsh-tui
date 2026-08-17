@@ -359,6 +359,20 @@ has side effects the user did not ask for, so nothing is executed to test it.
 
 ### M4.3 MCP inventory and health (+3)
 
+Status: **complete**. MCP-bridged tools are grouped by server using the
+documented public name grammar (`mcp__<server>__<raw>`), read from the
+model-facing `ctx.tools.schemas()` projection — which carries no transport
+object, header map, or environment, so there is nothing to redact and no
+credential is reachable. Names that do not match the grammar are counted as
+plain tools rather than guessed at.
+
+Connection health is reported as unavailable: `dsh-mcp-client` owns its
+connection privately and the baseline publishes no health registry, so
+configured/connecting/degraded would be inferred from a tool list that says
+nothing about the transport. The registry's `tools/change` event drives
+invalidation, and the inventory is rebuilt rather than patched, so a reconnect
+cannot leave rows from the previous connection behind.
+
 - group MCP-qualified tools by server and expose public connection health when
   available;
 - redact headers/env/secrets and distinguish configured, connecting, active,
