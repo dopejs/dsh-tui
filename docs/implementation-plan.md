@@ -653,7 +653,15 @@ profile and running it. Each has a guard or a test that reproduces it.
 ### Verification the gate now performs
 
 `pnpm check` runs documentation, import, **module reachability**, lint, type,
-unit, and **package-contents** checks. `pnpm test:package` installs the real
-tarball into a clean profile. Neither substitutes for launching the built
-package, which is what caught escapes 5 and 6 — a one-shot run against a real
-profile remains a manual step before release.
+unit, and **package-contents** checks.
+
+`pnpm test:package` installs the real tarball into a clean profile and then
+*launches* it — the interactive PTY flows, plus the `--doctor` and `--print`
+one-shot contracts that escapes 5 and 6 broke. Each one-shot run is bounded, so
+a run that stops exiting fails the job instead of hanging it, and the `--print`
+check strips credentials from the sandbox environment so a failed turn is the
+only correct outcome: reporting `completed` there is exactly the regression.
+Both assertions were verified by reinstating each defect.
+
+This closes what was previously a manual pre-release step. It runs in CI on
+ubuntu-latest/Node 22.19.0, under a 30-minute job timeout.

@@ -235,3 +235,23 @@ untrimmed working tree, so the failure first appears on install.
 The check evaluates the `files` globs directly instead of shelling out to
 `npm pack`, because `npm pack` runs `prepare`/`prepack`, which run the check.
 
+## Launching the built package
+
+`pnpm test:package` is the only gate that runs the code as a user receives it:
+it packs, installs into a clean `dsh` profile, and launches that profile.
+
+Beyond the interactive PTY flows it asserts the one-shot contracts, because
+both of them once shipped broken in ways nothing else could see:
+
+- `--doctor` and `--print` must **terminate on their own**, within a bound. An
+  `appExit` requested before the launcher's shutdown controller exists is
+  dropped, and the process stays alive with its output already written. The
+  bound is what makes that a failure rather than a hung job.
+- `--print` runs with credentials stripped from the sandbox environment, so the
+  turn cannot succeed and a failed run is the only correct outcome. Reporting
+  `completed` with exit 0 there is the regression where a caller reads empty
+  output as "the model had nothing to say".
+
+Both assertions were validated by reinstating the original defect and
+confirming the gate goes red.
+

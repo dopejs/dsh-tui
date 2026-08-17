@@ -12,6 +12,8 @@ jobs:
   check:
     name: Check (${{ matrix.os }}, Node ${{ matrix.node }})
     runs-on: ${{ matrix.os }}
+    # A run that stops exiting must fail the job, not occupy a runner for hours.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -35,5 +37,9 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm check
-      - if: matrix.os == 'ubuntu-latest' && matrix.node == '22.19.0'
+      # Installs the real tarball into a clean profile, then launches it:
+      # interactive PTY flows plus the one-shot --doctor and --print contracts,
+      # each bounded so a run that never exits fails instead of hanging.
+      - name: Clean-profile install and launch
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '22.19.0'
         run: pnpm test:package

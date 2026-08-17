@@ -1,4 +1,4 @@
-import { execFileSync } from 'node:child_process'
+import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -93,6 +93,106 @@ for (const forbidden of [
   '@deepseek-ai/dsh-client-connection',
 ]) {
   if (composed.includes(forbidden)) throw new Error(`TUI profile unexpectedly mounts ${forbidden}`)
+}
+
+
+/**
+ * Run a one-shot invocation against the installed profile and require that it
+ * terminates on its own.
+ *
+ * A bound is the point of this helper. `--doctor` and `--print` once printed
+ * their output and then never exited, because `appExit` requested from the
+ * runtime plugin's `start` is dropped before the launcher's shutdown
+ * controller exists. Without a timeout that regression hangs CI instead of
+ * failing it.
+ */
+function runOneShot(args, { env = environment, input, timeoutMs = 120_000 } = {}) {
+  const result = spawnSync('pnpm', [...dshDlx, '--profile', 'tui', ...args], {
+    cwd: root,
+    encoding: 'utf8',
+    env,
+    maxBuffer: 20 * 1024 * 1024,
+    timeout: timeoutMs,
+    ...(input === undefined ? {} : { input }),
+  })
+  if (result.error?.code === 'ETIMEDOUT' || result.signal !== null) {
+    throw new Error(
+      `dsh --profile tui ${args.join(' ')} did not exit within ${String(timeoutMs)}ms `
+      + `(signal ${String(result.signal)}). A one-shot run must request exit until the `
+      + `launcher honours it.\n${result.stdout ?? ''}${result.stderr ?? ''}`,
+    )
+  }
+  if (result.error !== undefined) throw result.error
+  return {
+    status: result.status,
+    stderr: result.stderr ?? '',
+    stdout: result.stdout ?? '',
+  }
+}
+
+// --doctor is read-only: it starts no session and runs no agent.
+const doctor = runOneShot(['--doctor'])
+if (doctor.status !== 0) {
+  throw new Error(`--doctor exited ${String(doctor.status)}:\n${doctor.stdout}${doctor.stderr}`)
+}
+for (const required of [
+  'dsh-tui doctor',
+  'Required services',
+  'Session persistence',
+  'Overall:',
+]) {
+  if (!doctor.stdout.includes(required)) {
+    throw new Error(`--doctor report is missing ${required}:\n${doctor.stdout}`)
+  }
+}
+// The report is read by screen readers and pasted into issue trackers.
+if (doctor.stdout.includes('\u001B[')) {
+  throw new Error('--doctor emitted ANSI escapes into a non-TTY stream')
+}
+if (/(?:key|secret|token|password)=/iu.test(doctor.stdout)) {
+  throw new Error(`--doctor leaked an environment value:\n${doctor.stdout}`)
+}
+
+// --print must terminate, and what it reports must match what happened.
+//
+// The credential is stripped so the turn cannot succeed: the only correct
+// outcome is a failed run. This pins the regression where a failed turn exited
+// 0 reporting "completed" — the encoder skipped `turn/end`, so a caller read
+// exit 0 and empty output as "the model had nothing to say".
+const credentialFree = Object.fromEntries(
+  Object.entries(environment).filter(
+    ([name]) => !/(?:api[_-]?key|secret|token|credential)/iu.test(name),
+  ),
+)
+
+const printed = runOneShot(['--print', '--output-format', 'stream-json'], {
+  env: credentialFree,
+  input: 'say hello\n',
+})
+const lines = printed.stdout.trim().split('\n').filter(Boolean)
+const last = lines.at(-1)
+if (last === undefined) throw new Error('--print produced no envelope')
+let envelope
+try {
+  envelope = JSON.parse(last)
+} catch {
+  throw new Error(`--print did not end with a JSON envelope:\n${printed.stdout}`)
+}
+if (envelope.type !== 'result' || envelope.v !== 1) {
+  throw new Error(`--print ended with an unexpected envelope: ${last}`)
+}
+if (envelope.reason !== 'failed') {
+  throw new Error(
+    `--print reported "${envelope.reason}" for a run that could not reach a model. `
+    + `A turn that failed must not be reported as success.\n${printed.stdout}`,
+  )
+}
+if (printed.status !== 1) {
+  throw new Error(`--print reported "failed" but exited ${String(printed.status)}; expected 1`)
+}
+// Diagnostics belong on stderr so redirecting stdout never loses them.
+if (printed.stderr.trim() === '') {
+  throw new Error('--print failed without writing a diagnostic to stderr')
 }
 
 function runTui(args) {
