@@ -42,10 +42,11 @@
   "scripts": {
     "bench": "vitest bench --run",
     "build": "tsdown",
-    "check": "pnpm check:docs && pnpm check:imports && pnpm lint && pnpm typecheck && pnpm test && pnpm check:package",
+    "check": "pnpm check:docs && pnpm check:imports && pnpm check:wiring && pnpm lint && pnpm typecheck && pnpm test && pnpm check:package",
     "check:docs": "node scripts/check-docs.mjs",
     "check:imports": "node scripts/check-source-imports.mjs",
     "check:package": "pnpm build && node scripts/check-package-files.mjs",
+    "check:wiring": "node scripts/check-module-wiring.mjs",
     "lint": "eslint . --max-warnings=0",
     "prepack": "pnpm check",
     "prepare": "pnpm build",

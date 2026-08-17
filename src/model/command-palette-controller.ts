@@ -9,6 +9,7 @@ type Listener = () => void
 
 export type TuiActionId =
   | 'activity.center'
+  | 'attachment.center'
   | 'changes.center'
   | 'composer.clear'
   | 'jobs.center'
@@ -77,6 +78,12 @@ export const DEFAULT_TUI_ACTIONS: readonly TuiActionDescriptor[] = Object.freeze
     id: 'activity.center',
     keywords: Object.freeze(['alerts', 'activity', 'notifications', 'updates']),
     title: 'Open activity',
+  }),
+  Object.freeze({
+    description: 'Stage image attachments for the next message',
+    id: 'attachment.center',
+    keywords: Object.freeze(['attach', 'image', 'file', 'upload']),
+    title: 'Open attachments',
   }),
   Object.freeze({
     description: 'Review durable tool-presented file changes',

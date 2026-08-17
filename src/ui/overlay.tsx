@@ -1,6 +1,7 @@
 import { Box, Text, renderToString } from 'ink'
 
 import type { ActivityCenterSnapshot } from '../model/activity-center-controller'
+import type { AttachmentsSnapshot } from '../model/attachments-controller'
 import type { ChangeIndexSnapshot, IndexedChange } from '../model/change-index-controller'
 import type { CommandPaletteSnapshot } from '../model/command-palette-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
@@ -15,6 +16,7 @@ import type { SessionCenterSnapshot } from '../model/session-center-controller'
 import type { SkillsSnapshot } from '../model/skills-controller'
 import type { SubagentTreeSnapshot } from '../model/subagent-tree-controller'
 import type { TuiTheme } from '../model/preferences-controller'
+import { fileHyperlink, type TerminalCapabilities } from './terminal-links'
 import { toneStyle, type SemanticTone } from './theme'
 
 interface OverlayWindow<T> {
@@ -38,6 +40,7 @@ function selectedWindow<T>(
 interface OverlayPanelProps {
   readonly active: OverlayKind
   readonly activity: ActivityCenterSnapshot
+  readonly attachments: AttachmentsSnapshot
   readonly changes: ChangeIndexSnapshot
   readonly columns: number
   readonly completion: CompletionSnapshot
@@ -54,12 +57,15 @@ interface OverlayPanelProps {
   readonly sessions: SessionCenterSnapshot
   readonly skills: SkillsSnapshot
   readonly subagents: SubagentTreeSnapshot
+  /** Negotiated once at startup; absent means assume no hyperlinks. */
+  readonly terminalCapabilities?: TerminalCapabilities
   readonly theme: TuiTheme
 }
 
 export function OverlayPanel({
   active,
   activity,
+  attachments,
   changes,
   columns,
   completion,
@@ -75,12 +81,50 @@ export function OverlayPanel({
   sessions,
   skills,
   subagents,
+  terminalCapabilities,
   theme,
 }: OverlayPanelProps) {
   const tone = (name: Parameters<typeof toneStyle>[1]) => toneStyle(theme, name)
   // A screen reader announces every border character, so the frame becomes
   // noise wrapped around the text the user actually asked for.
   const frame = screenReader ? {} : { borderStyle: 'round' as const }
+  if (active === 'attachments') {
+    const limits = attachments.limits
+    return (
+      <Box {...frame} flexDirection="column" width={Math.max(4, columns)}>
+        <Text bold wrap="truncate-end">
+          Attachments · {attachments.status} · {String(attachments.rows.length)} staged
+          {limits === undefined
+            ? ''
+            : ` · max ${String(Math.floor(limits.maxImageBytes / 1_048_576))} MiB each`}
+        </Text>
+        <Text wrap="truncate-end">&gt; {attachments.draftPath}█</Text>
+        {attachments.error === undefined ? null : (
+          <Text {...tone('danger')} wrap="truncate-end">{attachments.error}</Text>
+        )}
+        {attachments.rows.map(row => (
+          <Text key={row.attachmentId} wrap="truncate-end">
+            {'  '}[image {row.name ?? row.attachmentId} · {row.mediaType}
+            {' · '}{String(row.width)}×{String(row.height)}
+            {' · '}{String(Math.ceil(row.bytes / 1024))} KiB]
+          </Text>
+        ))}
+        {/* The textual row above is shown either way, so an attachment is
+            never invisible on a terminal that cannot draw it. */}
+        <Text {...tone('muted')} wrap="truncate-end">
+          {attachments.inlineImages
+            ? 'This terminal can draw images inline.'
+            : 'This terminal cannot draw images; the description above is the fallback.'}
+        </Text>
+        <Text dimColor wrap="truncate-end">
+          {attachments.status === 'unavailable'
+            ? 'No attachment store on this Harness baseline · Esc close'
+            : 'type a path · Enter attach · ^D drop last · ^X clear · Esc close'}
+        </Text>
+      </Box>
+    )
+  }
+
   if (active === 'plugins') {
     const window = selectedWindow(plugins.rows, plugins.selectedIndex, maxRows - 6)
     const selected = plugins.rows[plugins.selectedIndex ?? -1]
@@ -525,7 +569,11 @@ export function OverlayPanel({
           const isSelected = absolute === changes.selectedIndex
           return (
             <Text inverse={isSelected} key={item.change.id} wrap="truncate-end">
-              {isSelected ? '›' : ' '} {item.change.expanded ? '▾' : '▸'} {item.change.path}
+              {isSelected ? '›' : ' '} {item.change.expanded ? '▾' : '▸'}{' '}
+              {/* Falls back to the plain path when the terminal cannot link. */}
+              {fileHyperlink(item.change.path, {
+                ...(terminalCapabilities === undefined ? {} : { capabilities: terminalCapabilities }),
+              })}
               {item.groupCount > 1 ? ` [${String(item.groupIndex + 1)}/${String(item.groupCount)}]` : ''}
               {' · '}{item.change.phase}{' · '}{item.change.title}
             </Text>
@@ -594,7 +642,21 @@ export function OverlayPanel({
     const window = selectedWindow(sessions.items, sessions.selectedIndex, maxRows - 6)
     return (
       <Box {...frame} flexDirection="column" width={Math.max(4, columns)}>
-        <Text bold wrap="truncate-end">Session center · {sessions.status}</Text>
+        <Text bold wrap="truncate-end">
+          Session center · {sessions.status}
+          {sessions.workspaceRoot === undefined
+            ? ''
+            : ` · workspace ${sessions.workspaceRoot}`}
+        </Text>
+        {sessions.workspaces.length === 0 ? null : (
+          <Text {...tone('muted')} wrap="truncate-end">
+            {/* Resuming stays in this process's root; W cycles what is listed. */}
+            W cycles workspace:{' '}
+            {sessions.workspaces
+              .map(group => `${group.label} (${String(group.count)})`)
+              .join(' · ')}
+          </Text>
+        )}
         <Text wrap="truncate-end">
           &gt; {sessions.query}<Text inverse>█</Text>
         </Text>
@@ -743,8 +805,10 @@ function textLines(value: string | null): readonly string[] {
 }
 
 export function renderOverlayPanel(
-  props: Omit<OverlayPanelProps, 'activity' | 'jobs' | 'mcp' | 'plugins' | 'projections' | 'skills' | 'subagents' | 'theme'> & {
+  props: Omit<OverlayPanelProps, 'activity' | 'attachments' | 'jobs' | 'mcp' | 'plugins' | 'projections' | 'skills' | 'subagents' | 'theme'> & {
     readonly activity?: ActivityCenterSnapshot
+    readonly attachments?: AttachmentsSnapshot
+    readonly terminalCapabilities?: TerminalCapabilities
     readonly mcp?: McpInventorySnapshot
     readonly screenReader?: boolean
     readonly plugins?: PluginInventoryControllerSnapshot
@@ -781,6 +845,13 @@ export function renderOverlayPanel(
     status: 'unavailable',
     totalMatches: 0,
     truncated: false,
+  }
+  const attachments: AttachmentsSnapshot = props.attachments ?? {
+    draftPath: '',
+    inlineImages: false,
+    revision: 0,
+    rows: [],
+    status: 'unavailable',
   }
   const activity: ActivityCenterSnapshot = props.activity ?? {
     counts: { jobsRunning: 0, subagentsUnread: 0, todosOpen: 0 },
@@ -825,6 +896,10 @@ export function renderOverlayPanel(
     <OverlayPanel
       {...props}
       activity={activity}
+      attachments={attachments}
+      {...(props.terminalCapabilities === undefined
+        ? {}
+        : { terminalCapabilities: props.terminalCapabilities })}
       jobs={jobs}
       mcp={mcp}
       plugins={plugins}

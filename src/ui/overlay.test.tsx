@@ -948,5 +948,57 @@ describe('OverlayPanel (M1.3)', () => {
     expect(plain).toContain('Connection health: no public registry')
     expect(plain).toMatchSnapshot()
   })
+
+  it('renders a change path as an OSC 8 link on a capable terminal', () => {
+    const change = {
+      callId: 'call-a',
+      eventSeq: 2,
+      expanded: false,
+      id: 'call-a:0',
+      newText: 'new',
+      oldText: 'old',
+      path: '/repo/src/a.ts',
+      phase: 'applied' as const,
+      rowId: 'tool:call-a',
+      title: 'Edit a.ts',
+      truncated: false,
+    }
+    const changes = {
+      droppedChanges: 0,
+      groups: [{ changes: [change], path: '/repo/src/a.ts' }],
+      invalidDiffs: 0,
+      revision: 1,
+      selectedIndex: 0,
+      totalChanges: 1,
+      truncated: false,
+    }
+    const base = {
+      active: 'changes' as const,
+      changes,
+      columns: 80,
+      completion: emptyCompletion,
+      maxRows: 10,
+      palette: {
+        catalogTruncated: false, items: [], query: '', revision: 0, totalMatches: 0,
+      },
+      permissions: emptyPermissions,
+      recovery: emptyRecovery,
+      sessions: emptySessions,
+    }
+
+    const linked = renderOverlayPanel({
+      ...base,
+      terminalCapabilities: { hyperlinks: true, inlineImages: false },
+    })
+    const plain = renderOverlayPanel({
+      ...base,
+      terminalCapabilities: { hyperlinks: false, inlineImages: false },
+    })
+
+    expect(linked).toContain('\u001B]8;;file://')
+    // The fallback keeps the path visible on a terminal that cannot link.
+    expect(plain).not.toContain('\u001B]8;;')
+    expect(plain).toContain('/repo/src/a.ts')
+  })
 })
 

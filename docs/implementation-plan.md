@@ -603,8 +603,8 @@ asserts the absence rather than a guess:
 
 ### Escapes found and fixed during the audit
 
-Two defects reached `main` before being caught, both because the local gate did
-not cover the surface they broke:
+Four defects reached `main` before being caught, each because the local gate did
+not cover the surface it broke:
 
 1. **Unpublished bundler chunks.** Sharing a module between the `index` and
    `startup` entry points produced a content-hashed chunk that the `files` list
@@ -618,6 +618,20 @@ not cover the surface they broke:
    escaping and wrapping under test instead of the host's notion of an absolute
    path.
 
-A third, smaller escape was caught before pushing: a malformed regular
-expression made a doctor-output assertion incapable of failing. It now asserts
-no ANSI and no box drawing, verified by mutation.
+3. **Capabilities built but wired to nothing.** The attachments controller, the
+   terminal-link renderer, and workspace filtering were implemented, unit
+   tested, and recorded here as complete while no runtime constructed them and
+   no view rendered them — so none was reachable by a user. `tsc`, eslint, and
+   the unit suites were all satisfied by each module plus its own test. Fixed by
+   adding the attachments panel, rendering change paths as OSC 8 links, and
+   giving the session center a workspace cycle; `pnpm check:wiring` now fails
+   when a module is imported only by test files. Two pre-existing modules
+   (`src/cli.tsx`, `src/runtime/agent-runtime.ts`) are unreachable for the same
+   reason and are listed in the guard pending a removal decision.
+4. **An assertion that could not fail.** A malformed regular expression made a
+   doctor-output check vacuous. It now asserts no ANSI and no box drawing,
+   verified by mutation.
+
+The first two were found by CI, the third by an explicit reachability sweep
+during this audit, and the fourth by reading the assertion. Each now has a
+guard that reproduces it.

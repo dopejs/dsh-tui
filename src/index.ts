@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { appendFileSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import type { Context } from '@deepseek-ai/cordis'
 import type { ModelSelection } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
@@ -9,6 +10,7 @@ import type {} from '@deepseek-ai/dsh-llm'
 import type {} from '@deepseek-ai/dsh-permission-presets'
 import { SessionId } from '@deepseek-ai/dsh-session'
 import type {} from '@deepseek-ai/dsh-session-persistence'
+import type {} from '@deepseek-ai/dsh-attachment'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-skill'
 import { settingsNamespace } from '@deepseek-ai/dsh-settings'
@@ -18,6 +20,7 @@ import type {} from '@deepseek-ai/dsh-tools'
 import type {} from '@deepseek-ai/dsh-user-questions'
 
 import { ActivityCenterController } from './model/activity-center-controller'
+import { AttachmentsController } from './model/attachments-controller'
 import { AgentStatusController } from './model/agent-status-controller'
 import { ChangeIndexController } from './model/change-index-controller'
 import { CommandPaletteController } from './model/command-palette-controller'
@@ -52,6 +55,7 @@ import { ResourceOwner } from './runtime/resource-owner'
 import { SessionAttachmentCoordinator } from './runtime/session-attachment-coordinator'
 import { exportRawSession } from './runtime/session-export'
 import { WorkspaceCompletionProvider } from './runtime/workspace-completion-provider'
+import { detectTerminalCapabilities } from './ui/terminal-links'
 import type { TuiStartupValues } from './startup'
 import {
   mountInkApplication,
@@ -199,6 +203,9 @@ export async function startTuiRuntime(
   const settings = ctx.get('settings')
   const subagentRuntime = ctx.get('subagents')
   const skillRegistry = ctx.get('skills')
+  const attachmentStore = ctx.get('attachments')
+  // Negotiated once, before anything is rendered.
+  const terminalCapabilities = detectTerminalCapabilities()
   const sessionProjections = ctx.get('sessionProjections')
   const sessions = ctx.get('sessions')
   const tools = ctx.get('tools')
@@ -408,6 +415,11 @@ export async function startTuiRuntime(
           reportError: diagnostics.report,
         })
         bindingOwner.own('skills controller', () => skills.dispose())
+        const attachments = new AttachmentsController(attachmentStore, {
+          inlineImages: terminalCapabilities.inlineImages,
+          reportError: diagnostics.report,
+        })
+        bindingOwner.own('attachments controller', () => attachments.dispose())
         const editor = new EditorController()
         bindingOwner.own('editor controller', () => editor.dispose())
         const input = new InputController({ agent: attachment.agent, commands })
@@ -539,6 +551,9 @@ export async function startTuiRuntime(
               .join('/'),
             overlay,
             activity,
+            attachments,
+            readFile: async (path: string) => new Uint8Array(await readFile(path)),
+            terminalCapabilities,
             jobs: jobsPanel,
             mcp,
             plugins,

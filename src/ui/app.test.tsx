@@ -13,6 +13,7 @@ import { PreferencesController } from '../model/preferences-controller'
 import { PermissionController } from '../model/permission-controller'
 import { ActivityCenterController } from '../model/activity-center-controller'
 import { JobsController } from '../model/jobs-controller'
+import { AttachmentsController } from '../model/attachments-controller'
 import { McpInventoryController } from '../model/mcp-inventory-controller'
 import { PluginInventoryController } from '../model/plugin-inventory-controller'
 import { SkillsController } from '../model/skills-controller'
@@ -71,6 +72,7 @@ function renderApp(
   const skills = new SkillsController()
   const mcp = new McpInventoryController()
   const plugins = new PluginInventoryController()
+  const attachments = new AttachmentsController()
   const activity = new ActivityCenterController({ jobs, projections, subagents })
   const recovery = new RecoveryController({
     operations: {
@@ -106,6 +108,7 @@ function renderApp(
         preferences={preferences}
         activity={activity}
         jobs={jobs}
+        attachments={attachments}
         mcp={mcp}
         plugins={plugins}
         skills={skills}
@@ -132,6 +135,7 @@ function renderApp(
     permission.dispose()
     activity.dispose()
   jobs.dispose()
+  attachments.dispose()
   mcp.dispose()
   plugins.dispose()
   skills.dispose()

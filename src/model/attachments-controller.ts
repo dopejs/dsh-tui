@@ -21,6 +21,8 @@ export interface AttachmentRow {
 }
 
 export interface AttachmentsSnapshot {
+  /** Path being typed for the next attachment. */
+  readonly draftPath: string
   readonly error?: string
   /** Whether the terminal can draw the image; the textual row is shown either way. */
   readonly inlineImages: boolean
@@ -101,6 +103,7 @@ export class AttachmentsController {
   readonly #service: AttachmentService | undefined
   #busy = false
   #disposed = false
+  #draftPath = ''
   #error: string | undefined
   #inlineImages: boolean
   #revision = 0
@@ -177,6 +180,30 @@ export class AttachmentsController {
       this.#busy = false
       if (!this.#disposed) this.#publish()
     }
+  }
+
+  setDraftPath(path: string): boolean {
+    this.#assertActive()
+    const next = boundedText(path, 4_000)
+    if (next === this.#draftPath) return false
+    this.#draftPath = next
+    this.#publish()
+    return true
+  }
+
+  /** Attach the typed path, clearing the draft only once it is accepted. */
+  async attachDraft(
+    read: (path: string) => Promise<Uint8Array>,
+  ): Promise<'attached' | 'refused' | 'unavailable'> {
+    this.#assertActive()
+    const path = this.#draftPath.trim()
+    if (path === '') return 'refused'
+    const outcome = await this.attach(path, read)
+    if (outcome === 'attached' && !this.#disposed) {
+      this.#draftPath = ''
+      this.#publish()
+    }
+    return outcome
   }
 
   /** Drop one staged attachment. The stored object itself is immutable. */
@@ -259,6 +286,7 @@ export class AttachmentsController {
       limits = undefined
     }
     return Object.freeze({
+      draftPath: this.#draftPath,
       ...(this.#error === undefined ? {} : { error: this.#error }),
       inlineImages: this.#inlineImages,
       ...(limits === undefined ? {} : { limits }),

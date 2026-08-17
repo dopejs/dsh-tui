@@ -12,6 +12,7 @@ import { PreferencesController } from '../model/preferences-controller'
 import { PermissionController } from '../model/permission-controller'
 import { ActivityCenterController } from '../model/activity-center-controller'
 import { JobsController } from '../model/jobs-controller'
+import { AttachmentsController } from '../model/attachments-controller'
 import { McpInventoryController } from '../model/mcp-inventory-controller'
 import { PluginInventoryController } from '../model/plugin-inventory-controller'
 import { SkillsController } from '../model/skills-controller'
@@ -135,6 +136,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
     const skills = new SkillsController()
     const mcp = new McpInventoryController()
     const plugins = new PluginInventoryController()
+    const attachments = new AttachmentsController()
     const activity = new ActivityCenterController({ jobs, projections, subagents })
     const recovery = new RecoveryController({
       operations: {
@@ -227,6 +229,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
         preferences={preferences}
         activity={activity}
         jobs={jobs}
+        attachments={attachments}
         mcp={mcp}
         plugins={plugins}
         skills={skills}
@@ -405,6 +408,21 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
 
       stdin.write('\u001B[112;5u')
       await eventually(() => expect(overlay.getSnapshot().active).toBe('command-palette'))
+      stdin.write('open attachments')
+      await eventually(() => expect(palette.getSnapshot().query).toBe('open attachments'))
+      stdin.write('\r')
+      await eventually(() => expect(overlay.getSnapshot().active).toBe('attachments'))
+      // Without an attachment store the panel states the boundary.
+      await eventually(() => expect(output).toContain('Attachments \u00B7 unavailable'))
+      stdin.write('/tmp/shot.png')
+      await eventually(() => expect(output).toContain('/tmp/shot.png'))
+      stdin.write('\r')
+      await eventually(() => expect(output).toContain('No attachment store'))
+      stdin.write('\u001B[27u')
+      await eventually(() => expect(overlay.getSnapshot().active).toBeUndefined())
+
+      stdin.write('\u001B[112;5u')
+      await eventually(() => expect(overlay.getSnapshot().active).toBe('command-palette'))
       stdin.write('open jobs')
       await eventually(() => expect(palette.getSnapshot().query).toBe('open jobs'))
       stdin.write('\r')
@@ -465,6 +483,7 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       permission.dispose()
       activity.dispose()
     jobs.dispose()
+    attachments.dispose()
     mcp.dispose()
     plugins.dispose()
     skills.dispose()

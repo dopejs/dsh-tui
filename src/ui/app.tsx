@@ -3,6 +3,7 @@ import { Box, Text, useInput, usePaste, useStdout } from 'ink'
 import type { AskUserQuestionAnswer } from '@deepseek-ai/dsh-user-questions'
 
 import type { ActivityCenterController } from '../model/activity-center-controller'
+import type { AttachmentsController } from '../model/attachments-controller'
 import type { AgentStatusStore } from '../model/agent-status-controller'
 import type { ChangeIndexController } from '../model/change-index-controller'
 import type {
@@ -42,6 +43,7 @@ import { Composer, createComposerView } from './composer'
 import { writeOsc52Clipboard } from './clipboard'
 import { Frame } from './ink-renderer'
 import { OverlayPanel } from './overlay'
+import type { TerminalCapabilities } from './terminal-links'
 
 interface QuestionDraft {
   readonly custom?: string
@@ -52,6 +54,11 @@ interface QuestionDraft {
 export interface InteractiveTuiProps {
   readonly acceptsInput?: () => boolean
   readonly activity: ActivityCenterController
+  readonly attachments: AttachmentsController
+  /** Reads a file for attachment; injected so the model layer stays pure. */
+  readonly readFile?: (path: string) => Promise<Uint8Array>
+  /** Negotiated once at startup; drives hyperlinks and inline images. */
+  readonly terminalCapabilities?: TerminalCapabilities
   readonly changes: ChangeIndexController
   readonly columns?: number
   readonly completion: CompletionController
@@ -183,6 +190,7 @@ function searchStatus(search: TranscriptViewportSnapshot['search']): string {
 export function InteractiveTui({
   acceptsInput = () => true,
   activity,
+  attachments,
   changes,
   columns: fixedColumns,
   completion,
@@ -201,6 +209,8 @@ export function InteractiveTui({
   plugins,
   preferences,
   projections,
+  readFile,
+  terminalCapabilities,
   recovery,
   sessionId,
   sessionCenter,
@@ -331,6 +341,11 @@ export function InteractiveTui({
     skills.getSnapshot,
     skills.getSnapshot,
   )
+  const attachmentSnapshot = useSyncExternalStore(
+    attachments.subscribe,
+    attachments.getSnapshot,
+    attachments.getSnapshot,
+  )
   const preferenceSnapshot = useSyncExternalStore(
     preferences.subscribe,
     preferences.getSnapshot,
@@ -457,6 +472,10 @@ export function InteractiveTui({
         void skills.refresh()
         overlay.open('skills')
         setNotice('Skills opened.')
+        return
+      case 'attachment.center':
+        overlay.open('attachments')
+        setNotice('Attachments opened.')
         return
       case 'activity.center':
         activity.refresh()
@@ -839,6 +858,22 @@ export function InteractiveTui({
         return
       }
       if (activeOverlay === 'session-center') {
+        if (!key.ctrl && typed.toLowerCase() === 'w') {
+          const snapshot = sessionCenter.getSnapshot()
+          const roots = snapshot.workspaces.map(group => group.root)
+          if (roots.length === 0) setNotice('No session records a workspace.')
+          else {
+            const current = snapshot.workspaceRoot
+            const index = current === undefined ? -1 : roots.indexOf(current)
+            // Cycles through each root and back to "all".
+            const next = index + 1 >= roots.length ? undefined : roots[index + 1]
+            sessionCenter.setWorkspaceRoot(next)
+            setNotice(next === undefined
+              ? 'Showing sessions from every workspace.'
+              : `Showing sessions from ${next}. Resuming does not move this process.`)
+          }
+          return
+        }
         if (key.upArrow) sessionCenter.move('up')
         else if (key.downArrow || key.tab) sessionCenter.move('down')
         else if (typed === ' ') sessionCenter.inspectSelected()
@@ -967,6 +1002,32 @@ export function InteractiveTui({
           skills.setQuery(removeLastCharacter(skills.getSnapshot().query))
         } else if (!key.ctrl && !key.meta && !key.super && typed !== '') {
           skills.setQuery(skills.getSnapshot().query + typed)
+        }
+        return
+      }
+      if (activeOverlay === 'attachments') {
+        if (key.return) {
+          if (readFile === undefined) setNotice('Attaching files is unavailable here.')
+          else {
+            void attachments.attachDraft(readFile).then((outcome) => {
+              setNotice(outcome === 'attached'
+                ? 'Image attached.'
+                : outcome === 'unavailable'
+                  ? 'No attachment store on this Harness baseline.'
+                  : 'That file was refused; see the panel for why.')
+            })
+          }
+        } else if (key.ctrl && typed.toLowerCase() === 'd') {
+          const last = attachments.getSnapshot().rows.at(-1)
+          setNotice(last !== undefined && attachments.remove(last.attachmentId)
+            ? 'Dropped the last attachment.'
+            : 'Nothing staged.')
+        } else if (key.ctrl && typed.toLowerCase() === 'x') {
+          setNotice(attachments.clear() ? 'Attachments cleared.' : 'Nothing staged.')
+        } else if (key.backspace || key.delete) {
+          attachments.setDraftPath(removeLastCharacter(attachments.getSnapshot().draftPath))
+        } else if (!key.ctrl && !key.meta && !key.super && typed !== '') {
+          attachments.setDraftPath(attachments.getSnapshot().draftPath + typed)
         }
         return
       }
@@ -1372,6 +1433,8 @@ export function InteractiveTui({
       palette={paletteSnapshot}
       permissions={permissionSnapshot}
       activity={activitySnapshot}
+      attachments={attachmentSnapshot}
+      {...(terminalCapabilities === undefined ? {} : { terminalCapabilities })}
       jobs={jobsSnapshot}
       mcp={mcpSnapshot}
       plugins={pluginSnapshot}
@@ -1398,6 +1461,8 @@ export function InteractiveTui({
           palette={paletteSnapshot}
           permissions={permissionSnapshot}
           activity={activitySnapshot}
+          attachments={attachmentSnapshot}
+          {...(terminalCapabilities === undefined ? {} : { terminalCapabilities })}
           jobs={jobsSnapshot}
           mcp={mcpSnapshot}
           plugins={pluginSnapshot}

@@ -125,6 +125,7 @@ exports[`OverlayPanel (M1.3) > renders a bounded projection hub with diagnostics
 exports[`OverlayPanel (M1.3) > renders a bounded session list and durable preview metadata 1`] = `
 "╭──────────────────────────────────────────────────────────────────────────────╮
 │Session center · ready                                                        │
+│W cycles workspace: workspace (1)                                             │
 │> session█                                                                    │
 │› ● current-session · 2023-11-14T22:13:20.000Z · /workspace                   │
 │  ○ older-session · 2023-11-03T08:26:40.000Z                                  │
