@@ -39,6 +39,7 @@ const emptySessions: SessionCenterSnapshot = {
   revision: 0,
   status: 'idle',
   totalMatches: 0,
+  workspaces: [],
 }
 
 const emptyPermissions: PermissionSnapshot = {
@@ -307,6 +308,7 @@ describe('OverlayPanel (M1.3)', () => {
       selectedIndex: 0,
       status: 'ready',
       totalMatches: 2,
+      workspaces: [{ count: 1, label: 'workspace', root: '/workspace' }],
     }
 
     expect(renderOverlayPanel({

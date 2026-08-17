@@ -93,7 +93,8 @@ exports.
 | Attachments | `@deepseek-ai/dsh-attachment` / `ctx.attachments` | Local provider available in `dsh-base` |
 | Durable session checkpoint policy | `@deepseek-ai/dsh-session-checkpoint-policy` | Persistence durability only; not file rewind |
 | File checkpoint/rewind | None | Unavailable; must fail closed |
-| Remote TUI attachment | SDK/API packages exist for other products | Out of scope until a second concrete transport and ADR exist |
+| Worktree enumeration | None | No service; workspaces are derived from durable session `cwd` alone |
+| Remote TUI attachment | SDK/API packages exist for other products | Out of scope until a second concrete transport exists (ADR-0007) |
 
 “Available” means a public service contract exists, not that the TUI may assume
 every deployment mounts it. Optional integrations still require an explicit

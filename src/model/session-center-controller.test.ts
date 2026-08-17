@@ -216,4 +216,65 @@ describe('SessionCenterController (M1.4)', () => {
       maxSessions: 0,
     })).toThrow('maxSessions')
   })
+
+  it('groups listed sessions by the workspace root they were started in', async () => {
+    const source = fixture([
+      header('a', 3, '/repo/main'),
+      header('b', 2, '/repo/main/'),
+      header('c', 1, '/other'),
+      header('d', 0),
+    ])
+    const center = new SessionCenterController(source.persistence, source.target, {
+      currentSessionId: 'a',
+    })
+    center.refresh()
+    await vi.waitFor(() => expect(center.getSnapshot().items).toHaveLength(4))
+
+    expect(center.getSnapshot().workspaces).toEqual([
+      { count: 1, label: 'other', root: '/other' },
+      { count: 2, label: 'main', root: '/repo/main' },
+    ])
+    center.dispose()
+  })
+
+  it('narrows the list to one workspace and reports the narrowing', async () => {
+    const source = fixture([
+      header('a', 3, '/repo/main'),
+      header('b', 2, '/other'),
+      header('c', 1),
+    ])
+    const center = new SessionCenterController(source.persistence, source.target, {
+      currentSessionId: 'a',
+    })
+    center.refresh()
+    await vi.waitFor(() => expect(center.getSnapshot().items).toHaveLength(3))
+
+    expect(center.setWorkspaceRoot('/repo/main/')).toBe(true)
+    expect(center.getSnapshot().workspaceRoot).toBe('/repo/main')
+    expect(center.getSnapshot().items.map(item => item.id)).toEqual(['a'])
+    // The count describes the workspace the user is looking at.
+    expect(center.getSnapshot().totalMatches).toBe(1)
+
+    // Selecting the same root again is not a change.
+    expect(center.setWorkspaceRoot('/repo/main')).toBe(false)
+
+    expect(center.setWorkspaceRoot(undefined)).toBe(true)
+    expect(center.getSnapshot().items).toHaveLength(3)
+    expect(center.getSnapshot().workspaceRoot).toBeUndefined()
+    center.dispose()
+  })
+
+  it('excludes sessions with no recorded workspace from a narrowed list', async () => {
+    const source = fixture([header('a', 2, '/repo'), header('b', 1)])
+    const center = new SessionCenterController(source.persistence, source.target, {
+      currentSessionId: 'a',
+    })
+    center.refresh()
+    await vi.waitFor(() => expect(center.getSnapshot().items).toHaveLength(2))
+
+    center.setWorkspaceRoot('/repo')
+    expect(center.getSnapshot().items.map(item => item.id)).toEqual(['a'])
+    center.dispose()
+  })
 })
+

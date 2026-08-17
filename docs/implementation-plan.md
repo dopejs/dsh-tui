@@ -494,6 +494,20 @@ terminal commands. Nothing here is passed to a shell.
 
 ### M5.4 Worktrees and remote readiness (+2)
 
+Status: **complete**. Sessions are grouped and filtered by the durable header
+`cwd` — the only workspace fact a session actually carries — with labels
+shortened to the last path segment only while that stays unambiguous, since two
+worktrees of one repository share a leaf name. Nothing is inferred from the
+filesystem, because a recorded cwd may no longer exist, and a session with no
+recorded workspace is excluded from a narrowed list rather than quietly
+included.
+
+Workspace transitions are reported as launcher-owned: the TUI runs inside an
+already-composed process and cannot re-root it without invalidating every live
+handle, so the user is told which root to relaunch from. Remote attachment
+stays out of the local runtime until a second concrete transport exists
+([ADR-0007](decisions/0007-defer-remote-attachment-until-a-second-transport.md)).
+
 - add capability-gated worktree/session filtering and launcher-owned workspace
   transitions;
 - keep remote mode out of the local runtime until a second concrete transport
@@ -502,6 +516,8 @@ terminal commands. Nothing here is passed to a shell.
   reconnect, ordering, and exact-agent human interaction routing.
 
 M5 exit gate:
+
+Status: **complete**. All four slices are pushed.
 
 - interactive and non-interactive clean-profile acceptance suites pass on the
   blocking platform matrix;

@@ -11,3 +11,4 @@ but should not silently rewrite its context or consequences.
 | [0004](0004-select-ink-for-terminal-rendering.md) | Accepted | Use Ink behind the terminal rendering adapter. |
 | [0005](0005-separate-conversation-recovery-from-file-rewind.md) | Accepted | Separate durable conversation recovery from capability-gated file rewind. |
 | [0006](0006-observe-background-jobs-without-consuming-them.md) | Accepted | Observe background jobs through non-consuming registry seams only. |
+| [0007](0007-defer-remote-attachment-until-a-second-transport.md) | Accepted | Defer remote attachment until a second concrete transport exists. |

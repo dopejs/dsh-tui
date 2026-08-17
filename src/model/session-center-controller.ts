@@ -1,5 +1,12 @@
 import { SessionId, type SessionEvent, type SessionHeader } from '@deepseek-ai/dsh-session'
 
+import {
+  filterByWorkspace,
+  groupByWorkspace,
+  normalizeRoot,
+  type WorkspaceGroup,
+} from './workspace-filter'
+
 const DEFAULT_MAX_RESULTS = 100
 const DEFAULT_MAX_SESSIONS = 1_000
 const DEFAULT_MAX_QUERY_CODE_UNITS = 1_000
@@ -42,6 +49,10 @@ export interface SessionCenterSnapshot {
   readonly items: readonly SessionCenterItem[]
   readonly preview?: SessionPreview
   readonly query: string
+  /** Roots the listed sessions were started in; empty when none record one. */
+  readonly workspaces: readonly WorkspaceGroup[]
+  /** The root currently narrowing the list, when one is selected. */
+  readonly workspaceRoot?: string
   readonly revision: number
   readonly selectedIndex?: number
   readonly status: 'error' | 'idle' | 'loading' | 'previewing' | 'ready' | 'switching'
@@ -179,6 +190,7 @@ export class SessionCenterController {
   #items: readonly SessionCenterItem[] = Object.freeze([])
   #preview: SessionPreview | undefined
   #query = ''
+  #workspaceRoot: string | undefined
   #revision = 0
   #selectedIndex = 0
   #snapshot: SessionCenterSnapshot
@@ -227,6 +239,21 @@ export class SessionCenterController {
       isCurrent: item.id === sessionId,
     })))
     this.#publish()
+  }
+
+  /**
+   * Narrow the list to one workspace root, or clear the narrowing. Selecting a
+   * root does not move the process: the launcher owns workspace transitions,
+   * so a session in another root is browsed here and resumed by relaunching.
+   */
+  setWorkspaceRoot(root: string | undefined): boolean {
+    this.#assertActive()
+    const next = root === undefined ? undefined : normalizeRoot(root)
+    if (next === this.#workspaceRoot) return false
+    this.#workspaceRoot = next
+    this.#selectedIndex = 0
+    this.#publish()
+    return true
   }
 
   resetQuery(): void {
@@ -358,6 +385,8 @@ export class SessionCenterController {
       ...(this.#preview === undefined ? {} : { preview: this.#preview }),
       query: this.#query,
       revision: this.#revision,
+      ...(this.#workspaceRoot === undefined ? {} : { workspaceRoot: this.#workspaceRoot }),
+      workspaces: groupByWorkspace(this.#items).groups,
       ...(matches.length === 0 ? {} : { selectedIndex: this.#selectedIndex }),
       status: this.#status,
       totalMatches: this.#filteredItems(false).length,
@@ -366,9 +395,12 @@ export class SessionCenterController {
 
   #filteredItems(limit = true): SessionCenterItem[] {
     const query = this.#query.toLowerCase()
+    // The workspace filter narrows before the text query, so the match count
+    // describes the workspace the user is actually looking at.
+    const scoped = filterByWorkspace(this.#items, this.#workspaceRoot)
     let matches = query === ''
-      ? [...this.#items]
-      : this.#items.filter(item => searchText(item).includes(query))
+      ? [...scoped]
+      : scoped.filter(item => searchText(item).includes(query))
     if (query !== '') {
       matches = matches.sort((left, right) => {
         const leftExact = left.id.toLowerCase() === query
