@@ -43,6 +43,7 @@ import { Composer, createComposerView } from './composer'
 import { writeOsc52Clipboard } from './clipboard'
 import { Frame } from './ink-renderer'
 import { OverlayPanel } from './overlay'
+import { TUI_VERSION } from './version'
 import type { TerminalCapabilities } from './terminal-links'
 
 interface QuestionDraft {
@@ -1395,6 +1396,21 @@ export function InteractiveTui({
     projectedRows,
     {
       activityCount: activitySnapshot.totalActivity,
+      ...(projectionSnapshot.usage?.totalTokens === undefined
+        ? {}
+        : { contextUsed: projectionSnapshot.usage.totalTokens }),
+      // Only what is genuinely loaded; describeSources drops the zeroes.
+      contextSources: [
+        { count: mcpSnapshot.servers.length, label: 'MCP server' },
+        { count: skillSnapshot.totalMatches, label: 'skill' },
+      ],
+      firstScreen: projectedRows.length === 0,
+      welcome: {
+        cwd: workspace,
+        screenReader: preferenceSnapshot.screenReader,
+        theme: preferenceSnapshot.theme,
+        version: TUI_VERSION,
+      },
       droppedRows: transcriptSnapshot.droppedRows,
       ...(viewportSnapshot.focusedRowId === undefined
         ? {}

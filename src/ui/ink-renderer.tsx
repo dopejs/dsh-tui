@@ -5,6 +5,8 @@ import type { TranscriptStore } from '../model/transcript-controller'
 import type { InteractionSnapshot, InteractionStore } from '../model/interaction-controller'
 import type { InteractionModal, ScreenModel, TranscriptRowKind } from '../model/view-model'
 import { createScreenModel } from '../model/view-model'
+import { compactCount, contextGauge, describeSources } from '../model/status-bar'
+import { DEFAULT_TIPS, Welcome } from './welcome'
 
 const ROW_PREFIX: Record<TranscriptRowKind, string> = {
   assistant: 'A',
@@ -48,6 +50,12 @@ function metadata(model: ScreenModel, columns: number): readonly string[] {
 }
 
 export function Frame({ columns, model }: FrameProps) {
+  // Only drawn when usage is actually known: an empty bar labelled 0% asserts
+  // "nothing consumed", when the truth may be "not reported".
+  const gauge = model.contextUsed === undefined
+    ? undefined
+    : contextGauge(model.contextUsed, model.contextWindow)
+  const sources = describeSources(model.contextSources ?? [])
   return (
     <Box flexDirection="column" width={columns}>
       <Text bold wrap="truncate-end">
@@ -58,6 +66,17 @@ export function Frame({ columns, model }: FrameProps) {
           {metadata(model, columns).join(' · ')}
         </Text>
       )}
+      {gauge === undefined ? null : (
+        <Text wrap="truncate-end">
+          <Text dimColor>Context </Text>
+          <Text color={gauge.pressured ? 'yellow' : 'cyan'}>{gauge.bar}</Text>
+          <Text dimColor> {String(gauge.percent)}%</Text>
+          <Text dimColor> · {compactCount(model.contextUsed ?? 0)} tokens</Text>
+        </Text>
+      )}
+      {sources === undefined ? null : (
+        <Text dimColor wrap="truncate-end">{sources}</Text>
+      )}
       <Text dimColor>
         {model.visibleRange === undefined
           ? 'transcript empty'
@@ -65,6 +84,20 @@ export function Frame({ columns, model }: FrameProps) {
         {model.droppedRows === undefined ? '' : ` · ${String(model.droppedRows)} evicted`}
         {model.unseenRows === undefined ? '' : ` · ${String(model.unseenRows)} new`}
       </Text>
+      {model.firstScreen === true && model.welcome !== undefined ? (
+        <Welcome
+          columns={columns}
+          cwd={model.welcome.cwd}
+          {...(model.modelLabel === undefined ? {} : { modelLabel: model.modelLabel })}
+          {...(model.permissionPreset === undefined
+            ? {}
+            : { permission: model.permissionPreset })}
+          screenReader={model.welcome.screenReader}
+          theme={model.welcome.theme}
+          tips={DEFAULT_TIPS}
+          version={model.welcome.version}
+        />
+      ) : null}
       <Box flexDirection="column">
         {model.rows.map((row) => (
           <Box flexDirection="column" key={row.id}>

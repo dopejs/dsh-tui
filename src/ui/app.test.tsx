@@ -158,6 +158,16 @@ describe('InteractiveTui', () => {
       "dsh-tui · session-app · idle
       fixture/model
       transcript empty
+      ╭──────────────────────────────────────────────────╮
+      │ dsh-tui v0.1.0                                   │
+      │ fixture/model                                    │
+      │ /fixture/workspace                               │
+      │                                                  │
+      │ Getting started                                  │
+      │ ^P  command palette — every action is here       │
+      │ ^Y  activity · ^B jobs · ^G subagents            │
+      │ /exit  quit with a durable teardown              │
+      ╰──────────────────────────────────────────────────╯
       › █
       Enter send · ^J newline · ^S steer · ^C cancel"
     `)
@@ -179,6 +189,16 @@ describe('InteractiveTui', () => {
       "dsh-tui · session-app · idle
       fixture/model
       transcript empty
+      ╭──────────────────────────────────────────────────╮
+      │ dsh-tui v0.1.0                                   │
+      │ fixture/model                                    │
+      │ /fixture/workspace                               │
+      │                                                  │
+      │ Getting started                                  │
+      │ ^P  command palette — every action is here       │
+      │ ^Y  activity · ^B jobs · ^G subagents            │
+      │ /exit  quit with a durable teardown              │
+      ╰──────────────────────────────────────────────────╯
       › █
       Target session failed; restored session-app."
     `)
@@ -201,6 +221,16 @@ describe('InteractiveTui', () => {
       "dsh-tui · session-app · idle
       fixture/model
       transcript empty
+      ╭──────────────────────────────────────────────────╮
+      │ dsh-tui v0.1.0                                   │
+      │ fixture/model                                    │
+      │ /fixture/workspace                               │
+      │                                                  │
+      │ Getting started                                  │
+      │ ^P  command palette — every action is here       │
+      │ ^Y  activity · ^B jobs · ^G subagents            │
+      │ /exit  quit with a durable teardown              │
+      ╰──────────────────────────────────────────────────╯
       ╭──────────────────────────────────────────────────╮
       │ Approval · agent root-agent                      │
       │ bash                                             │
@@ -282,6 +312,16 @@ describe('InteractiveTui', () => {
       "dsh-tui · session-app · idle
       fixture/model
       transcript empty
+      ╭──────────────────────────────────────────────────╮
+      │ dsh-tui v0.1.0                                   │
+      │ fixture/model                                    │
+      │ /fixture/workspace                               │
+      │                                                  │
+      │ Getting started                                  │
+      │ ^P  command palette — every action is here       │
+      │ ^Y  activity · ^B jobs · ^G subagents            │
+      │ /exit  quit with a durable teardown              │
+      ╰──────────────────────────────────────────────────╯
       / needle█ · 0/0
       › █
       Enter send · ^J newline · ^S steer · ^C cancel"

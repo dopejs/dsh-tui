@@ -25,6 +25,19 @@ export interface InteractionModal {
 export interface ScreenModel {
   /** Pending plan, job, and subagent activity awaiting the user's attention. */
   readonly activityCount?: number
+  /** Tokens consumed, paired with `contextWindow` to draw the gauge. */
+  readonly contextUsed?: number
+  /** What was loaded into context, e.g. MCP servers; omitted when nothing was. */
+  readonly contextSources?: readonly { readonly count: number, readonly label: string }[]
+  /** True before the first turn, so the welcome panel replaces an empty transcript. */
+  readonly firstScreen?: boolean
+  /** Facts the welcome panel needs; absent when there is nothing to greet with. */
+  readonly welcome?: {
+    readonly cwd: string
+    readonly screenReader: boolean
+    readonly theme: 'default' | 'high-contrast' | 'no-color'
+    readonly version: string
+  }
   readonly droppedRows?: number
   readonly focusedRowId?: string
   readonly modelLabel?: string
@@ -47,6 +60,10 @@ export interface ScreenModel {
 
 export interface WindowOptions {
   readonly activityCount?: number
+  readonly contextUsed?: number
+  readonly contextSources?: readonly { readonly count: number, readonly label: string }[]
+  readonly firstScreen?: boolean
+  readonly welcome?: ScreenModel['welcome']
   readonly droppedRows?: number
   readonly focusedRowId?: string
   readonly modelLabel?: string
@@ -121,6 +138,10 @@ export function createScreenModel(
     ...(options.activityCount === undefined || options.activityCount === 0
       ? {}
       : { activityCount: options.activityCount }),
+    ...(options.contextUsed === undefined ? {} : { contextUsed: options.contextUsed }),
+    ...(options.contextSources === undefined ? {} : { contextSources: options.contextSources }),
+    ...(options.firstScreen === true ? { firstScreen: true } : {}),
+    ...(options.welcome === undefined ? {} : { welcome: options.welcome }),
     ...(options.totalTokens === undefined ? {} : { totalTokens: options.totalTokens }),
     ...(options.workspace === undefined ? {} : { workspace: options.workspace }),
     ...(end === start ? {} : { visibleRange: { end, start: start + 1 } }),
