@@ -52,6 +52,8 @@ is required by this bundle.
 - `ctx.jobs.list()` / `get()` / `kill()` / `onJobsChanged()` / `onJobDone()` for
   background-job observation and owned cancellation; the consuming `read()` and
   the admitting `attachController()` are deliberately not consumed.
+- `ctx.attachments.imageLimits` / `validateImage()` / `saveImage()` for image
+  inputs; admission and every size bound stay the store's decision.
 - `ctx.tools.schemas()` plus the `tools/change` event for the MCP inventory;
   server grouping uses only the documented `mcp__<server>__<raw>` name grammar.
 - `ctx.skills.snapshot()` / `get()` for abortable, completeness-aware skill

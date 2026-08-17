@@ -471,6 +471,22 @@ discover the panels yet.
 
 ### M5.3 Attachments and terminal/IDE links (+2)
 
+Status: **complete**. Images go through the public attachment seam:
+`validateImage` runs before `saveImage`, so a refused file writes nothing, and
+every size and format bound is the store's published `imageLimits` rather than
+a number guessed here. The declared media type is only a proposal — the store
+verifies it against the decoded bytes — and the display name is stripped of
+directory components so the user's layout does not leak into durable session
+data.
+
+Terminal support is negotiated before anything is written, with inline images
+and hyperlinks treated as separate capabilities. Every attachment also has a
+one-line textual description, so an unsupported terminal shows less, never
+nothing. OSC 8 links are built with `pathToFileURL`, and any path or label
+carrying a C0/C1 control byte is refused outright: ESC or BEL inside an OSC
+payload would terminate the sequence early and let the remainder be read as
+terminal commands. Nothing here is passed to a shell.
+
 - consume the public attachment seam for image/file inputs;
 - negotiate terminal image support and retain a textual fallback;
 - generate safe OSC 8 file links without shell interpolation;
