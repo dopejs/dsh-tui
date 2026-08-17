@@ -15,6 +15,8 @@ or code volume. A slice moves the total only after its exit criteria pass.
 | M4 Extension Workbench | M4.1–M4.4 | 78% | 90% |
 | M5 Productization | M5.1–M5.4 | 90% | 100% |
 
+All milestones are complete; see the [final completion audit](#final-completion-audit).
+
 The implementation proceeds in order because later panels depend on the M1
 overlay, focus, viewport, and command infrastructure. Each slice is committed
 and pushed independently after its local gates pass. Blocking CI must be green
@@ -548,14 +550,74 @@ release candidate.
 
 ## Final completion audit
 
-Before declaring 100%, inspect evidence for every M1–M5 slice rather than
-inferring completion from a green aggregate command. The audit records:
+Completed 2026-08-17 at `8f8ecc2`, CI run `31988237634` green on
+ubuntu-latest (Node 22.19.0 and 24.x), macos-latest, and windows-latest.
+Total progress: **100%**.
 
-- source module and public service implementing each requirement;
-- deterministic test or snapshot proving the normal path;
-- test proving cancellation, unavailable capability, and disposal;
-- clean-package/PTY evidence where applicable;
-- pushed commit and blocking CI run;
-- residual upstream limitations, especially file rewind and remote transport.
+Evidence was inspected per slice rather than inferred from a green aggregate.
 
-Any missing or indirect evidence keeps the objective active.
+### Implementation and proof
+
+Every model and runtime module has a direct test module; the suite is 55 files
+and 505 tests, plus fixed-size overlay and frame snapshots at 40, 64, 72, and
+80 columns, an interactive PTY flow covering the palette and every panel, a
+clean-profile tarball install (`pnpm test:package`), and bounded-budget
+benchmarks for the 100,000-code-unit editor and the 10,000-row viewport.
+
+Each capability-gated panel carries three tests beyond its normal path: the
+service being absent, an operation failing or being cancelled, and disposal
+with no update afterwards. The failure-recovery matrix injects each stable
+failure id and asserts either a usable attachment or a clean non-zero exit.
+
+### Public services consumed
+
+`ctx.agents`, `ctx.sessions`, `ctx.sessionPersistence`, `ctx.commands`,
+`ctx.tools`, `ctx.llm`, `ctx.agentDefaultModel`, `ctx.permissionPresets`,
+`ctx.userQuestions`, the `approval/request` waterfall, `ctx.sessionProjections`,
+`ctx.jobs`, `ctx.subagents`, `ctx.skills`, `ctx.settings`, and
+`ctx.attachments` — root package exports only, enumerated in
+[Upstream compatibility](upstream-compatibility.md).
+
+### Residual upstream limitations
+
+These are reported in the product as absent capabilities, each with a test that
+asserts the absence rather than a guess:
+
+- **File rewind** — no public checkpoint owner; no diff is reverse-applied
+  ([ADR-0005](decisions/0005-separate-conversation-recovery-from-file-rewind.md)).
+- **Background job output** — the only output seam consumes the read cursor and
+  suppresses the owning agent's completion notice
+  ([ADR-0006](decisions/0006-observe-background-jobs-without-consuming-them.md)).
+- **Subagent follow-up beyond depth 1** — delivery requires the exact live
+  direct parent, which this session is not for deeper descendants.
+- **Hooks** — no public inventory service exists on the baseline.
+- **MCP connection health** — no health registry; a tool list says nothing
+  about the transport.
+- **Plugin inventory and enablement** — published only as a Typert remote
+  gateway with no Cordis context service, and no public transaction owns
+  enablement.
+- **Remote attachment** — deferred until a second concrete transport exists
+  ([ADR-0007](decisions/0007-defer-remote-attachment-until-a-second-transport.md)).
+- **Worktree enumeration** — no service; workspaces are derived from durable
+  session `cwd`, and workspace transitions stay launcher-owned.
+
+### Escapes found and fixed during the audit
+
+Two defects reached `main` before being caught, both because the local gate did
+not cover the surface they broke:
+
+1. **Unpublished bundler chunks.** Sharing a module between the `index` and
+   `startup` entry points produced a content-hashed chunk that the `files` list
+   did not name, so the published package imported a module absent from the
+   tarball. `pnpm check` passed throughout because it runs against the untrimmed
+   working tree. Fixed in `ae35079`, and `pnpm check:package` now asserts every
+   emitted artifact is covered; the guard was verified against the exact
+   regression.
+2. **A platform-dependent test.** An OSC 8 assertion hardcoded a POSIX file URL
+   and failed only on the Windows runner. Fixed in `8f8ecc2` by asserting the
+   escaping and wrapping under test instead of the host's notion of an absolute
+   path.
+
+A third, smaller escape was caught before pushing: a malformed regular
+expression made a doctor-output assertion incapable of failing. It now asserts
+no ANSI and no box drawing, verified by mutation.

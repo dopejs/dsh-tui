@@ -117,6 +117,7 @@ unavailable state, injected fixture, cancellation, and disposal test.
 | dsh-tui | Harness | Status | Notes |
 | --- | --- | --- | --- |
 | `0.1.0-rc.1` | `47f9438` / npm `0.1.0-rc.6` | Release-candidate verification | Exact peers; public exports only; create/resume, transcript, tools, commands, approval/questions, clean tarball install, and PTY teardown covered. |
+| `0.1.0-rc.1` | `47f9438` / npm `0.1.0-rc.6` | M1–M5 complete | Adds jobs, subagents, projections, skills, settings, attachments, and the MCP/plugin inventories. CI run `31988237634` green on ubuntu (Node 22.19.0, 24.x), macOS, and Windows. |
 
 ## Upgrade procedure
 
