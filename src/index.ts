@@ -48,6 +48,7 @@ import { createRuntimePlugin } from './runtime/cordis-runtime'
 import { InputController } from './runtime/input-controller'
 import { InteractionScheduler } from './runtime/interaction-scheduler'
 import { doctorExitCode, formatDoctorReport, runDoctor } from './runtime/doctor'
+import { requestExitUntilHonoured } from './runtime/exit-request'
 import { readPipedPrompt } from './runtime/print-runner'
 import { startPrintRuntime } from './runtime/print-runtime'
 import { PreferencesStore, TUI_SETTINGS_NAMESPACE } from './runtime/preferences-store'
@@ -692,6 +693,7 @@ const runtimePlugin = createRuntimePlugin({
   },
 })
 
+
 const DOCTOR_SERVICE_KEYS: readonly string[] = [
   'agents',
   'agentDefaultModel',
@@ -749,7 +751,11 @@ async function runDoctorCommand(
     stdoutIsTty: dependencies.stdout.isTTY === true,
   })
   process.stdout.write(formatDoctorReport(report))
-  ctx.get('appExit')?.(doctorExitCode(report))
+  const stopExitRequests = requestExitUntilHonoured(ctx.get('appExit'), doctorExitCode(report))
+  return () => {
+    stopExitRequests()
+    return Promise.resolve()
+  }
   return () => Promise.resolve()
 }
 
@@ -772,7 +778,11 @@ async function startPrintRun(
       : await readPipedPrompt(process.stdin))
   if (prompt === undefined) {
     process.stderr.write('dsh-tui --print requires a prompt argument or piped stdin\n')
-    appExit(2)
+    const stopPromptExit = requestExitUntilHonoured(appExit, 2)
+    return () => {
+      stopPromptExit()
+      return Promise.resolve()
+    }
     return () => Promise.resolve()
   }
   const result = await startPrintRuntime(ctx, {
@@ -783,7 +793,11 @@ async function startPrintRun(
     signal,
     streams: { stderr: process.stderr, stdout: process.stdout },
   })
-  appExit(result.exitCode)
+  const stopExitRequests = requestExitUntilHonoured(appExit, result.exitCode)
+  return () => {
+    stopExitRequests()
+    return Promise.resolve()
+  }
   return () => Promise.resolve()
 }
 

@@ -12,6 +12,25 @@ import {
   type PrintStreams,
 } from './print-runner'
 
+/**
+ * The durable verdict of one turn.
+ *
+ * A non-interactive run must not exit `completed` when the turn actually
+ * failed: the caller sees exit 0 and empty output and concludes the model had
+ * nothing to say, when in fact the request never succeeded.
+ */
+export function turnFailureFrom(event: SessionEvent): string | undefined {
+  if (event.type !== 'turn/end') return undefined
+  const data: unknown = event.data
+  if (typeof data !== 'object' || data === null) return undefined
+  const reason = (data as { reason?: { kind?: string, error?: { message?: string } } }).reason
+  if (reason?.kind === 'error') {
+    return reason.error?.message ?? 'The turn failed without a reported cause.'
+  }
+  if (reason?.kind === 'blocked') return 'The turn was blocked before it could run.'
+  return undefined
+}
+
 export interface PrintRuntimeOptions {
   readonly format: OutputFormat
   readonly prompt: string
@@ -97,9 +116,13 @@ export async function startPrintRuntime(
       {
         run: async (prompt, onEvent, signal) => {
           let deliver: (event: SessionEvent) => void = onEvent
+          let turnFailure: string | undefined
           const attachment = await attachAgent(ctx, {
             onEvents: (batch) => {
-              for (const event of batch.events) deliver(event)
+              for (const event of batch.events) {
+                turnFailure ??= turnFailureFrom(event)
+                deliver(event)
+              }
             },
             request: options.request,
             signal,
@@ -108,6 +131,8 @@ export async function startPrintRuntime(
             await sendAndSettle(ctx, attachment.agent, prompt, signal)
             const interaction = refusals.first()
             if (interaction !== undefined) throw interaction
+            // A failed turn is a failed run, even though the events streamed.
+            if (turnFailure !== undefined) throw new Error(turnFailure)
           } finally {
             // Events emitted during teardown belong to no turn the caller asked
             // for, so the sink is closed before the attachment unwinds.

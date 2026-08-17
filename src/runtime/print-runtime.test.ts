@@ -2,7 +2,7 @@ import type { Context } from '@deepseek-ai/cordis'
 import { describe, expect, it, vi } from 'vitest'
 
 import { InteractionRequiredError } from './print-runner'
-import { refuseInteractions } from './print-runtime'
+import { refuseInteractions, turnFailureFrom } from './print-runtime'
 
 type ApprovalListener = (
   request: { toolName: string },
@@ -144,3 +144,42 @@ describe('refuseInteractions (M5.1)', () => {
     refusals.dispose()
   })
 })
+
+describe('turnFailureFrom (M5.1)', () => {
+  const turnEnd = (reason: unknown) => ({
+    data: { reason, turn: 0 },
+    seq: 1,
+    time: 1,
+    type: 'turn/end',
+  } as never)
+
+  // Exit 0 with empty output reads as "the model had nothing to say", which is
+  // the opposite of what a failed request means.
+  it('reports a failed turn with its cause', () => {
+    expect(turnFailureFrom(turnEnd({ error: { message: 'invalid api key' }, kind: 'error' })))
+      .toBe('invalid api key')
+  })
+
+  it('reports a failed turn that carries no cause', () => {
+    expect(turnFailureFrom(turnEnd({ kind: 'error' })))
+      .toContain('without a reported cause')
+  })
+
+  it('reports a blocked turn', () => {
+    expect(turnFailureFrom(turnEnd({ kind: 'blocked' }))).toContain('blocked')
+  })
+
+  it('treats a completed or aborted turn as no failure', () => {
+    expect(turnFailureFrom(turnEnd({ kind: 'completed' }))).toBeUndefined()
+    // Cancellation is reported by the run's own abort path, not as a failure.
+    expect(turnFailureFrom(turnEnd({ kind: 'aborted', reason: 'user' }))).toBeUndefined()
+  })
+
+  it('ignores every other durable event', () => {
+    expect(turnFailureFrom({ data: {}, seq: 1, time: 1, type: 'turn/start' } as never))
+      .toBeUndefined()
+    expect(turnFailureFrom({ data: null, seq: 1, time: 1, type: 'turn/end' } as never))
+      .toBeUndefined()
+  })
+})
+
