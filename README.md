@@ -6,10 +6,9 @@ distributed as an out-of-tree Harness bundle and runs in the same process as
 the agent runtime.
 
 > [!IMPORTANT]
-> This repository contains the `0.1.0-rc.1` release candidate. Its tarball is
-> installable into a clean `dsh` profile and has automated fresh-session,
-> resume, interaction, teardown, and terminal-restoration coverage. It has not
-> been published to npm from this repository yet.
+> This is `0.1.0`, the first published release. It pins exact `0.1.0-rc.6`
+> Harness peers, so it does not assume compatibility across Harness release
+> candidates.
 
 ## Capabilities
 
@@ -52,7 +51,7 @@ pnpm check
 npm pack --pack-destination /tmp
 pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.6 \
   plugin --profile tui add \
-  /tmp/dopejs-dsh-tui-0.1.0-rc.1.tgz
+  /tmp/dopejs-dsh-tui-0.1.0.tgz
 pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.6 --profile tui
 ```
 
