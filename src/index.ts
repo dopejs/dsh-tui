@@ -44,6 +44,8 @@ import { attachAgent, type AgentAttachmentRequest } from './runtime/agent-attach
 import { createRuntimePlugin } from './runtime/cordis-runtime'
 import { InputController } from './runtime/input-controller'
 import { InteractionScheduler } from './runtime/interaction-scheduler'
+import { readPipedPrompt } from './runtime/print-runner'
+import { startPrintRuntime } from './runtime/print-runtime'
 import { PreferencesStore, TUI_SETTINGS_NAMESPACE } from './runtime/preferences-store'
 import { ResourceOwner } from './runtime/resource-owner'
 import { SessionAttachmentCoordinator } from './runtime/session-attachment-coordinator'
@@ -653,9 +655,46 @@ const runtimePlugin = createRuntimePlugin({
   start: (ctx, signal) => {
     const startup = ctx.get('tuiStartup')
     if (startup === undefined) throw new Error('dsh-tui requires the tuiStartup service')
+    // --print is checked before the interactive runtime so a non-interactive
+    // run never requires a TTY it will not use.
+    if (startup.print === true) return startPrintRun(ctx, startup, signal)
     return startTuiRuntime(ctx, startup, signal)
   },
 })
+
+/**
+ * Non-interactive entry. It mounts no terminal state, so it runs on a pipe, in
+ * CI, and without a controlling terminal — but it still needs a prompt, which
+ * comes from the argument or from stdin.
+ */
+async function startPrintRun(
+  ctx: Context,
+  startup: TuiStartupValues,
+  signal: AbortSignal,
+  dependencies: RuntimeDependencies = defaultDependencies,
+): Promise<() => Promise<void>> {
+  const appExit = ctx.get('appExit')
+  if (appExit === undefined) throw new Error('dsh-tui requires the launcher appExit service')
+  const prompt = startup.prompt
+    ?? (dependencies.stdin.isTTY === true
+      ? undefined
+      : await readPipedPrompt(process.stdin))
+  if (prompt === undefined) {
+    process.stderr.write('dsh-tui --print requires a prompt argument or piped stdin\n')
+    appExit(2)
+    return () => Promise.resolve()
+  }
+  const result = await startPrintRuntime(ctx, {
+    format: startup.outputFormat ?? 'text',
+    prompt,
+    request: requestFor(startup, dependencies),
+    sessionId: startup.resumeSessionId ?? dependencies.sessionId(),
+    signal,
+    streams: { stderr: process.stderr, stdout: process.stdout },
+  })
+  appExit(result.exitCode)
+  return () => Promise.resolve()
+}
 
 export function apply(ctx: Context): ReturnType<typeof runtimePlugin.apply> {
   return runtimePlugin.apply(ctx, undefined)

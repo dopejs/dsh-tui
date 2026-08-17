@@ -418,6 +418,23 @@ remote-only with no public enablement transaction.
 
 ### M5.1 Non-interactive runner and output contracts (+3)
 
+Status: **complete**. `--print` runs one prompt with no terminal state mounted
+and is routed before the TTY requirement, so it works on a pipe and in CI; the
+prompt comes from the argument or from a bounded stdin read, and an empty pipe
+is distinguished from an empty prompt. `--output-format` selects `text`
+(default), `json`, or `stream-json`, and is refused without `--print` rather
+than promising a contract the interactive runtime never emits.
+
+Envelopes carry a schema version, are emitted in durable event order, and skip
+unknown or malformed events instead of guessing. Encoding is pure and
+synchronous while writes are chained and backpressure-aware, so a slow pipe
+cannot reorder output or buffer the whole run. stdout carries only run output
+and stderr only diagnostics, so redirecting one never loses the other.
+
+Human interaction fails closed: with no terminal to prompt on, approvals are
+rejected and questions refused, and the run exits `interaction-required` (2) —
+its own code, because a caller retrying it unchanged hits the same wall.
+
 - extend startup with `--print`, `--output-format text|json|stream-json`, and
   piped prompt handling;
 - share runtime controllers without mounting terminal state;
