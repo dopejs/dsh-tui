@@ -10,6 +10,7 @@ import type { McpInventorySnapshot } from '../model/mcp-inventory-controller'
 import type { SkillsSnapshot } from '../model/skills-controller'
 import type { SubagentTreeSnapshot } from '../model/subagent-tree-controller'
 import type { PermissionSnapshot } from '../model/permission-controller'
+import type { PluginInventoryControllerSnapshot } from '../model/plugin-inventory-controller'
 import type { ProjectionHubSnapshot } from '../model/projection-hub-controller'
 import type { RecoverySnapshot } from '../model/recovery-controller'
 import { renderOverlayPanel } from './overlay'
@@ -728,6 +729,64 @@ describe('OverlayPanel (M1.3)', () => {
       sessions: emptySessions,
     })
   }
+
+  function renderPlugins(
+    columns: number,
+    overrides: Partial<PluginInventoryControllerSnapshot> = {},
+  ): string {
+    return renderOverlayPanel({
+      active: 'plugins',
+      changes: emptyChanges,
+      columns,
+      completion: emptyCompletion,
+      maxRows: 12,
+      palette: {
+        catalogTruncated: false, items: [], query: '', revision: 0, totalMatches: 0,
+      },
+      permissions: emptyPermissions,
+      plugins: {
+        diagnostics: [{
+          entryId: 'e2',
+          moduleName: '@scope/broken',
+          summary: 'Enabled entry whose root fiber failed to load',
+        }],
+        droppedEntries: 0,
+        failedCount: 1,
+        mutation: 'read-only-no-public-transaction',
+        revision: 4,
+        rows: [{
+          enabled: true, entryId: 'e1', fiberPhase: 'active', moduleName: '@scope/ok',
+        }, {
+          enabled: true, entryId: 'e2', fiberPhase: 'failed', moduleName: '@scope/broken',
+        }, {
+          enabled: false, entryId: 'e3', fiberPhase: 'none', moduleName: '@scope/off',
+        }],
+        selectedIndex: 1,
+        status: 'ready',
+        ...overrides,
+      },
+      recovery: emptyRecovery,
+      sessions: emptySessions,
+    })
+  }
+
+  it('renders plugin entries with phase, enablement, and the read-only boundary', () => {
+    expect(renderPlugins(80)).toMatchSnapshot()
+  })
+
+  it('degrades the plugin inventory at 40 columns', () => {
+    expect(renderPlugins(40)).toMatchSnapshot()
+  })
+
+  // rc.6 exposes the Loader projection only as a Typert remote gateway.
+  it('states that no plugin inventory is mounted rather than showing nothing', () => {
+    expect(renderPlugins(80, {
+      diagnostics: [],
+      failedCount: 0,
+      rows: [],
+      status: 'unavailable',
+    })).toMatchSnapshot()
+  })
 
   it('renders MCP servers grouped by name with the health boundary', () => {
     expect(renderMcp(80)).toMatchSnapshot()

@@ -381,6 +381,23 @@ cannot leave rows from the previous connection behind.
 
 ### M4.4 Plugin inventory and diagnostics (+3)
 
+Status: **complete**. The panel consumes the public
+`PluginInventorySnapshot` contract — enabled state, fiber phase, module
+specifier — and reports a failed fiber as a diagnostic without inventing a
+cause the Loader does not publish. An unrecognized phase from a newer Loader is
+preserved verbatim rather than collapsed into one that means something else,
+and the rows are rebuilt on invalidation so an HMR swap or disposal cannot
+leave a stale entry behind. No plugin implementation file is imported.
+
+Two boundaries are reported rather than worked around. Mutation is unavailable:
+enabling an entry means writing the Loader tree or the profile document, and
+neither is a public transaction here, so a toggle would let the running fiber
+and the stored configuration disagree with no owner to reconcile them. And on
+rc.6 the projection is published only as a Typert *remote* gateway with no
+Cordis context service, so an in-process consumer cannot reach it at all — the
+controller is constructed without a source and the panel says so. It gains a
+real inventory the moment a public in-process seam exists.
+
 - consume the public plugin-inventory/loader projection;
 - show enabled state, fiber phase, module, and bounded failure diagnostics;
 - enable mutation only if an owning loader/settings transaction is public;
@@ -391,6 +408,11 @@ M4 exit gate:
 - installed capabilities and configuration are discoverable, safely redacted,
   and diagnosable from the terminal;
 - total progress becomes **90%** after four pushed slices and green CI.
+
+Status: **complete**. All four slices are pushed. Three capability boundaries
+are reported rather than fabricated: hooks have no public inventory, MCP
+publishes no connection-health registry, and the plugin projection is
+remote-only with no public enablement transaction.
 
 ## M5 — Productization (90% → 100%)
 

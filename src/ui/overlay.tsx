@@ -8,6 +8,7 @@ import type { JobsSnapshot } from '../model/jobs-controller'
 import type { McpInventorySnapshot } from '../model/mcp-inventory-controller'
 import type { OverlayKind } from '../model/overlay-controller'
 import type { PermissionSnapshot } from '../model/permission-controller'
+import type { PluginInventoryControllerSnapshot } from '../model/plugin-inventory-controller'
 import type { ProjectionHubSnapshot } from '../model/projection-hub-controller'
 import type { RecoverySnapshot } from '../model/recovery-controller'
 import type { SessionCenterSnapshot } from '../model/session-center-controller'
@@ -45,6 +46,7 @@ interface OverlayPanelProps {
   readonly mcp: McpInventorySnapshot
   readonly palette: CommandPaletteSnapshot
   readonly permissions: PermissionSnapshot
+  readonly plugins: PluginInventoryControllerSnapshot
   readonly projections: ProjectionHubSnapshot
   readonly recovery: RecoverySnapshot
   readonly sessions: SessionCenterSnapshot
@@ -64,6 +66,7 @@ export function OverlayPanel({
   mcp,
   palette,
   permissions,
+  plugins,
   projections,
   recovery,
   sessions,
@@ -72,6 +75,58 @@ export function OverlayPanel({
   theme,
 }: OverlayPanelProps) {
   const tone = (name: Parameters<typeof toneStyle>[1]) => toneStyle(theme, name)
+  if (active === 'plugins') {
+    const window = selectedWindow(plugins.rows, plugins.selectedIndex, maxRows - 6)
+    const selected = plugins.rows[plugins.selectedIndex ?? -1]
+    const diagnostic = selected === undefined
+      ? undefined
+      : plugins.diagnostics.find(entry => entry.entryId === selected.entryId)
+    return (
+      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+        <Text bold wrap="truncate-end">
+          Plugins · {plugins.status} · {String(plugins.rows.length)} entries
+          {plugins.failedCount > 0 ? ` · ${String(plugins.failedCount)} failed` : ''}
+          {plugins.droppedEntries > 0 ? ` · ${String(plugins.droppedEntries)} not shown` : ''}
+        </Text>
+        {plugins.error === undefined ? null : (
+          <Text {...tone('danger')} wrap="truncate-end">{plugins.error}</Text>
+        )}
+        {window.rows.map((row, index) => {
+          const absolute = window.start + index
+          const isSelected = absolute === plugins.selectedIndex
+          const phaseTone: SemanticTone | undefined = row.fiberPhase === 'failed'
+            ? 'danger'
+            : row.fiberPhase === 'active' ? 'positive' : undefined
+          return (
+            <Text
+              {...tone(phaseTone)}
+              dimColor={!row.enabled}
+              inverse={isSelected}
+              key={row.entryId}
+              wrap="truncate-end"
+            >
+              {isSelected ? '›' : ' '} {row.enabled ? 'enabled ' : 'disabled'} · {row.fiberPhase}
+              {' · '}{row.moduleName}
+            </Text>
+          )
+        })}
+        {diagnostic === undefined ? null : (
+          <Text {...tone('danger')} wrap="truncate-end">  {diagnostic.summary}</Text>
+        )}
+        {/* No public Loader or settings transaction owns enablement here, so a
+            toggle would let the running fiber and the stored profile disagree. */}
+        <Text {...tone('muted')} wrap="truncate-end">
+          Read-only: no public transaction owns plugin enablement
+        </Text>
+        <Text dimColor wrap="truncate-end">
+          {plugins.rows.length === 0
+            ? 'No plugin inventory on this Harness baseline · R refresh · Esc close'
+            : `${String((plugins.selectedIndex ?? 0) + 1)}/${String(plugins.rows.length)} · ↑/↓ select · R refresh · Esc close`}
+        </Text>
+      </Box>
+    )
+  }
+
   if (active === 'mcp') {
     const selected = mcp.servers[mcp.selectedIndex ?? -1]
     const window = selectedWindow(mcp.servers, mcp.selectedIndex, maxRows - 6)
@@ -682,9 +737,10 @@ function textLines(value: string | null): readonly string[] {
 }
 
 export function renderOverlayPanel(
-  props: Omit<OverlayPanelProps, 'activity' | 'jobs' | 'mcp' | 'projections' | 'skills' | 'subagents' | 'theme'> & {
+  props: Omit<OverlayPanelProps, 'activity' | 'jobs' | 'mcp' | 'plugins' | 'projections' | 'skills' | 'subagents' | 'theme'> & {
     readonly activity?: ActivityCenterSnapshot
     readonly mcp?: McpInventorySnapshot
+    readonly plugins?: PluginInventoryControllerSnapshot
     readonly skills?: SkillsSnapshot
     readonly theme?: TuiTheme
     readonly jobs?: JobsSnapshot
@@ -692,6 +748,15 @@ export function renderOverlayPanel(
     readonly subagents?: SubagentTreeSnapshot
   },
 ): string {
+  const plugins: PluginInventoryControllerSnapshot = props.plugins ?? {
+    diagnostics: [],
+    droppedEntries: 0,
+    failedCount: 0,
+    mutation: 'read-only-no-public-transaction',
+    revision: 0,
+    rows: [],
+    status: 'unavailable',
+  }
   const mcp: McpInventorySnapshot = props.mcp ?? {
     droppedServers: 0,
     health: 'unsupported-no-public-registry',
@@ -755,6 +820,7 @@ export function renderOverlayPanel(
       activity={activity}
       jobs={jobs}
       mcp={mcp}
+      plugins={plugins}
       projections={projections}
       skills={skills}
       subagents={subagents}

@@ -14,6 +14,7 @@ export type TuiActionId =
   | 'jobs.center'
   | 'mcp.center'
   | 'permission.center'
+  | 'plugin.center'
   | 'projection.center'
   | 'recovery.center'
   | 'session.center'
@@ -106,6 +107,12 @@ export const DEFAULT_TUI_ACTIONS: readonly TuiActionDescriptor[] = Object.freeze
     id: 'permission.center',
     keywords: Object.freeze(['approval', 'sandbox', 'safety']),
     title: 'Open permissions',
+  }),
+  Object.freeze({
+    description: 'Inspect loaded plugins, fiber phase, and failure diagnostics',
+    id: 'plugin.center',
+    keywords: Object.freeze(['extensions', 'loader', 'plugins']),
+    title: 'Open plugins',
   }),
   Object.freeze({
     description: 'Inspect plan, todo, goal, usage, and bounded projection diagnostics',

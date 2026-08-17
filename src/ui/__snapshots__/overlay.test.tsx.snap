@@ -34,6 +34,18 @@ exports[`OverlayPanel (M1.3) > degrades the job panel at 40 columns 1`] = `
 ╰──────────────────────────────────────╯"
 `;
 
+exports[`OverlayPanel (M1.3) > degrades the plugin inventory at 40 columns 1`] = `
+"╭──────────────────────────────────────╮
+│Plugins · ready · 3 entries · 1 failed│
+│  enabled  · active · @scope/ok       │
+│› enabled  · failed · @scope/broken   │
+│  disabled · none · @scope/off        │
+│  Enabled entry whose root fiber fail…│
+│Read-only: no public transaction owns…│
+│2/3 · ↑/↓ select · R refresh · Esc cl…│
+╰──────────────────────────────────────╯"
+`;
+
 exports[`OverlayPanel (M1.3) > degrades the skill catalog at 40 columns 1`] = `
 "╭──────────────────────────────────────╮
 │Skills · ready · 2 matching           │
@@ -320,6 +332,18 @@ exports[`OverlayPanel (M1.3) > renders permission consequences and dangerous typ
 ╰──────────────────────────────────────────────────────────────────────────────╯"
 `;
 
+exports[`OverlayPanel (M1.3) > renders plugin entries with phase, enablement, and the read-only boundary 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│Plugins · ready · 3 entries · 1 failed                                        │
+│  enabled  · active · @scope/ok                                               │
+│› enabled  · failed · @scope/broken                                           │
+│  disabled · none · @scope/off                                                │
+│  Enabled entry whose root fiber failed to load                               │
+│Read-only: no public transaction owns plugin enablement                       │
+│2/3 · ↑/↓ select · R refresh · Esc close                                      │
+╰──────────────────────────────────────────────────────────────────────────────╯"
+`;
+
 exports[`OverlayPanel (M1.3) > renders the skill catalog with invocation controls and the hook boundary 1`] = `
 "╭──────────────────────────────────────────────────────────────────────────────╮
 │Skills · ready · 2 matching                                                   │
@@ -346,6 +370,14 @@ exports[`OverlayPanel (M1.3) > states that no MCP servers are registered rather 
 │MCP · ready · 0 servers                                                       │
 │Connection health: no public registry on this Harness baseline · 12 non-MCP t…│
 │No MCP servers registered · R refresh · Esc close                             │
+╰──────────────────────────────────────────────────────────────────────────────╯"
+`;
+
+exports[`OverlayPanel (M1.3) > states that no plugin inventory is mounted rather than showing nothing 1`] = `
+"╭──────────────────────────────────────────────────────────────────────────────╮
+│Plugins · unavailable · 0 entries                                             │
+│Read-only: no public transaction owns plugin enablement                       │
+│No plugin inventory on this Harness baseline · R refresh · Esc close          │
 ╰──────────────────────────────────────────────────────────────────────────────╯"
 `;
 

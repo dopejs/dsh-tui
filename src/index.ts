@@ -29,6 +29,7 @@ import { McpInventoryController } from './model/mcp-inventory-controller'
 import { OverlayController } from './model/overlay-controller'
 import { PreferencesController, resolvePreferences } from './model/preferences-controller'
 import { PermissionController } from './model/permission-controller'
+import { PluginInventoryController } from './model/plugin-inventory-controller'
 import { ProjectionHubController } from './model/projection-hub-controller'
 import { RecoveryController } from './model/recovery-controller'
 import { SessionCenterController } from './model/session-center-controller'
@@ -380,6 +381,16 @@ export async function startTuiRuntime(
           { reportError: diagnostics.report },
         )
         bindingOwner.own('activity center controller', () => activity.dispose())
+        // `@deepseek-ai/dsh-host-plugin-inventory` exposes the Loader projection
+        // as a Typert *remote* gateway and declares no Cordis context service,
+        // so an in-process consumer has no public way to reach it on rc.6. The
+        // controller is constructed without a source: the panel reports the
+        // capability as absent rather than reading Loader internals, and it
+        // gains a real inventory as soon as a public in-process seam exists.
+        const plugins = new PluginInventoryController(undefined, undefined, {
+          reportError: diagnostics.report,
+        })
+        bindingOwner.own('plugin inventory controller', () => plugins.dispose())
         const mcp = new McpInventoryController(
           { schemas: () => tools.schemas(attachment.agent) },
           // A reconnect re-registers the server's tools, so the registry's own
@@ -526,6 +537,7 @@ export async function startTuiRuntime(
             activity,
             jobs: jobsPanel,
             mcp,
+            plugins,
             palette,
             permission,
             preferences,

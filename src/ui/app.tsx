@@ -27,6 +27,7 @@ import type { PreferencesController } from '../model/preferences-controller'
 import type { PermissionController } from '../model/permission-controller'
 import type { JobsController } from '../model/jobs-controller'
 import type { McpInventoryController } from '../model/mcp-inventory-controller'
+import type { PluginInventoryController } from '../model/plugin-inventory-controller'
 import type { SkillsController } from '../model/skills-controller'
 import type { ProjectionHubController } from '../model/projection-hub-controller'
 import type { SubagentTreeController } from '../model/subagent-tree-controller'
@@ -65,6 +66,7 @@ export interface InteractiveTuiProps {
   readonly overlay: OverlayController
   readonly palette: CommandPaletteController
   readonly permission: PermissionController
+  readonly plugins: PluginInventoryController
   readonly preferences: PreferencesController
   readonly projections: ProjectionHubController
   readonly recovery: RecoveryController
@@ -193,6 +195,7 @@ export function InteractiveTui({
   overlay,
   palette,
   permission,
+  plugins,
   preferences,
   projections,
   recovery,
@@ -311,6 +314,11 @@ export function InteractiveTui({
     mcp.getSnapshot,
     mcp.getSnapshot,
   )
+  const pluginSnapshot = useSyncExternalStore(
+    plugins.subscribe,
+    plugins.getSnapshot,
+    plugins.getSnapshot,
+  )
   const skillSnapshot = useSyncExternalStore(
     skills.subscribe,
     skills.getSnapshot,
@@ -427,6 +435,11 @@ export function InteractiveTui({
         jobs.refresh()
         overlay.open('jobs')
         setNotice('Jobs opened.')
+        return
+      case 'plugin.center':
+        plugins.refresh()
+        overlay.open('plugins')
+        setNotice('Plugins opened.')
         return
       case 'mcp.center':
         mcp.refresh()
@@ -908,6 +921,16 @@ export function InteractiveTui({
         }
         return
       }
+      if (activeOverlay === 'plugins') {
+        if (key.upArrow) plugins.move('up')
+        else if (key.downArrow || key.tab) plugins.move('down')
+        else if (!key.ctrl && typed.toLowerCase() === 'r') {
+          setNotice(plugins.refresh()
+            ? 'Plugin inventory refreshed.'
+            : 'No plugin inventory is mounted on this Harness baseline.')
+        }
+        return
+      }
       if (activeOverlay === 'mcp') {
         if (key.upArrow) mcp.move('up')
         else if (key.downArrow || key.tab) mcp.move('down')
@@ -1344,6 +1367,7 @@ export function InteractiveTui({
       activity={activitySnapshot}
       jobs={jobsSnapshot}
       mcp={mcpSnapshot}
+      plugins={pluginSnapshot}
       projections={projectionSnapshot}
       skills={skillSnapshot}
       subagents={subagentSnapshot}
@@ -1368,6 +1392,7 @@ export function InteractiveTui({
           activity={activitySnapshot}
           jobs={jobsSnapshot}
           mcp={mcpSnapshot}
+          plugins={pluginSnapshot}
           projections={projectionSnapshot}
           skills={skillSnapshot}
           subagents={subagentSnapshot}
