@@ -11,6 +11,9 @@
   "publishConfig": {
     "access": "public"
   },
+  "bin": {
+    "dtui": "./bin/dsh-tui.js"
+  },
   "main": "lib/index.js",
   "types": "lib/index.d.ts",
   "exports": {
@@ -26,6 +29,7 @@
     "./package.json": "./package.json"
   },
   "files": [
+    "bin/",
     "lib/**/*.js",
     "lib/**/*.d.ts",
     "cordis.patch.yml"

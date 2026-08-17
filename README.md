@@ -41,6 +41,21 @@ Run `dsh --profile tui --doctor` at any time for a read-only check of services,
 model selector, session persistence, and terminal capabilities. It starts no
 session and runs no agent.
 
+## Install
+
+```sh
+npm install -g @deepseek-ai/dsh @dopejs/dsh-tui
+dtui
+```
+
+`dtui` initializes the `tui` profile on first run and starts it. Every argument
+is passed through, so `dtui --resume <id>`, `dtui --doctor`, and
+`dtui --print "…"` all work.
+
+The command is `dtui` rather than `dsh-tui`, because
+[@deepseek-harness-tui/dsh-tui](https://github.com/ccch1mneyyy/dsh-TUI) already
+claims that name and both should be installable side by side.
+
 ## Install from this checkout
 
 Prerequisites are Node.js `^22.19.0 || >=24.0.0` and pnpm `11.7.0`.
