@@ -73,7 +73,9 @@ jobs:
           echo "Publishing ${version} under dist-tag ${tag}"
 
       - name: Publish to npm
-        run: npm publish dist/*.tgz --access public --tag "${{ steps.disttag.outputs.tag }}"
+        # The ./ prefix is required: npm resolves a bare `dist/x.tgz` as a
+        # package spec and tries to fetch it as a git dependency.
+        run: npm publish ./dist/*.tgz --access public --tag "${{ steps.disttag.outputs.tag }}"
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -86,7 +88,7 @@ jobs:
           case "${{ steps.version.outputs.version }}" in
             *-*) prerelease="--prerelease" ;;
           esac
-          gh release create "${GITHUB_REF_NAME}" dist/*.tgz \
+          gh release create "${GITHUB_REF_NAME}" ./dist/*.tgz \
             --title "${GITHUB_REF_NAME}" \
             --generate-notes \
             $prerelease
