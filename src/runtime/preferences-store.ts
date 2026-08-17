@@ -99,6 +99,7 @@ export class PreferencesStore {
       await scope.update({
         keymap: { ...next.keymap },
         reducedMotion: next.reducedMotion,
+        screenReader: next.screenReader,
         theme: next.theme,
       })
     } catch (error) {

@@ -444,6 +444,25 @@ its own code, because a caller retrying it unchanged hits the same wall.
 
 ### M5.2 Diagnostics, onboarding, and accessibility (+3)
 
+Status: **complete**. `--doctor` diagnoses required and optional services, the
+model selector, session persistence, and the TTY, and gives each finding an
+actionable remedy. It is read-only — no session starts, no agent is created, no
+tool runs — because a diagnostic that changed what it diagnosed would be worse
+than none, and a wedged persistence backend is bounded by a timeout rather than
+hanging the diagnosis that would explain it. Redaction is structural: only
+environment variable *names* are compared and reported, never values, because
+this output is what users paste into issue trackers. `--doctor` and `--print`
+are mutually exclusive, and only `fail` exits non-zero.
+
+Accessibility is carried by the preference document: no-color, high-contrast,
+reduced motion, and a screen-reader mode that drops box drawing — a screen
+reader announces border glyphs as content, so a bordered panel reads as noise
+around the text the user asked for. A test asserts the plain frame loses no
+text. Operation is keyboard-only and every action stays discoverable in the
+command palette, so a terminal that cannot emit a chord can still reach it.
+First-run guidance points at the palette, since a new user has no other way to
+discover the panels yet.
+
 - implement read-only `--doctor` and actionable service/model/persistence/TTY
   checks with redaction;
 - add first-run guidance, no-color, reduced-motion, keyboard-only operation,

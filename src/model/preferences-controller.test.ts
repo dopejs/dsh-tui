@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 
 import { PreferencesController } from './preferences-controller'
 
@@ -30,4 +30,43 @@ describe('PreferencesController (M1.5)', () => {
     expect(preferences.actionForChord('alt+s')).toBe('session.center')
     expect(preferences.getSnapshot()).toMatchObject({ revision: 1, theme: 'no-color' })
   })
+
+  it('accepts the accessibility modes and rejects non-boolean values', () => {
+    const controller = new PreferencesController({
+      reducedMotion: true,
+      screenReader: true,
+      theme: 'high-contrast',
+    })
+    expect(controller.getSnapshot()).toMatchObject({
+      reducedMotion: true,
+      screenReader: true,
+      theme: 'high-contrast',
+    })
+
+    expect(controller.replace({ screenReader: 'yes' }))
+      .toMatchObject({ kind: 'rejected' })
+    expect(controller.replace({ reducedMotion: 1 }))
+      .toMatchObject({ kind: 'rejected' })
+    // A rejected document changes nothing.
+    expect(controller.getSnapshot().screenReader).toBe(true)
+  })
+
+  it('reports where preferences are kept', () => {
+    const controller = new PreferencesController()
+    expect(controller.getSnapshot().persistence).toBe('process-only')
+    controller.setPersistence('settings')
+    expect(controller.getSnapshot().persistence).toBe('settings')
+  })
+
+  it('notifies subscribers on change and stops after unsubscribe', () => {
+    const controller = new PreferencesController()
+    const listener = vi.fn()
+    const stop = controller.subscribe(listener)
+    controller.replace({ theme: 'no-color' })
+    expect(listener).toHaveBeenCalledOnce()
+    stop()
+    controller.replace({ theme: 'default' })
+    expect(listener).toHaveBeenCalledOnce()
+  })
 })
+

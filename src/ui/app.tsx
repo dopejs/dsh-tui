@@ -57,6 +57,8 @@ export interface InteractiveTuiProps {
   readonly completion: CompletionController
   readonly editor: EditorController
   readonly input: InputController
+  /** No persisted session was found, so this is a first run. */
+  readonly firstRun?: boolean
   readonly initialNotice?: string
   readonly interaction: InteractionController
   readonly jobs: JobsController
@@ -185,6 +187,7 @@ export function InteractiveTui({
   columns: fixedColumns,
   completion,
   editor,
+  firstRun = false,
   input,
   initialNotice,
   interaction,
@@ -216,7 +219,11 @@ export function InteractiveTui({
     rows: fixedRows ?? stdout.rows ?? 24,
   }))
   const [notice, setNotice] = useState(
-    initialNotice ?? 'Enter send · ^J newline · ^S steer · ^C cancel',
+    initialNotice ?? (firstRun
+      // A first-run user has no way to discover the panels yet; the palette is
+      // the one shortcut that leads to all of them.
+      ? 'Welcome. ^P opens the command palette — every action is listed there. Enter sends.'
+      : 'Enter send · ^J newline · ^S steer · ^C cancel'),
   )
   const [questionIndex, setQuestionIndex] = useState(0)
   const [cursor, setCursor] = useState(0)
@@ -1371,6 +1378,7 @@ export function InteractiveTui({
       projections={projectionSnapshot}
       skills={skillSnapshot}
       subagents={subagentSnapshot}
+      screenReader={preferenceSnapshot.screenReader}
       theme={preferenceSnapshot.theme}
       recovery={recoverySnapshot}
       sessions={sessionCenterSnapshot}
@@ -1396,6 +1404,7 @@ export function InteractiveTui({
           projections={projectionSnapshot}
           skills={skillSnapshot}
           subagents={subagentSnapshot}
+          screenReader={preferenceSnapshot.screenReader}
           theme={preferenceSnapshot.theme}
           recovery={recoverySnapshot}
           sessions={sessionCenterSnapshot}

@@ -34,12 +34,14 @@ function runProvider(args: readonly string[]) {
 describe('parseStartupArguments', () => {
   it('parses help, model, and resume', () => {
     expect(parseStartupArguments(['--resume', 'session-1'])).toEqual({
+      doctor: false,
       help: false,
       print: false,
       resumeSessionId: 'session-1',
     })
-    expect(parseStartupArguments(['-h'])).toEqual({ help: true, print: false })
+    expect(parseStartupArguments(['-h'])).toEqual({ doctor: false, help: true, print: false })
     expect(parseStartupArguments(['--model', 'provider/model'])).toEqual({
+      doctor: false,
       help: false,
       model: 'provider/model',
       print: false,
@@ -47,13 +49,15 @@ describe('parseStartupArguments', () => {
   })
 
   it('parses the non-interactive run surface', () => {
-    expect(parseStartupArguments(['--print'])).toEqual({ help: false, print: true })
+    expect(parseStartupArguments(['--print'])).toEqual({ doctor: false, help: false, print: true })
     expect(parseStartupArguments(['-p', 'explain this'])).toEqual({
+      doctor: false,
       help: false,
       print: true,
       prompt: 'explain this',
     })
     expect(parseStartupArguments(['--print', '--output-format', 'stream-json'])).toEqual({
+      doctor: false,
       help: false,
       outputFormat: 'stream-json',
       print: true,
@@ -67,6 +71,16 @@ describe('parseStartupArguments', () => {
       .toThrow('--output-format requires --print')
     expect(() => parseStartupArguments(['explain this']))
       .toThrow('a prompt argument requires --print')
+  })
+
+  it('refuses to combine a diagnosis with a run', () => {
+    expect(parseStartupArguments(['--doctor'])).toEqual({
+      doctor: true,
+      help: false,
+      print: false,
+    })
+    expect(() => parseStartupArguments(['--doctor', '--print']))
+      .toThrow('--doctor cannot be combined with --print')
   })
 
   it('rejects an unsupported output format instead of falling back', () => {
@@ -98,23 +112,24 @@ describe('formatHelp', () => {
     expect(formatHelp()).toContain('--model <provider/model>')
     expect(formatHelp()).toContain('--print')
     expect(formatHelp()).toContain('--output-format <fmt>')
+    expect(formatHelp()).toContain('--doctor')
   })
 })
 
 describe('tui command-line provider', () => {
   it('provides immutable fresh and resume startup values', async () => {
     const fresh = runProvider([])
-    expect(fresh.values()).toEqual({ print: false })
+    expect(fresh.values()).toEqual({ doctor: false, print: false })
     expect(fresh.exits).toEqual([])
     await fresh.dispose()
 
     const resumed = runProvider(['--resume', 'session-1'])
-    expect(resumed.values()).toEqual({ print: false, resumeSessionId: 'session-1' })
+    expect(resumed.values()).toEqual({ doctor: false, print: false, resumeSessionId: 'session-1' })
     expect(resumed.exits).toEqual([])
     await resumed.dispose()
 
     const selected = runProvider(['--model', 'provider/model'])
-    expect(selected.values()).toEqual({ model: 'provider/model', print: false })
+    expect(selected.values()).toEqual({ doctor: false, model: 'provider/model', print: false })
     await selected.dispose()
   })
 

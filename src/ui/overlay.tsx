@@ -49,6 +49,8 @@ interface OverlayPanelProps {
   readonly plugins: PluginInventoryControllerSnapshot
   readonly projections: ProjectionHubSnapshot
   readonly recovery: RecoverySnapshot
+  /** Drop box drawing; a screen reader reads border glyphs as content. */
+  readonly screenReader?: boolean
   readonly sessions: SessionCenterSnapshot
   readonly skills: SkillsSnapshot
   readonly subagents: SubagentTreeSnapshot
@@ -69,12 +71,16 @@ export function OverlayPanel({
   plugins,
   projections,
   recovery,
+  screenReader = false,
   sessions,
   skills,
   subagents,
   theme,
 }: OverlayPanelProps) {
   const tone = (name: Parameters<typeof toneStyle>[1]) => toneStyle(theme, name)
+  // A screen reader announces every border character, so the frame becomes
+  // noise wrapped around the text the user actually asked for.
+  const frame = screenReader ? {} : { borderStyle: 'round' as const }
   if (active === 'plugins') {
     const window = selectedWindow(plugins.rows, plugins.selectedIndex, maxRows - 6)
     const selected = plugins.rows[plugins.selectedIndex ?? -1]
@@ -82,7 +88,7 @@ export function OverlayPanel({
       ? undefined
       : plugins.diagnostics.find(entry => entry.entryId === selected.entryId)
     return (
-      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+      <Box {...frame} flexDirection="column" width={Math.max(4, columns)}>
         <Text bold wrap="truncate-end">
           Plugins · {plugins.status} · {String(plugins.rows.length)} entries
           {plugins.failedCount > 0 ? ` · ${String(plugins.failedCount)} failed` : ''}
@@ -131,7 +137,7 @@ export function OverlayPanel({
     const selected = mcp.servers[mcp.selectedIndex ?? -1]
     const window = selectedWindow(mcp.servers, mcp.selectedIndex, maxRows - 6)
     return (
-      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+      <Box {...frame} flexDirection="column" width={Math.max(4, columns)}>
         <Text bold wrap="truncate-end">
           MCP · {mcp.status} · {String(mcp.servers.length)} servers
           {mcp.droppedServers > 0 ? ` · ${String(mcp.droppedServers)} not shown` : ''}
@@ -177,7 +183,7 @@ export function OverlayPanel({
     const detail = skills.detail
     const window = selectedWindow(skills.rows, skills.selectedIndex, maxRows - (detail ? 9 : 6))
     return (
-      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+      <Box {...frame} flexDirection="column" width={Math.max(4, columns)}>
         <Text bold wrap="truncate-end">
           Skills · {skills.status} · {String(skills.totalMatches)} matching
           {skills.complete ? '' : ' · partial discovery'}
@@ -229,7 +235,7 @@ export function OverlayPanel({
   if (active === 'activity') {
     const window = selectedWindow(activity.rows, activity.selectedIndex, maxRows - 4)
     return (
-      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+      <Box {...frame} flexDirection="column" width={Math.max(4, columns)}>
         <Text bold wrap="truncate-end">
           Activity · {String(activity.counts.jobsRunning)} jobs running
           {' · '}{String(activity.counts.subagentsUnread)} subagent updates
@@ -272,7 +278,7 @@ export function OverlayPanel({
       && selected.mode === 'continuable'
       && selected.depth === 1
     return (
-      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+      <Box {...frame} flexDirection="column" width={Math.max(4, columns)}>
         <Text bold wrap="truncate-end">
           Subagents · {subagents.status}
           {subagents.unreadCount > 0 ? ` · ${String(subagents.unreadCount)} unread` : ''}
@@ -328,7 +334,7 @@ export function OverlayPanel({
     const window = selectedWindow(jobs.jobs, jobs.selectedIndex, maxRows - 5)
     const confirming = jobs.jobs.find(job => job.id === jobs.confirmingCancelId)
     return (
-      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+      <Box {...frame} flexDirection="column" width={Math.max(4, columns)}>
         <Text bold wrap="truncate-end">
           Jobs · {jobs.status} · {String(jobs.runningCount)} running
           {jobs.truncated ? ' · truncated' : ''}
@@ -387,7 +393,7 @@ export function OverlayPanel({
   if (active === 'projections') {
     const window = selectedWindow(projections.rows, projections.selectedIndex, maxRows - 4)
     return (
-      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+      <Box {...frame} flexDirection="column" width={Math.max(4, columns)}>
         <Text bold wrap="truncate-end">
           Projections · {projections.status}
           {projections.asOfSeq === undefined ? '' : ` · seq ${String(projections.asOfSeq)}`}
@@ -440,7 +446,7 @@ export function OverlayPanel({
     )
     const selected = recovery.capabilities[recovery.selectedIndex]
     return (
-      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+      <Box {...frame} flexDirection="column" width={Math.max(4, columns)}>
         <Text bold wrap="truncate-end">
           Recovery · {recovery.sessionId} · {recovery.status}
         </Text>
@@ -508,7 +514,7 @@ export function OverlayPanel({
     const detailMaximum = Math.max(1, maxRows - window.rows.length - 4)
     const detail = selected?.expanded === true ? diffLines(selected, detailMaximum) : undefined
     return (
-      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+      <Box {...frame} flexDirection="column" width={Math.max(4, columns)}>
         <Text bold wrap="truncate-end">
           Changes · {String(changes.groups.length)} files · {String(changes.totalChanges)} edits
         </Text>
@@ -549,7 +555,7 @@ export function OverlayPanel({
   if (active === 'command-palette') {
     const window = selectedWindow(palette.items, palette.selectedIndex, maxRows - 5)
     return (
-      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+      <Box {...frame} flexDirection="column" width={Math.max(4, columns)}>
         <Text bold wrap="truncate-end">Command palette</Text>
         <Text wrap="truncate-end">
           &gt; {palette.query}<Text inverse>█</Text>
@@ -587,7 +593,7 @@ export function OverlayPanel({
   if (active === 'session-center') {
     const window = selectedWindow(sessions.items, sessions.selectedIndex, maxRows - 6)
     return (
-      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+      <Box {...frame} flexDirection="column" width={Math.max(4, columns)}>
         <Text bold wrap="truncate-end">Session center · {sessions.status}</Text>
         <Text wrap="truncate-end">
           &gt; {sessions.query}<Text inverse>█</Text>
@@ -632,7 +638,7 @@ export function OverlayPanel({
       item => item.value === permissions.confirmationTarget,
     )
     return (
-      <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+      <Box {...frame} flexDirection="column" width={Math.max(4, columns)}>
         <Text bold wrap="truncate-end">Permissions · {permissions.status}</Text>
         {permissions.status === 'confirming' ? (
           <>
@@ -679,7 +685,7 @@ export function OverlayPanel({
   const window = selectedWindow(completion.items, completion.selectedIndex, maxRows - 4)
   const kind = completion.kind === 'path' ? 'Path' : 'Command'
   return (
-    <Box borderStyle="round" flexDirection="column" width={Math.max(4, columns)}>
+    <Box {...frame} flexDirection="column" width={Math.max(4, columns)}>
       <Text bold wrap="truncate-end">{kind} completion · {completion.query}</Text>
       {completion.status === 'loading' ? <Text dimColor>Loading…</Text> : null}
       {completion.error === undefined ? null : (
@@ -740,6 +746,7 @@ export function renderOverlayPanel(
   props: Omit<OverlayPanelProps, 'activity' | 'jobs' | 'mcp' | 'plugins' | 'projections' | 'skills' | 'subagents' | 'theme'> & {
     readonly activity?: ActivityCenterSnapshot
     readonly mcp?: McpInventorySnapshot
+    readonly screenReader?: boolean
     readonly plugins?: PluginInventoryControllerSnapshot
     readonly skills?: SkillsSnapshot
     readonly theme?: TuiTheme

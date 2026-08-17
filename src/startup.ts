@@ -9,6 +9,8 @@ export const inject = ['cmdlineArgs']
 export const TUI_STARTUP_SERVICE = 'tuiStartup'
 
 export interface StartupOptions {
+  /** Read-only environment diagnosis; runs no agent and starts no session. */
+  readonly doctor: boolean
   readonly help: boolean
   readonly model?: string
   readonly outputFormat?: OutputFormat
@@ -19,6 +21,7 @@ export interface StartupOptions {
 }
 
 export interface TuiStartupValues {
+  readonly doctor?: boolean
   readonly model?: string
   readonly outputFormat?: OutputFormat
   readonly print?: boolean
@@ -33,6 +36,7 @@ declare module '@deepseek-ai/cordis' {
 }
 
 export function parseStartupArguments(argv: readonly string[]): StartupOptions {
+  let doctor = false
   let help = false
   let model: string | undefined
   let outputFormat: OutputFormat | undefined
@@ -56,6 +60,10 @@ export function parseStartupArguments(argv: readonly string[]): StartupOptions {
       }
       resumeSessionId = value
       index += 1
+      continue
+    }
+    if (argument === '--doctor') {
+      doctor = true
       continue
     }
     if (argument === '--print' || argument === '-p') {
@@ -102,7 +110,10 @@ export function parseStartupArguments(argv: readonly string[]): StartupOptions {
     throw new Error('a prompt argument requires --print')
   }
 
+  if (doctor && print) throw new Error('--doctor cannot be combined with --print')
+
   return {
+    doctor,
     help,
     ...(model === undefined ? {} : { model }),
     ...(outputFormat === undefined ? {} : { outputFormat }),
@@ -122,6 +133,7 @@ export function formatHelp(): string {
     '  --model <provider/model>  Select a model for a new session.',
     '  --resume <session-id>    Resume a persisted Harness session.',
     '  -p, --print              Run once without a terminal and exit.',
+    '  --doctor                 Diagnose services, model, persistence, and TTY.',
     '  --output-format <fmt>    text (default), json, or stream-json; needs --print.',
   ].join('\n')
 }
@@ -134,6 +146,7 @@ function tuiCommand(): Command {
     .option('--model <provider/model>', 'select a model for a new session')
     .option('--resume <session-id>', 'resume a persisted Harness session')
     .option('-p, --print', 'run once without a terminal and exit')
+    .option('--doctor', 'diagnose services, model, persistence, and TTY')
     .option(
       '--output-format <format>',
       `output contract for --print: ${OUTPUT_FORMATS.join(', ')}`,
@@ -151,11 +164,13 @@ export function apply(ctx: Context): void {
   const program = tuiCommand()
   program.action((prompt?: string) => {
     const {
+      doctor = false,
       model,
       outputFormat,
       print = false,
       resume: resumeSessionId,
     } = program.opts<{
+      doctor?: boolean
       model?: string
       outputFormat?: string
       print?: boolean
@@ -177,7 +192,11 @@ export function apply(ctx: Context): void {
     if (prompt !== undefined && !print) {
       program.error('error: a prompt argument requires --print')
     }
+    if (doctor && print) {
+      program.error('error: --doctor cannot be combined with --print')
+    }
     ctx.provide(TUI_STARTUP_SERVICE, {
+      doctor,
       ...(model === undefined ? {} : { model }),
       ...(outputFormat === undefined || !isOutputFormat(outputFormat)
         ? {}

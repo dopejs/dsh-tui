@@ -22,6 +22,12 @@ export interface TuiPreferences {
   readonly keymap: Readonly<Record<PreferenceAction, string>>
   /** Suppress non-essential motion and transient redraws. */
   readonly reducedMotion: boolean
+  /**
+   * Drop box drawing and decorative glyphs. A screen reader announces border
+   * characters as content, so a bordered panel is read out as noise around the
+   * text the user actually asked for.
+   */
+  readonly screenReader: boolean
   readonly theme: TuiTheme
 }
 
@@ -49,6 +55,7 @@ const THEMES = Object.freeze(['default', 'high-contrast', 'no-color'] as const)
 export const DEFAULT_PREFERENCES: TuiPreferences = Object.freeze({
   keymap: DEFAULT_KEYMAP,
   reducedMotion: false,
+  screenReader: false,
   theme: 'default',
 })
 
@@ -65,12 +72,15 @@ export function resolvePreferences(input: unknown): TuiPreferences {
   const candidate = input as {
     readonly keymap?: unknown
     readonly reducedMotion?: unknown
+    readonly screenReader?: unknown
     readonly theme?: unknown
   }
   const theme = candidate.theme ?? 'default'
   if (!THEMES.includes(theme as TuiTheme)) throw new Error('unsupported theme')
   const reducedMotion = candidate.reducedMotion ?? false
   if (typeof reducedMotion !== 'boolean') throw new Error('reducedMotion must be a boolean')
+  const screenReader = candidate.screenReader ?? false
+  if (typeof screenReader !== 'boolean') throw new Error('screenReader must be a boolean')
   const keymap = { ...DEFAULT_KEYMAP }
   if (candidate.keymap !== undefined) {
     if (
@@ -98,6 +108,7 @@ export function resolvePreferences(input: unknown): TuiPreferences {
   return Object.freeze({
     keymap: Object.freeze(keymap),
     reducedMotion,
+    screenReader,
     theme: theme as TuiTheme,
   })
 }
@@ -176,6 +187,7 @@ export class PreferencesController {
       persistence: this.#persistence,
       reducedMotion: this.#preferences.reducedMotion,
       revision: this.#revision,
+      screenReader: this.#preferences.screenReader,
       theme: this.#preferences.theme,
       ...(warning === undefined ? {} : { warning }),
     })

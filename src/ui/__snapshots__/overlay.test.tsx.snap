@@ -67,6 +67,14 @@ exports[`OverlayPanel (M1.3) > degrades the subagent tree at 40 columns 1`] = `
 ╰──────────────────────────────────────╯"
 `;
 
+exports[`OverlayPanel (M1.3) > drops box drawing in screen-reader mode without losing any text 1`] = `
+"MCP · ready · 1 servers
+› github · 1 tools
+  create_issue · Open an issue
+Connection health: no public registry on this Harness baseline · 7 non-MCP tools
+1/1 · ↑/↓ select · R refresh · Esc close"
+`;
+
 exports[`OverlayPanel (M1.3) > marks partial skill discovery instead of presenting it as the whole catalog 1`] = `
 "╭──────────────────────────────────────────────────────────────────────────────╮
 │Skills · ready · 2 matching · partial discovery                               │

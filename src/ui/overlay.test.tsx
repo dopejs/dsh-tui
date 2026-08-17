@@ -902,4 +902,49 @@ describe('OverlayPanel (M1.3)', () => {
       status: 'unavailable',
     })).toMatchSnapshot()
   })
+
+  // A screen reader announces every border glyph as content, so the frame
+  // becomes noise wrapped around the text the user asked for.
+  it('drops box drawing in screen-reader mode without losing any text', () => {
+    const bordered = renderMcp(80)
+    const plain = renderOverlayPanel({
+      active: 'mcp',
+      changes: emptyChanges,
+      columns: 80,
+      completion: emptyCompletion,
+      maxRows: 12,
+      mcp: {
+        droppedServers: 0,
+        health: 'unsupported-no-public-registry',
+        nonMcpToolCount: 7,
+        revision: 3,
+        selectedIndex: 0,
+        servers: [{
+          droppedTools: 0,
+          name: 'github',
+          toolCount: 1,
+          tools: [{
+            description: 'Open an issue',
+            qualifiedName: 'mcp__github__create_issue',
+            rawName: 'create_issue',
+          }],
+        }],
+        status: 'ready',
+      },
+      palette: {
+        catalogTruncated: false, items: [], query: '', revision: 0, totalMatches: 0,
+      },
+      permissions: emptyPermissions,
+      recovery: emptyRecovery,
+      screenReader: true,
+      sessions: emptySessions,
+    })
+
+    expect(bordered).toMatch(/[\u2500-\u257F]/)
+    expect(plain).not.toMatch(/[\u2500-\u257F]/)
+    expect(plain).toContain('github')
+    expect(plain).toContain('Connection health: no public registry')
+    expect(plain).toMatchSnapshot()
+  })
 })
+

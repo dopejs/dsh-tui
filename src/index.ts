@@ -44,6 +44,7 @@ import { attachAgent, type AgentAttachmentRequest } from './runtime/agent-attach
 import { createRuntimePlugin } from './runtime/cordis-runtime'
 import { InputController } from './runtime/input-controller'
 import { InteractionScheduler } from './runtime/interaction-scheduler'
+import { doctorExitCode, formatDoctorReport, runDoctor } from './runtime/doctor'
 import { readPipedPrompt } from './runtime/print-runner'
 import { startPrintRuntime } from './runtime/print-runtime'
 import { PreferencesStore, TUI_SETTINGS_NAMESPACE } from './runtime/preferences-store'
@@ -279,6 +280,7 @@ export async function startTuiRuntime(
               z.object({
                 keymap: z.dict(z.string()).default({}),
                 reducedMotion: z.boolean().default(false),
+                screenReader: z.boolean().default(false),
                 theme: z.union(['default', 'high-contrast', 'no-color'] as const)
                   .default('default'),
               }),
@@ -622,7 +624,17 @@ export async function startTuiRuntime(
     const stopSessionCenterSync = coordinator.subscribe(syncSessionCenter)
     owner.own('session center identity sync', stopSessionCenterSync)
     syncSessionCenter()
+    // A first run has no persisted session to resume, which is the one signal
+    // available before the user has done anything.
+    let firstRun = false
+    try {
+      firstRun = (await sessionPersistence.list(AbortSignal.timeout(2_000))).length === 0
+    } catch (error) {
+      // Onboarding guidance is not worth failing startup over.
+      diagnostics.report(error)
+    }
     const application = dependencies.mountApplication({
+      firstRun,
       onQuit: requestExit,
       sessionCenter,
       sessions: coordinator,
@@ -657,10 +669,74 @@ const runtimePlugin = createRuntimePlugin({
     if (startup === undefined) throw new Error('dsh-tui requires the tuiStartup service')
     // --print is checked before the interactive runtime so a non-interactive
     // run never requires a TTY it will not use.
+    // --doctor is read-only: it starts no session and runs no agent, so it is
+    // checked before both runtimes and before the TTY requirement.
+    if (startup.doctor === true) return runDoctorCommand(ctx, startup)
     if (startup.print === true) return startPrintRun(ctx, startup, signal)
     return startTuiRuntime(ctx, startup, signal)
   },
 })
+
+const DOCTOR_SERVICE_KEYS: readonly string[] = [
+  'agents',
+  'agentDefaultModel',
+  'commands',
+  'jobs',
+  'llm',
+  'permissionPresets',
+  'sessionPersistence',
+  'sessionProjections',
+  'sessions',
+  'settings',
+  'skills',
+  'subagents',
+  'tools',
+  'userQuestions',
+]
+
+/**
+ * Read-only environment diagnosis. It resolves service handles and asks
+ * persistence whether it can list, but starts no session, creates no agent, and
+ * executes no tool — a diagnostic that changed what it diagnosed would be worse
+ * than none.
+ */
+async function runDoctorCommand(
+  ctx: Context,
+  startup: TuiStartupValues,
+  dependencies: RuntimeDependencies = defaultDependencies,
+): Promise<() => Promise<void>> {
+  const services = DOCTOR_SERVICE_KEYS.filter(key => ctx.get(key as never) !== undefined)
+  const sessionPersistence = ctx.get('sessionPersistence')
+  let persistence: { listable: boolean, reason?: string } | undefined
+  if (sessionPersistence !== undefined) {
+    // A wedged backend must not hang the diagnosis that would explain it.
+    const timeout = AbortSignal.timeout(5_000)
+    try {
+      await sessionPersistence.list(timeout)
+      persistence = { listable: true }
+    } catch (error) {
+      persistence = {
+        listable: false,
+        reason: timeout.aborted
+          ? 'Listing persisted sessions timed out after 5s.'
+          : diagnosticMessage(error),
+      }
+    }
+  }
+  const report = runDoctor({
+    colorDisabled: process.env.NO_COLOR !== undefined && process.env.NO_COLOR !== '',
+    // Names only; a doctor report is the kind of output users paste into issues.
+    envNames: Object.keys(process.env),
+    ...(startup.model === undefined ? {} : { model: startup.model }),
+    ...(persistence === undefined ? {} : { persistence }),
+    services,
+    stdinIsTty: dependencies.stdin.isTTY === true,
+    stdoutIsTty: dependencies.stdout.isTTY === true,
+  })
+  process.stdout.write(formatDoctorReport(report))
+  ctx.get('appExit')?.(doctorExitCode(report))
+  return () => Promise.resolve()
+}
 
 /**
  * Non-interactive entry. It mounts no terminal state, so it runs on a pipe, in

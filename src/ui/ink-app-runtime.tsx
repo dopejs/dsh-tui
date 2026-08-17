@@ -19,6 +19,8 @@ export interface TuiSessionStore {
 }
 
 export interface InkApplicationOptions {
+  /** No persisted session was found, so onboarding guidance is shown. */
+  readonly firstRun?: boolean
   readonly onQuit: (code: number) => void
   readonly sessionCenter: SessionCenterController
   readonly sessions: TuiSessionStore
@@ -32,7 +34,12 @@ export interface InkApplicationStreams {
   readonly stdout?: NodeJS.WriteStream
 }
 
-export function SessionApplication({ onQuit, sessionCenter, sessions }: InkApplicationOptions) {
+export function SessionApplication({
+  firstRun = false,
+  onQuit,
+  sessionCenter,
+  sessions,
+}: InkApplicationOptions) {
   const snapshot = useSyncExternalStore(
     sessions.subscribe,
     sessions.getSnapshot,
@@ -53,6 +60,7 @@ export function SessionApplication({ onQuit, sessionCenter, sessions }: InkAppli
   return <InteractiveTui
     key={`${snapshot.binding.sessionId}:${String(snapshot.revision)}`}
     {...snapshot.binding.application}
+    firstRun={firstRun}
     {...(snapshot.error === undefined
       ? {}
       : { initialNotice: `Session switch failed: ${snapshot.error}` })}
