@@ -1,4 +1,6 @@
-import { execFileSync } from 'node:child_process'
+import { spawnSync } from 'node:child_process'
+import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -7,28 +9,46 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const launcher = join(root, 'bin', 'dsh-tui.js')
 
 /**
+ * A stub `dsh` on PATH, so the version logic is reachable without the real
+ * CLI. Without it these tests would pass only on a machine that happens to
+ * have dsh installed, and fail everywhere else at the availability check.
+ */
+function stubDshDirectory(): string {
+  const directory = mkdtempSync(join(tmpdir(), 'dtui-stub-'))
+  const stub = join(directory, 'dsh')
+  writeFileSync(stub, '#!/bin/sh\nexit 0\n')
+  chmodSync(stub, 0o755)
+  return directory
+}
+
+/**
  * The launcher is a standalone script with no exports, so its behaviour is
  * exercised the way a user gets it: as a process.
  */
 function runLauncher(env: Record<string, string>): { status: number, output: string } {
-  try {
-    const output = execFileSync(process.execPath, [launcher, '--doctor'], {
-      encoding: 'utf8',
-      env: { ...process.env, ...env },
-      stdio: ['ignore', 'pipe', 'pipe'],
-      timeout: 30_000,
-    })
-    return { output, status: 0 }
-  } catch (error) {
-    const failure = error as { status?: number, stderr?: string, stdout?: string }
-    return {
-      output: `${failure.stdout ?? ''}${failure.stderr ?? ''}`,
-      status: failure.status ?? -1,
-    }
+  // spawnSync rather than execFileSync: the launcher writes its diagnostics to
+  // stderr, which the throwing variant only surfaces on a non-zero exit.
+  const result = spawnSync(process.execPath, [launcher, '--doctor'], {
+    encoding: 'utf8',
+    env: {
+      ...process.env,
+      PATH: `${stubDshDirectory()}:${process.env.PATH ?? ''}`,
+      ...env,
+    },
+    stdio: ['ignore', 'pipe', 'pipe'],
+    timeout: 30_000,
+  })
+  return {
+    output: `${result.stdout ?? ''}${result.stderr ?? ''}`,
+    status: result.status ?? -1,
   }
 }
 
-describe('dtui launcher (M6)', () => {
+// The launcher declines on Windows rather than spawn `dsh.cmd` through a
+// shell that would interpret its passed-through arguments.
+const onPosix = process.platform === 'win32' ? describe.skip : describe
+
+onPosix('dtui launcher (M6)', () => {
   // Refusing here is not caution: dsh applies this launcher's bundle patch to
   // the profile's older package, so starting fails on module resolution with a
   // far less obvious error than this message.

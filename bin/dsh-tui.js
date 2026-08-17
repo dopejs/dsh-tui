@@ -36,6 +36,17 @@ function has(command) {
   return probe.error === undefined && probe.status === 0
 }
 
+// Windows resolves `dsh` as `dsh.cmd`, which Node cannot spawn without a
+// shell — and a shell would interpret the arguments this launcher passes
+// through, which come from the user. Rather than take that injection surface,
+// the launcher declines and names the direct command.
+if (process.platform === 'win32') {
+  fail(
+    `[${PROFILE}] The launcher does not support Windows yet. Run the profile directly:\n`
+    + `  dsh --profile ${PROFILE}`,
+  )
+}
+
 const dshHome = process.env.DSH_HOME ?? join(homedir(), '.dsh')
 const profileDirectory = join(dshHome, 'profiles', PROFILE)
 const installedManifest = join(profileDirectory, 'node_modules', PACKAGE, 'package.json')
