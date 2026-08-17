@@ -236,6 +236,9 @@ export function InteractiveTui({
       ? 'Welcome. ^P opens the command palette — every action is listed there. Enter sends.'
       : 'Enter send · ^J newline · ^S steer · ^C cancel'),
   )
+  // Injected context is folded by default; expansion is per-row and lives in
+  // presentation state, never in the durable log.
+  const [expandedRowIds, setExpandedRowIds] = useState<ReadonlySet<string>>(() => new Set())
   const [questionIndex, setQuestionIndex] = useState(0)
   const [cursor, setCursor] = useState(0)
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set())
@@ -1214,6 +1217,19 @@ export function InteractiveTui({
       viewport.toEnd()
       return
     }
+    if (key.ctrl && typed.toLowerCase() === 'e') {
+      const focused = viewport.getSnapshot().focusedRowId
+      if (focused === undefined) setNotice('No focused row to expand.')
+      else {
+        setExpandedRowIds((current) => {
+          const next = new Set(current)
+          if (next.has(focused)) next.delete(focused)
+          else next.add(focused)
+          return next
+        })
+      }
+      return
+    }
     if (key.ctrl && typed.toLowerCase() === 't') {
       if (key.shift) viewport.toggleCompactTools()
       else if (!viewport.toggleFocusedTool()) setNotice('No focused tool details to fold.')
@@ -1466,7 +1482,7 @@ export function InteractiveTui({
 
   return (
     <Box flexDirection="column">
-      <Frame columns={dimensions.columns} model={screen} />
+      <Frame columns={dimensions.columns} expandedRowIds={expandedRowIds} model={screen} />
       {activeOverlay === undefined ? null : (
         <OverlayPanel
           active={activeOverlay}

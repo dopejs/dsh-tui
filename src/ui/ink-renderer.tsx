@@ -6,17 +6,35 @@ import type { InteractionSnapshot, InteractionStore } from '../model/interaction
 import type { InteractionModal, ScreenModel, TranscriptRowKind } from '../model/view-model'
 import { createScreenModel } from '../model/view-model'
 import { compactCount, contextGauge, describeSources } from '../model/status-bar'
+import { foldInjectedContent, foldSummary } from '../model/context-fold'
+import { toneStyle, type SemanticTone } from './theme'
 import { DEFAULT_TIPS, Welcome } from './welcome'
 
-const ROW_PREFIX: Record<TranscriptRowKind, string> = {
-  assistant: 'A',
-  system: '!',
-  tool: 'T',
-  user: 'U',
+/**
+ * Role markers. A single letter is unambiguous but reads as noise; these are
+ * still one cell wide, so the transcript stays column-aligned.
+ */
+export const ROW_MARKERS: Record<TranscriptRowKind, string> = {
+  assistant: '⏺',
+  system: 'ℹ',
+  tool: '⚒',
+  user: '❯',
+}
+
+/** The glyph marking the focused row; kept distinct from every role marker. */
+export const FOCUS_MARKER = '› '
+
+const ROW_TONE: Record<TranscriptRowKind, SemanticTone | undefined> = {
+  assistant: 'accent',
+  system: 'muted',
+  tool: undefined,
+  user: undefined,
 }
 
 interface FrameProps {
   readonly columns: number
+  /** Rows the user expanded; injected context is folded until then. */
+  readonly expandedRowIds?: ReadonlySet<string>
   readonly model: ScreenModel
 }
 
@@ -49,7 +67,9 @@ function metadata(model: ScreenModel, columns: number): readonly string[] {
     .filter((value): value is string => value !== undefined)
 }
 
-export function Frame({ columns, model }: FrameProps) {
+export function Frame({ columns, expandedRowIds, model }: FrameProps) {
+  const theme = model.welcome?.theme ?? 'default'
+  const tone = (name: SemanticTone | undefined) => toneStyle(theme, name)
   // Only drawn when usage is actually known: an empty bar labelled 0% asserts
   // "nothing consumed", when the truth may be "not reported".
   const gauge = model.contextUsed === undefined
@@ -99,13 +119,31 @@ export function Frame({ columns, model }: FrameProps) {
         />
       ) : null}
       <Box flexDirection="column">
-        {model.rows.map((row) => (
+        {model.rows.map((row) => {
+          // Injected context is folded so a session does not open on a wall of
+          // instructions; the content stays reachable, not discarded.
+          const injected = row.kind === 'system' && row.toolCard === undefined
+            ? foldInjectedContent(row.content, expandedRowIds?.has(row.id) === true)
+            : undefined
+          return (
           <Box flexDirection="column" key={row.id}>
-            <Text wrap="truncate-end">
-              {model.focusedRowId === row.id ? '› ' : ''}
-              {ROW_PREFIX[row.kind]} {row.toolCard?.title ?? row.content}
+            <Text {...tone(ROW_TONE[row.kind])} wrap="truncate-end">
+              {model.focusedRowId === row.id ? FOCUS_MARKER : ''}
+              {ROW_MARKERS[row.kind]} {row.toolCard?.title ?? injected?.lines[0] ?? row.content}
               {row.status === undefined ? '' : ROW_STATUS[row.status]}
             </Text>
+            {injected !== undefined && injected.folded ? (
+              <Text dimColor wrap="truncate-end">
+                {'  '}{foldSummary(injected.hiddenLines)}
+              </Text>
+            ) : null}
+            {injected !== undefined && !injected.folded
+              ? injected.lines.slice(1).map((line, index) => (
+                <Text dimColor key={`${row.id}:ctx:${String(index)}`} wrap="truncate-end">
+                  {'  '}{line}
+                </Text>
+              ))
+              : null}
             {row.toolCard?.lines.map((line, index) => (
               <Text dimColor key={`${row.id}:detail:${String(index)}`} wrap="truncate-end">
                 {'  '}{line}
@@ -113,7 +151,8 @@ export function Frame({ columns, model }: FrameProps) {
             ))}
             {row.toolCard?.truncated === true ? <Text dimColor>  [card truncated]</Text> : null}
           </Box>
-        ))}
+          )
+        })}
       </Box>
       {model.modal === undefined ? null : (
         <Box borderStyle="round" flexDirection="column" paddingX={1}>
@@ -212,6 +251,17 @@ export function TranscriptFrame({
   )
 }
 
-export function renderInkFrame(model: ScreenModel, columns: number): string {
-  return renderToString(<Frame columns={columns} model={model} />, { columns })
+export function renderInkFrame(
+  model: ScreenModel,
+  columns: number,
+  expandedRowIds?: ReadonlySet<string>,
+): string {
+  return renderToString(
+    <Frame
+      columns={columns}
+      {...(expandedRowIds === undefined ? {} : { expandedRowIds })}
+      model={model}
+    />,
+    { columns },
+  )
 }

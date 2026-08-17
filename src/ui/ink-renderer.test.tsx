@@ -46,9 +46,9 @@ describe('renderInkFrame', () => {
     expect(renderInkFrame(model, 48)).toMatchInlineSnapshot(`
       "dsh-tui · spike-session · busy
       transcript 1–3 of 3
-      U hello
-      A 寬字 é emoji 👩🏽‍💻
-      T pnpm test
+      ❯ hello
+      ⏺ 寬字 é emoji 👩🏽‍💻
+      ⚒ pnpm test
       ╭──────────────────────────────────────────────╮
       │ Approval · agent root                        │
       │ Allow command?                               │
@@ -79,7 +79,7 @@ describe('renderInkFrame', () => {
     )).toMatchInlineSnapshot(`
       "dsh-tui · live-session · busy
       transcript 1–1 of 1
-      A working [streaming]"
+      ⏺ working [streaming]"
     `)
 
     expect(
@@ -111,7 +111,7 @@ describe('renderInkFrame', () => {
         terminalRows={8}
       />,
       { columns: 48 },
-    )).toContain('A working [streaming]')
+    )).toContain('⏺ working [streaming]')
 
     controller.accept([{
       data: {
@@ -140,7 +140,7 @@ describe('renderInkFrame', () => {
     )).toMatchInlineSnapshot(`
       "dsh-tui · live-session · idle
       transcript 1–1 of 1
-      A done"
+      ⏺ done"
     `)
     await controller.dispose()
   })
@@ -165,7 +165,7 @@ describe('renderInkFrame', () => {
     expect(renderInkFrame(model, 44)).toMatchInlineSnapshot(`
       "dsh-tui · tool-session · idle
       transcript 1–1 of 1
-      T Run tests
+      ⚒ Run tests
         $ pnpm test
         all tests passed
         exit: 0"
@@ -194,7 +194,7 @@ describe('renderInkFrame', () => {
     expect(renderInkFrame(model, 48)).toMatchInlineSnapshot(`
       "dsh-tui · viewport-session · busy
       transcript 1–1 of 1 · 7 evicted · 3 new
-      › T Run suite
+      › ⚒ Run suite
         [12 detail lines folded]"
     `)
   })
