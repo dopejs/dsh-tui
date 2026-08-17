@@ -32,3 +32,30 @@ bypass a failing gate.
 Create a numbered ADR under `docs/decisions/` when a change affects process
 topology, package boundaries, durable state, compatibility, UI framework, or
 resource ownership. Include context, decision, consequences, and alternatives.
+
+## Releasing
+
+Releases are cut by pushing a tag; there is no manual publish step.
+
+```bash
+git tag v0.1.0-rc.1
+git push origin v0.1.0-rc.1
+```
+
+The `Release` workflow then, in order:
+
+1. refuses the tag if it does not match `package.json` — otherwise the tag
+   would point at contents carrying a different version;
+2. runs `pnpm check`, the same gate `main` is held to;
+3. runs `pnpm test:package`, which installs the real tarball into a clean
+   profile and launches it, including the bounded `--doctor` and `--print`
+   one-shot contracts;
+4. publishes to npm under a dist-tag derived from the version — anything with a
+   hyphen is a prerelease and goes to `rc`, so an release candidate never
+   occupies `latest`;
+5. creates the GitHub Release with the tarball attached, marked prerelease on
+   the same rule.
+
+Publishing is irreversible in practice: npm restricts unpublishing after 72
+hours. The gate runs before the publish for that reason, not after.
+

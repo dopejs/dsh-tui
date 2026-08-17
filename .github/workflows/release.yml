@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    name: Release ${{ github.ref_name }}
+    runs-on: ubuntu-latest
+    # A run that stops exiting must fail the job, not occupy a runner for hours.
+    timeout-minutes: 30
+    permissions:
+      # Creating the GitHub Release needs write; nothing else does.
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11.7.0
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22.19.0
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile
+
+      # The tag is the release's identity; a mismatch would publish a version
+      # nobody asked for and leave the tag pointing at different contents.
+      - name: Verify the tag matches the manifest version
+        run: |
+          manifest="$(node -p "require('./package.json').version")"
+          tagged="${GITHUB_REF_NAME#v}"
+          if [ "$manifest" != "$tagged" ]; then
+            echo "Tag ${GITHUB_REF_NAME} does not match package.json ${manifest}" >&2
+            exit 1
+          fi
+          echo "version=${manifest}" >> "$GITHUB_OUTPUT"
+        id: version
+
+      # The same gate main is held to: docs, imports, reachability, lint,
+      # types, unit tests, and package contents.
+      - run: pnpm check
+
+      # Installs the real tarball into a clean profile and launches it,
+      # including the bounded --doctor and --print one-shot contracts.
+      - name: Clean-profile install and launch
+        run: pnpm test:package
+
+      - name: Pack
+        run: |
+          # npm pack does not create the destination directory.
+          mkdir -p dist
+          # --ignore-scripts: prepack is `pnpm check`, already run above.
+          npm pack --ignore-scripts --pack-destination dist
+          ls -l dist
+
+      # A prerelease must not occupy `latest`: `npm i @dopejs/dsh-tui` would
+      # then install an rc to anyone who did not ask for one.
+      - name: Resolve the npm dist-tag
+        id: disttag
+        run: |
+          version="${{ steps.version.outputs.version }}"
+          case "$version" in
+            *-*) tag=rc ;;
+            *)   tag=latest ;;
+          esac
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Publishing ${version} under dist-tag ${tag}"
+
+      - name: Publish to npm
+        run: npm publish dist/*.tgz --access public --tag "${{ steps.disttag.outputs.tag }}"
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create the GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # A tag containing a hyphen is a prerelease (0.1.0-rc.1).
+          prerelease=""
+          case "${{ steps.version.outputs.version }}" in
+            *-*) prerelease="--prerelease" ;;
+          esac
+          gh release create "${GITHUB_REF_NAME}" dist/*.tgz \
+            --title "${GITHUB_REF_NAME}" \
+            --generate-notes \
+            $prerelease
