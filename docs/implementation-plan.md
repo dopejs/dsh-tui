@@ -550,16 +550,19 @@ release candidate.
 
 ## Final completion audit
 
-Completed 2026-08-17 at `8f8ecc2`, CI run `31988237634` green on
+Completed 2026-08-17 at `0510b79`, CI run `31994925629` green on
 ubuntu-latest (Node 22.19.0 and 24.x), macos-latest, and windows-latest.
 Total progress: **100%**.
 
 Evidence was inspected per slice rather than inferred from a green aggregate.
+That inspection is what found most of the escapes below: three of the six were
+invisible to `pnpm check` and only appeared when the built package was actually
+installed and run.
 
 ### Implementation and proof
 
 Every model and runtime module has a direct test module; the suite is 55 files
-and 505 tests, plus fixed-size overlay and frame snapshots at 40, 64, 72, and
+and 514 tests, plus fixed-size overlay and frame snapshots at 40, 64, 72, and
 80 columns, an interactive PTY flow covering the palette and every panel, a
 clean-profile tarball install (`pnpm test:package`), and bounded-budget
 benchmarks for the 100,000-code-unit editor and the 10,000-row viewport.
@@ -603,43 +606,54 @@ asserts the absence rather than a guess:
 
 ### Escapes found and fixed during the audit
 
-Four defects reached `main` before being caught, each because the local gate did
-not cover the surface it broke:
+Six defects reached `main`, each because the local gate did not cover the
+surface it broke. `pnpm check` runs against the untrimmed working tree and
+never installs or launches the package, so nothing in it could have caught the
+packaging, platform, reachability, or launcher-contract failures.
 
 1. **Unpublished bundler chunks.** Sharing a module between the `index` and
-   `startup` entry points produced a content-hashed chunk that the `files` list
-   did not name, so the published package imported a module absent from the
-   tarball. `pnpm check` passed throughout because it runs against the untrimmed
-   working tree. Fixed in `ae35079`, and `pnpm check:package` now asserts every
-   emitted artifact is covered; the guard was verified against the exact
-   regression.
+   `startup` entry points produced a content-hashed chunk the `files` list did
+   not name, so the published package imported a module absent from the
+   tarball. Fixed in `ae35079`; `pnpm check:package` now asserts every emitted
+   artifact is covered.
 2. **A platform-dependent test.** An OSC 8 assertion hardcoded a POSIX file URL
    and failed only on the Windows runner. Fixed in `8f8ecc2` by asserting the
-   escaping and wrapping under test instead of the host's notion of an absolute
-   path.
-
+   escaping and wrapping under test rather than the host's notion of an
+   absolute path.
 3. **Capabilities built but wired to nothing.** The attachments controller, the
    terminal-link renderer, and workspace filtering were implemented, unit
    tested, and recorded here as complete while no runtime constructed them and
-   no view rendered them — so none was reachable by a user. `tsc`, eslint, and
-   the unit suites were all satisfied by each module plus its own test. Fixed by
-   adding the attachments panel, rendering change paths as OSC 8 links, and
-   giving the session center a workspace cycle; `pnpm check:wiring` now fails
-   when a module is imported only by test files.
-
-   The same sweep found `src/runtime/agent-runtime.ts`, a superseded
-   composition helper that only its own test used — the runtime composes
-   `createRuntimePlugin` and `attachAgent` directly — and it was deleted; its
-   behaviour is covered by `cordis-runtime.test.ts`, `agent-attachment.test.ts`,
-   and `index.test.ts`. `src/cli.tsx` was flagged too but is **not** dead: the
-   PTY suite spawns it as a subprocess, which is the only evidence for
-   M2.4-F06 and M2.4-F07. The guard now counts a path reference as wiring
-   rather than relying on an allowlist, so a subprocess entry point stays
-   protected without being exempt.
+   no view rendered them — so none was reachable by a user. Fixed in `c02b1ae`;
+   `pnpm check:wiring` now fails when a module is imported only by test files.
 4. **An assertion that could not fail.** A malformed regular expression made a
    doctor-output check vacuous. It now asserts no ANSI and no box drawing,
    verified by mutation.
+5. **The one-shot runtimes never exited.** `appExit` is only honoured once the
+   launcher's shutdown controller exists, which is after the runtime plugin's
+   `start` has run; a request made before then is dropped, leaving
+   `await runProfile(...)` unsettled. `--doctor` printed its report and was
+   still running seven minutes later. No public seam reports that readiness —
+   `loader.await()` does not settle while the runtime is live — so the request
+   is repeated until the launcher acts on it, on an `unref`ed, bounded timer.
+   Fixed in `64c0103`.
+6. **`--print` reported success on failure.** The encoder skips events it does
+   not model, and `turn/end` was one of them, so a failed turn exited `0` with
+   `completed` and no output — which a caller reads as "the model had nothing
+   to say". `turn/end` now maps `error` and `blocked` to a failed run. Fixed in
+   `64c0103`.
 
-The first two were found by CI, the third by an explicit reachability sweep
-during this audit, and the fourth by reading the assertion. Each now has a
-guard that reproduces it.
+The README was also stale: it stopped at M2, documenting none of the M3–M5
+panels or flags and never mentioning that a provider credential is required at
+all. Corrected in `0510b79`.
+
+Escapes 1 and 2 were found by CI, 3 by an explicit reachability sweep, 4 by
+reading the assertion, and 5 and 6 by installing the tarball into a clean
+profile and running it. Each has a guard or a test that reproduces it.
+
+### Verification the gate now performs
+
+`pnpm check` runs documentation, import, **module reachability**, lint, type,
+unit, and **package-contents** checks. `pnpm test:package` installs the real
+tarball into a clean profile. Neither substitutes for launching the built
+package, which is what caught escapes 5 and 6 — a one-shot run against a real
+profile remains a manual step before release.
