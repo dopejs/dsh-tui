@@ -219,3 +219,19 @@ The current release-candidate budgets are:
 
 Regressions above a documented budget fail a benchmark smoke gate or require an
 explicit decision update.
+
+## Package contents
+
+`pnpm check:package` builds and then asserts that every emitted `lib` artifact
+is covered by the `files` list in `package.json`.
+
+This exists because of a real escape: sharing a module between the `index` and
+`startup` entry points makes the bundler extract it into a content-hashed
+chunk, and a `files` list naming only the entry points ships a package whose
+entry points import a module that is not in the tarball. Nothing else catches
+it — building, linting, type-checking, and the unit suites all run against the
+untrimmed working tree, so the failure first appears on install.
+
+The check evaluates the `files` globs directly instead of shelling out to
+`npm pack`, because `npm pack` runs `prepare`/`prepack`, which run the check.
+
