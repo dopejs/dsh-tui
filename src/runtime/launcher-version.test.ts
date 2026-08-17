@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { chmodSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -7,6 +7,24 @@ import { describe, expect, it } from 'vitest'
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 const launcher = join(root, 'bin', 'dsh-tui.js')
+
+/**
+ * A DSH_HOME whose profile carries one specific package version.
+ *
+ * Built at runtime rather than committed: the real layout puts the manifest
+ * under `node_modules`, which .gitignore excludes, so a committed fixture
+ * exists on the author's machine and nowhere else.
+ */
+function profileHomeWith(version: string): string {
+  const home = mkdtempSync(join(tmpdir(), 'dtui-home-'))
+  const packageDirectory = join(home, 'profiles', 'tui', 'node_modules', '@dopejs', 'dsh-tui')
+  mkdirSync(packageDirectory, { recursive: true })
+  writeFileSync(
+    join(packageDirectory, 'package.json'),
+    `${JSON.stringify({ name: '@dopejs/dsh-tui', version }, null, 2)}\n`,
+  )
+  return home
+}
 
 /**
  * A stub `dsh` on PATH, so the version logic is reachable without the real
@@ -53,7 +71,7 @@ onPosix('dtui launcher (M6)', () => {
   // the profile's older package, so starting fails on module resolution with a
   // far less obvious error than this message.
   it('refuses to start when the profile package is older than the launcher', () => {
-    const result = runLauncher({ DSH_HOME: join(root, 'test-fixtures', 'launcher', 'older') })
+    const result = runLauncher({ DSH_HOME: profileHomeWith('0.0.9') })
     expect(result.status).toBe(1)
     expect(result.output).toContain('Starting would apply this launcher')
     expect(result.output).toContain('dsh plugin --profile tui add')
@@ -61,7 +79,7 @@ onPosix('dtui launcher (M6)', () => {
 
   // The newer package brings its own composition, so the launcher defers to it.
   it('warns but continues when the profile package is newer', () => {
-    const result = runLauncher({ DSH_HOME: join(root, 'test-fixtures', 'launcher', 'newer') })
+    const result = runLauncher({ DSH_HOME: profileHomeWith('99.0.0') })
     expect(result.output).toContain('Starting the profile version')
     expect(result.output).not.toContain('Starting would apply')
   })
