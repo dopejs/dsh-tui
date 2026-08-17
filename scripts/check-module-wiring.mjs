@@ -21,12 +21,13 @@ const source = join(root, 'src')
 const ENTRY_POINTS = new Set(['src/index.ts', 'src/startup.ts'])
 
 /**
- * Modules that predate the current entry points and are reachable by nobody:
- * neither is in `exports`, `bin`, the tsdown config, or the Cordis patch, and
- * only their own tests import them. They are listed rather than deleted so the
- * guard protects everything else while their removal is decided separately.
+ * A module can also be reached by path rather than by import — the PTY suite
+ * spawns `src/cli.tsx` as a subprocess, which no static import scan can see.
+ * Such a reference counts as wiring, so those entry points need no allowlist.
  */
-const KNOWN_UNWIRED = new Set(['src/cli.tsx', 'src/runtime/agent-runtime.ts'])
+function referencedByPath(path, text) {
+  return text.includes(`'${path}'`) || text.includes(`"${path}"`)
+}
 
 const TEST = /\.(?:test|bench)\.[jt]sx?$/u
 
@@ -62,7 +63,7 @@ function moduleName(path) {
 }
 
 const unreferenced = modules.filter((path) => {
-  if (ENTRY_POINTS.has(path) || KNOWN_UNWIRED.has(path)) return false
+  if (ENTRY_POINTS.has(path)) return false
   const name = moduleName(path)
   const ownTests = new Set([
     path.replace(/\.tsx?$/u, '.test.ts'),
@@ -74,6 +75,10 @@ const unreferenced = modules.filter((path) => {
     if (importer === path || ownTests.has(importer) || TEST.test(importer)) continue
     // Local imports are extensionless by repository convention.
     if (text.includes(`/${name}'`) || text.includes(`./${name}'`)) return false
+  }
+  // A subprocess entry point is named by path, including from a test.
+  for (const [importer, text] of contents) {
+    if (importer !== path && referencedByPath(path, text)) return false
   }
   return true
 })

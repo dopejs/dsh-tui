@@ -625,9 +625,17 @@ not cover the surface it broke:
    the unit suites were all satisfied by each module plus its own test. Fixed by
    adding the attachments panel, rendering change paths as OSC 8 links, and
    giving the session center a workspace cycle; `pnpm check:wiring` now fails
-   when a module is imported only by test files. Two pre-existing modules
-   (`src/cli.tsx`, `src/runtime/agent-runtime.ts`) are unreachable for the same
-   reason and are listed in the guard pending a removal decision.
+   when a module is imported only by test files.
+
+   The same sweep found `src/runtime/agent-runtime.ts`, a superseded
+   composition helper that only its own test used — the runtime composes
+   `createRuntimePlugin` and `attachAgent` directly — and it was deleted; its
+   behaviour is covered by `cordis-runtime.test.ts`, `agent-attachment.test.ts`,
+   and `index.test.ts`. `src/cli.tsx` was flagged too but is **not** dead: the
+   PTY suite spawns it as a subprocess, which is the only evidence for
+   M2.4-F06 and M2.4-F07. The guard now counts a path reference as wiring
+   rather than relying on an allowlist, so a subprocess entry point stays
+   protected without being exempt.
 4. **An assertion that could not fail.** A malformed regular expression made a
    doctor-output check vacuous. It now asserts no ANSI and no box drawing,
    verified by mutation.

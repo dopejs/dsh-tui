@@ -59,7 +59,6 @@ src/
 │   ├── resource-owner.ts      generic reverse-order async ownership
 │   ├── cordis-runtime.ts      loader settlement and runtime ownership
 │   ├── agent-attachment.ts    create/resume and event handoff
-│   ├── agent-runtime.ts       Cordis-to-Agent composition
 │   └── interaction-scheduler.ts
 ├── model/
 │   ├── transcript-reducer.ts  pure durable-event fold
