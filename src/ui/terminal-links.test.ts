@@ -86,12 +86,19 @@ describe('file URLs (M5.3)', () => {
 })
 
 describe('fileHyperlink (M5.3)', () => {
+  // The URL is resolved with the platform's path semantics — on Windows an
+  // absolute POSIX path picks up the current drive — so the structure is
+  // asserted rather than a hardcoded POSIX URL.
   it('wraps the label in an OSC 8 sequence on a capable terminal', () => {
     const link = fileHyperlink('/tmp/report.md', {
       capabilities: LINKING,
       label: 'report.md',
     })
-    expect(link).toBe(`${ESC}]8;;file:///tmp/report.md${ESC}\\report.md${ESC}]8;;${ESC}\\`)
+    const url = fileUrlFor('/tmp/report.md')
+    expect(url).toBeDefined()
+    expect(link).toBe(`${ESC}]8;;${String(url)}${ESC}\\report.md${ESC}]8;;${ESC}\\`)
+    expect(url?.startsWith('file:///')).toBe(true)
+    expect(url?.endsWith('/report.md')).toBe(true)
     expect(stripHyperlinks(link)).toBe('report.md')
   })
 
