@@ -98,6 +98,12 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
       {sources === undefined ? null : (
         <Text dimColor wrap="truncate-end">{sources}</Text>
       )}
+      {/* A terminal that shows nothing while a model thinks reads as hung. */}
+      {model.working === undefined ? null : (
+        <Text {...tone('accent')} wrap="truncate-end">
+          working · {model.working.join(' · ')}
+        </Text>
+      )}
       <Text dimColor>
         {model.visibleRange === undefined
           ? 'transcript empty'

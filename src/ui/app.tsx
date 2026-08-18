@@ -38,6 +38,7 @@ import type {
 } from '../model/transcript-viewport-controller'
 import { projectTranscriptPlainText } from '../model/transcript-viewport-controller'
 import { createScreenModel, type InteractionModal } from '../model/view-model'
+import { workingStatus } from '../model/working-status'
 import type { InputController, InputSubmission, SubmissionMode } from '../runtime/input-controller'
 import { Composer, createComposerView } from './composer'
 
@@ -258,6 +259,13 @@ export function InteractiveTui({
   // Injected context is folded by default; expansion is per-row and lives in
   // presentation state, never in the durable log.
   const [expandedRowIds, setExpandedRowIds] = useState<ReadonlySet<string>>(() => new Set())
+  // When the current turn began, so the working row can report elapsed time.
+  // Reset on each idle→running transition rather than accumulated, so a second
+  // turn does not inherit the first one's clock.
+  const [turnStartedAt, setTurnStartedAt] = useState<number | undefined>(undefined)
+  // The clock itself is state, not a tick counter: the elapsed value is then
+  // genuinely read where it is rendered rather than forced by a dummy update.
+  const [now, setNow] = useState(() => Date.now())
   const [questionIndex, setQuestionIndex] = useState(0)
   const [cursor, setCursor] = useState(0)
   const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set())
@@ -374,6 +382,30 @@ export function InteractiveTui({
     preferences.getSnapshot,
     preferences.getSnapshot,
   )
+
+  // Start the clock on idle→running and clear it on the way back, so a second
+  // turn never inherits the first one's start time.
+  useEffect(() => {
+    if (agentStatus === 'running') {
+      setTurnStartedAt((current) => {
+        if (current !== undefined) return current
+        setNow(Date.now())
+        return Date.now()
+      })
+    } else setTurnStartedAt(undefined)
+  }, [agentStatus])
+
+  // Re-render once a second only while work is in flight; an idle session must
+  // not hold a timer, and reduced motion opts out of the ticking entirely.
+  useEffect(() => {
+    if (agentStatus !== 'running' || preferenceSnapshot.reducedMotion) return undefined
+    const timer = setInterval(() => {
+      setNow(Date.now())
+    }, 1_000)
+    return () => {
+      clearInterval(timer)
+    }
+  }, [agentStatus, preferenceSnapshot.reducedMotion])
 
   useEffect(() => {
     if (fixedColumns !== undefined && fixedRows !== undefined) return
@@ -1431,6 +1463,13 @@ export function InteractiveTui({
     projectedRows,
     {
       activityCount: activitySnapshot.totalActivity,
+      working: workingStatus({
+        elapsedMs: turnStartedAt === undefined ? 0 : now - turnStartedAt,
+        ...(projectionSnapshot.usage?.outputTokens === undefined
+          ? {}
+          : { outputTokens: projectionSnapshot.usage.outputTokens }),
+        running: agentStatus === 'running',
+      }).segments,
       ...(projectionSnapshot.usage?.totalTokens === undefined
         ? {}
         : { contextUsed: projectionSnapshot.usage.totalTokens }),

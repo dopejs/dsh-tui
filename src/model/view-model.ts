@@ -31,6 +31,8 @@ export interface ScreenModel {
   readonly contextSources?: readonly { readonly count: number, readonly label: string }[]
   /** True before the first turn, so the welcome panel replaces an empty transcript. */
   readonly firstScreen?: boolean
+  /** Live working segments; empty or absent renders no row at all. */
+  readonly working?: readonly string[]
   /** Facts the welcome panel needs; absent when there is nothing to greet with. */
   readonly welcome?: {
     readonly cwd: string
@@ -64,6 +66,7 @@ export interface WindowOptions {
   readonly contextSources?: readonly { readonly count: number, readonly label: string }[]
   readonly firstScreen?: boolean
   readonly welcome?: ScreenModel['welcome']
+  readonly working?: readonly string[]
   readonly droppedRows?: number
   readonly focusedRowId?: string
   readonly modelLabel?: string
@@ -142,6 +145,9 @@ export function createScreenModel(
     ...(options.contextSources === undefined ? {} : { contextSources: options.contextSources }),
     ...(options.firstScreen === true ? { firstScreen: true } : {}),
     ...(options.welcome === undefined ? {} : { welcome: options.welcome }),
+    ...(options.working === undefined || options.working.length === 0
+      ? {}
+      : { working: options.working }),
     ...(options.totalTokens === undefined ? {} : { totalTokens: options.totalTokens }),
     ...(options.workspace === undefined ? {} : { workspace: options.workspace }),
     ...(end === start ? {} : { visibleRange: { end, start: start + 1 } }),

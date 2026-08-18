@@ -99,15 +99,27 @@ Deferred, with the reason:
   and M2.3 established.
 - double-`Esc` rewind depends on that same transition.
 
-## M6.6 Working status (+3)
+## M6.6 Working status (+3) — complete
 
-- a live status row: current activity, elapsed time, tokens per second;
-- reasoning effort, cache hit rate, and input/output split when the projection
-  reports them — omitted, not zeroed, when it does not;
-- Git branch and dirty state, read once per turn boundary rather than polled.
+A live row appears only while a turn is in flight: elapsed time, tokens per
+second when a meaningful window has passed, reasoning effort when reported, and
+the cancel key. An idle agent renders no row at all rather than a row of
+blanks.
 
-Verification: every field absent yields no row rather than a row of blanks;
-width degradation at 40/80/120; no polling timer survives disposal.
+Two honesty rules are pinned by tests. A rate over a sub-second window is
+noise, and a rate with no tokens is a throughput claim nothing has observed, so
+both are withheld rather than shown as zero. And the impossible-duration guard
+formats through the same path as a real one, so it cannot emit a shape the
+normal path never produces.
+
+The clock is state rather than a tick counter, so the elapsed value is genuinely
+read where it is rendered. It starts on the idle→running edge and clears on the
+way back, so a second turn never inherits the first one's start time, and the
+interval exists only while work is in flight — an idle session holds no timer,
+and reduced motion opts out of ticking entirely.
+
+Git branch and dirty state are **not** included: reading them means running git
+per turn boundary, and this milestone has no seam that reports them.
 
 ## M6.7 Reasoning policy (+2)
 
