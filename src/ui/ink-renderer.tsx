@@ -7,6 +7,7 @@ import type { InteractionSnapshot, InteractionStore } from '../model/interaction
 import type { InteractionModal, ScreenModel, TranscriptRowKind } from '../model/view-model'
 import { createScreenModel } from '../model/view-model'
 import { compactCount, contextGauge, describeSources } from '../model/status-bar'
+import { formatElapsed } from '../model/working-status'
 import { foldInjectedContent, foldSummary } from '../model/context-fold'
 import { toneStyle, type SemanticTone } from './theme'
 import { MarkdownInline, MarkdownView, splitLeadingText } from './markdown-view'
@@ -158,7 +159,9 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
         />
       ) : null}
       <Box flexDirection="column">
-        {model.rows.filter(row => model.showContext === true || row.kind !== 'context').map((row) => {
+        {model.rows
+          .filter(row => model.showContext === true || row.kind !== 'context')
+          .map((row, index) => {
           // Injected context is folded so a session does not open on a wall of
           // instructions; the content stays reachable, not discarded.
           const injected = row.kind === 'context' && row.toolCard === undefined
@@ -169,6 +172,10 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
             : undefined
           return (
           <Box flexDirection="column" key={row.id}>
+            {/* One blank line between exchanges. Packed edge to edge, the
+                transcript reads as a single block of text and the eye has
+                nowhere to rest between one turn and the next. */}
+            {index === 0 ? null : <Box height={1} />}
             {/*
               * Scratch work, above the answer and never inside it.
               *
@@ -186,7 +193,15 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
               </Box>
             ) : (
               <Text {...tone('muted')} wrap="truncate-end">
-                {'  '}{model.welcome?.reasoningHiddenText ?? 'reasoning hidden · ^E show'}
+                {'  '}
+                {/* How long it thought, once that is known. A turn that paused
+                    for eight seconds and one that answered instantly are not
+                    the same event, and the transcript should not read as
+                    though they were. */}
+                {row.reasoningMs === undefined
+                  ? ''
+                  : `thought for ${formatElapsed(row.reasoningMs)} · `}
+                {model.welcome?.reasoningHiddenText ?? 'reasoning hidden · ^E show'}
               </Text>
             )}
             {/*

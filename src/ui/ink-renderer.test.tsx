@@ -45,7 +45,9 @@ describe('renderInkFrame', () => {
 
     expect(renderInkFrame(model, 48)).toMatchInlineSnapshot(`
       "❯ hello
+
       ⏺ 寬字 é emoji 👩🏽‍💻
+
       ⚒ pnpm test
       ╭──────────────────────────────────────────────╮
       │ Approval · agent root                        │

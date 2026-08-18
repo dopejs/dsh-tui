@@ -54,8 +54,13 @@ const input = {
   submit: async () => ({ kind: 'accepted' as const }),
 } as unknown as InputController
 
-function event(seq: number, type: string, data: unknown) {
-  return { data, seq, time: seq, type } as never
+/**
+ * `time` is separate from `seq` on purpose: the reducer requires contiguous
+ * sequence numbers, while durations are read from the clock. Deriving one from
+ * the other makes a four-second thought unrepresentable without a sequence gap.
+ */
+function event(seq: number, type: string, data: unknown, time = seq) {
+  return { data, seq, time, type } as never
 }
 
 /** A turn shaped like the one that exposed the reply-swallowing defect. */
@@ -76,7 +81,23 @@ function conversation() {
       role: 'user',
       source: { kind: 'inject' },
     }),
-    event(2, 'assistant/message', {
+    // Streamed the way a real turn arrives, so the reasoning duration is
+    // measured from the durable event times rather than assumed.
+    event(2, 'assistant/chunk', {
+      chunk: { blockType: 'reasoning', index: 0, type: 'block-start' },
+      step: 1,
+      turn: 1,
+    }),
+    event(3, 'assistant/chunk', {
+      chunk: {
+        block: { text: 'The user said hello. Answer briefly.', type: 'reasoning' },
+        index: 0,
+        type: 'block-end',
+      },
+      step: 1,
+      turn: 1,
+    }, 4_200),
+    event(4, 'assistant/message', {
       message: {
         content: [
           { text: 'The user said hello. Answer briefly.', type: 'reasoning' },

@@ -190,15 +190,24 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
 
     const screen = harness.screen()
 
-    // The composer keeps its own rows; nothing has been drawn through it.
+    // The composer keeps its own three rows, and nothing is drawn through
+    // them. Checking only for a border glyph in a line's interior missed the
+    // real failure, where the border and the input line fused and the closing
+    // glyph landed at the end of the row where it always belongs.
     const composerTop = screen.findIndex(line => line.startsWith('╭'))
     const composerBottom = screen.findLastIndex(line => line.startsWith('╰'))
     expect(composerTop).toBeGreaterThan(0)
     expect(composerBottom).toBe(composerTop + 2)
+    expect(screen[composerTop] ?? '').not.toContain('›')
+    expect(screen[composerBottom] ?? '').not.toContain('›')
     expect(screen[composerTop + 1] ?? '').toContain('›')
 
-    // The status still sits below it, in full.
-    expect(screen.slice(composerBottom).join('\n')).toContain('Enter send')
+    // The status still sits below it, in full: identity on one line, position
+    // on the next, neither fused with the other.
+    const status = screen.slice(composerBottom + 1)
+    expect(status.join('\n')).toContain('Enter send')
+    const identity = status.find(line => line.includes('dsh-tui ·')) ?? ''
+    expect(identity).not.toContain('transcript ')
 
     // And no row is two rows fused together.
     for (const line of screen) {
@@ -230,5 +239,40 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
     expect(answerEnd).toBeGreaterThan(answerStart)
     // Above the answer, and not inside it.
     expect(fold).toBeLessThan(answerStart)
+  })
+
+  // A turn that paused for four seconds and one that answered instantly are
+  // not the same event, and the transcript should not read as though they
+  // were. The figure comes from the durable event times, so a resumed session
+  // reports what it reported live.
+  it('reports how long the model thought', async () => {
+    harness = new ScreenHarness({ rows: 24, scenario: 'conversation' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('would you like to work on')),
+      'the assistant reply',
+    )
+    await harness.settle()
+
+    const fold = harness.screen().find(line => line.includes('reasoning hidden')) ?? ''
+    expect(fold).toContain('thought for 4.2s')
+  })
+
+  // Packed edge to edge the transcript reads as one block of text, with
+  // nowhere for the eye to rest between one turn and the next.
+  it('separates turns with a blank line', async () => {
+    harness = new ScreenHarness({ rows: 24, scenario: 'conversation' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('would you like to work on')),
+      'the assistant reply',
+    )
+    await harness.settle()
+
+    const screen = harness.screen()
+    const userRow = screen.findIndex(line => line.includes('hello'))
+    const assistantRow = screen.findIndex(line => line.includes('reasoning hidden'))
+
+    expect(userRow).toBeGreaterThanOrEqual(0)
+    expect(assistantRow).toBeGreaterThan(userRow + 1)
+    expect((screen[assistantRow - 1] ?? 'x').trim()).toBe('')
   })
 })

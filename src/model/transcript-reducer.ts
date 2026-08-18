@@ -15,6 +15,10 @@ type ContentBlock = SessionEvent<'user/message'>['data']['content'][number]
 type StreamChunk = SessionEvent<'assistant/chunk'>['data']['chunk']
 
 interface PendingAssistant {
+  /** When the first reasoning chunk arrived, so its duration can be reported. */
+  readonly reasoningStartedAt?: number
+  /** How long reasoning ran, once its block closed. */
+  readonly reasoningMs?: number
   readonly reasoning: string
   readonly reasoningIndexes: readonly number[]
   readonly reasoningTruncated: boolean
@@ -131,6 +135,7 @@ function row(
   status?: TranscriptRow['status'],
   alreadyTruncated = false,
   reasoning?: string,
+  reasoningMs?: number,
 ): TranscriptRow {
   const bounded = boundText(content, maximum)
   return Object.freeze({
@@ -140,6 +145,9 @@ function row(
     // Reasoning is carried beside the answer, never concatenated into it: the
     // renderer folds it, the clipboard omits it, and `--print` never sees it.
     ...(reasoning === undefined || reasoning === '' ? {} : { reasoning }),
+    ...(reasoningMs === undefined || reasoning === undefined || reasoning === ''
+      ? {}
+      : { reasoningMs }),
     ...(status === undefined ? {} : { status }),
     ...(bounded.truncated || alreadyTruncated ? { truncated: true as const } : {}),
   })
@@ -232,7 +240,13 @@ function updatePendingAssistant(
   pending: PendingAssistant,
   chunk: StreamChunk,
   maximum: number,
+  time: number,
 ): PendingAssistant {
+  // Reasoning duration is read from the durable event times, not from a clock
+  // the renderer keeps: a resumed session replays the same events and must
+  // report the same figure it did live.
+  let reasoningStartedAt = pending.reasoningStartedAt
+  let reasoningMs = pending.reasoningMs
   let text = pending.text
   let reasoning = pending.reasoning
   let textIndexes = pending.textIndexes
@@ -249,6 +263,7 @@ function updatePendingAssistant(
       break
     }
     case 'reasoning-delta': {
+      reasoningStartedAt ??= time
       const next = appendBounded(reasoning, chunk.text, maximum, reasoningTruncated)
       reasoning = next.text
       reasoningTruncated = next.truncated
@@ -264,7 +279,11 @@ function updatePendingAssistant(
         text = next.text
         textTruncated = next.truncated
         textIndexes = trackIndex(textIndexes, chunk.index)
-      } else if (
+      } else if (chunk.block.type === 'reasoning') {
+        reasoningStartedAt ??= time
+        if (reasoningMs === undefined) reasoningMs = time - reasoningStartedAt
+      }
+      if (
         chunk.block.type === 'reasoning'
         && !includesIndexOrReachedCapacity(reasoningIndexes, chunk.index)
       ) {
@@ -280,6 +299,11 @@ function updatePendingAssistant(
       }
       break
     case 'block-start':
+      // Where the clock starts. Without this the duration is measured from the
+      // first delta -- or, for a block that arrives whole, from its own end,
+      // which reports every thought as instant.
+      if (chunk.blockType === 'reasoning') reasoningStartedAt ??= time
+      break
     case 'finish':
     case 'tool-call-delta':
     case 'usage':
@@ -290,6 +314,8 @@ function updatePendingAssistant(
     ...pending,
     reasoning,
     reasoningIndexes,
+    ...(reasoningMs === undefined ? {} : { reasoningMs }),
+    ...(reasoningStartedAt === undefined ? {} : { reasoningStartedAt }),
     reasoningTruncated,
     text,
     textIndexes,
@@ -467,10 +493,12 @@ export function reduceTranscript(
           textTruncated: false,
           turn: event.data.turn,
         })
-      const next = updatePendingAssistant(previous, event.data.chunk, maximum)
+      const next = updatePendingAssistant(previous, event.data.chunk, maximum, event.time)
       const content = renderAssistant(next)
       if (content !== '' || next.reasoning !== '') {
-        const nextRow = row(key, 'assistant', content, maximum, 'streaming', false, next.reasoning)
+        const nextRow = row(
+          key, 'assistant', content, maximum, 'streaming', false, next.reasoning, next.reasoningMs,
+        )
         if (!updateRow(fold.rows, key, nextRow)) appendRow(fold, nextRow, state.limits)
       }
       fold.pendingAssistants = [
@@ -482,10 +510,16 @@ export function reduceTranscript(
     case 'assistant/message': {
       const key = assistantKey(event.data.turn, event.data.step)
       const { content, reasoning } = projectAssistantMessage(event.data.message.content)
+      // The duration was measured while streaming; this rebuild is the same
+      // place that once dropped the reasoning itself, so it is carried across
+      // explicitly rather than left to survive by accident.
+      const streamed = fold.pendingAssistants.find(item => item.rowId === key)
       if (content === '' && reasoning === '') {
         removeRow(fold.rows, key)
       } else {
-        const finalRow = row(key, 'assistant', content, maximum, 'complete', false, reasoning)
+        const finalRow = row(
+          key, 'assistant', content, maximum, 'complete', false, reasoning, streamed?.reasoningMs,
+        )
         if (!updateRow(fold.rows, key, finalRow)) appendRow(fold, finalRow, state.limits)
       }
       fold.pendingAssistants = fold.pendingAssistants.filter(item => item.rowId !== key)

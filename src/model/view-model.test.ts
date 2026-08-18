@@ -16,11 +16,15 @@ describe('createScreenModel', () => {
       terminalRows: 40,
     })
 
+    // Half as many rows fit as before, because each one now costs the blank
+    // line drawn beneath the turn above it. Budgeting for the content alone
+    // handed the renderer more rows than the space could hold, and the excess
+    // was drawn through the composer.
     expect(model.totalRows).toBe(10_000)
-    expect(model.rows).toHaveLength(37)
-    expect(model.rows[0]?.id).toBe('row-9963')
+    expect(model.rows).toHaveLength(18)
+    expect(model.rows[0]?.id).toBe('row-9982')
     expect(model.rows.at(-1)?.id).toBe('row-9999')
-    expect(model.visibleRange).toEqual({ end: 10_000, start: 9_964 })
+    expect(model.visibleRange).toEqual({ end: 10_000, start: 9_983 })
   })
 
   it('reserves space for a modal and supports scrolling', () => {
@@ -36,10 +40,10 @@ describe('createScreenModel', () => {
       { agentLabel: 'root', message: 'Proceed?', title: 'Approval' },
     )
 
-    expect(model.rows).toHaveLength(12)
+    expect(model.rows).toHaveLength(6)
     expect(model.rows.at(-1)?.id).toBe('row-9989')
     expect(model.modal?.agentLabel).toBe('root')
-    expect(model.visibleRange).toEqual({ end: 9_990, start: 9_979 })
+    expect(model.visibleRange).toEqual({ end: 9_990, start: 9_985 })
   })
 
   it('budgets expanded tool details by rendered height', () => {

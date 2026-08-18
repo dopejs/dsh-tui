@@ -421,3 +421,38 @@ user's row against the terminal width, and asserts the reply carries none.
 | --- | --- | --- | --- |
 | `0.4.0` | npm `0.1.0-rc.7` | Transcript legibility | 641 tests including nine on a live PTY; clean-profile launch and install resolution green. |
 
+### 0.4.1
+
+Two things Claude Code has that this did not: how long the model thought, and
+room to breathe between turns.
+
+The thinking duration is measured from the durable event times — reasoning
+`block-start` to `block-end` — not from a clock the renderer keeps, so a resumed
+session reports what it reported live. It is carried explicitly across the
+`assistant/message` rebuild, which is the same step that once dropped the
+reasoning itself and would have dropped this by the same accident. The fold now
+reads `thought for 4.2s · reasoning hidden · ^E show`.
+
+Turns are separated by a blank line.
+
+That blank line exposed a real defect. The window budgeted a transcript row as
+its content alone, so with a separator per row it handed the renderer more rows
+than the space could hold, and the excess was drawn straight through the
+composer: a fused border and input line, and a status line written over its own
+second half. The row height now counts the separator and the reasoning line.
+
+The garbling assertion had missed it. It looked for a border glyph in a line's
+interior, and in the real failure the closing glyph landed at the end of the
+row, where it always belongs. It now asserts the composer's three rows hold what
+they should and nothing else, and that the status lines are not fused.
+
+Twice while chasing this the diagnostic ran with output sent to `/dev/null`, so
+a failing fixture left a stale file that read as a successful run. The fixture
+had been conflating `seq` with `time` — the reducer requires contiguous
+sequence numbers, which makes a four-second thought unrepresentable if the two
+are the same field.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.4.1` | npm `0.1.0-rc.7` | Thinking duration, turn spacing | 643 tests including eleven on a live PTY; clean-profile launch and install resolution green. |
+

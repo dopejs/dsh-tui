@@ -19,6 +19,11 @@ export interface TranscriptRow {
   readonly kind: TranscriptRowKind
   /** Model scratch work, kept apart from the answer it precedes. */
   readonly reasoning?: string
+  /**
+   * How long that scratch work ran, in milliseconds. Read from the durable
+   * event times, so a resumed session reports what it reported live.
+   */
+  readonly reasoningMs?: number
   readonly status?: 'complete' | 'error' | 'pending' | 'streaming'
   readonly toolCard?: ToolCardModel
   readonly truncated?: true
@@ -106,8 +111,18 @@ export interface WindowOptions {
 
 const CHROME_ROWS = 3
 
-function transcriptRowHeight(row: TranscriptRow): number {
+/**
+ * How many screen rows one transcript row occupies.
+ *
+ * The blank line drawn between turns counts. Leaving it out let the window
+ * hand the renderer more rows than the space could hold, and the overflow was
+ * drawn straight through the composer -- a fused border and input line, and a
+ * status line written over its own second half.
+ */
+function transcriptRowHeight(row: TranscriptRow, first: boolean): number {
   return 1
+    + (first ? 0 : 1)
+    + (row.reasoning === undefined ? 0 : 1)
     + (row.toolCard?.lines.length ?? 0)
     + (row.toolCard?.truncated === true ? 1 : 0)
 }
@@ -141,7 +156,7 @@ export function createScreenModel(
   let start = end
   let usedHeight = 0
   while (start > 0) {
-    const height = transcriptRowHeight(rows[start - 1] as TranscriptRow)
+    const height = transcriptRowHeight(rows[start - 1] as TranscriptRow, start === 1)
     if (usedHeight > 0 && usedHeight + height > visibleHeight) break
     start -= 1
     usedHeight += height
