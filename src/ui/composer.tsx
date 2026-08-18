@@ -1,4 +1,5 @@
-import { Box, Text } from 'ink'
+import { useLayoutEffect, useRef, useState } from 'react'
+import { Box, Text, measureElement, useCursor, type DOMElement } from 'ink'
 import stringWidth from 'string-width'
 
 import type { EditorSnapshot } from '../model/editor-controller'
@@ -193,6 +194,27 @@ export function createComposerView(
   }
 }
 
+/** Cells the `› ` / `│ ` row prefix occupies, ahead of any content. */
+const PROMPT_CELLS = 2
+
+/**
+ * Cells between the start of a row's content and the caret.
+ *
+ * Measured in terminal cells rather than code units, because a CJK character
+ * occupies two: counting characters would put the cursor -- and with it an
+ * input method's composing text -- to the left of where the caret is drawn,
+ * by one cell for every wide character already typed.
+ */
+function caretCellOffset(row: ComposerRow | undefined): number {
+  if (row === undefined) return 0
+  let cells = row.leadingEllipsis ? 1 : 0
+  for (const token of row.tokens) {
+    if (token.cursor) break
+    cells += stringWidth(token.text)
+  }
+  return cells
+}
+
 interface ComposerProps {
   readonly columns: number
   readonly maxRows: number
@@ -222,8 +244,69 @@ export function Composer({
   const frame = screenReader
     ? {}
     : { borderColor: 'gray' as const, borderStyle: 'round' as const, paddingX: 1 }
+
+  /*
+   * The terminal's own cursor is moved to the caret.
+   *
+   * The caret drawn here is an inverted cell, which a person can see and an
+   * input method cannot: a composing character is drawn by the terminal at the
+   * hardware cursor. Left parked wherever Ink last wrote, that put half-typed
+   * pinyin outside the composer entirely, on whatever line happened to be
+   * below it.
+   *
+   * Measured after layout rather than during it -- `measureElement` answers
+   * with zeros while the tree is still being laid out.
+   */
+  const box = useRef<DOMElement | null>(null)
+  const { setCursorPosition } = useCursor()
+  /*
+   * Ink writes the cursor while flushing a render, and setting a position does
+   * not itself cause one. Left alone the last move is never flushed, so the
+   * cursor stays wherever the previous keystroke put it -- which is where an
+   * input method would draw the character being composed.
+   *
+   * One extra frame is forced when the position actually changes. It settles
+   * immediately: the next pass computes the same position and asks for
+   * nothing, so this cannot spin.
+   */
+  const applied = useRef<string>('')
+  const [, requestFlush] = useState(0)
+  const caretRow = showPlaceholder
+    ? 0
+    : Math.max(0, view.rows.findIndex(row => row.line === view.cursorLine))
+  const caretColumn = showPlaceholder
+    ? 0
+    : caretCellOffset(view.rows.find(row => row.line === view.cursorLine))
+
+  // A layout effect, not a passive one: Ink writes the cursor while flushing a
+  // render, so a position set afterwards is only applied by the next flush --
+  // leaving the cursor, and an input method's composing text, one keystroke
+  // behind the caret.
+  useLayoutEffect(() => {
+    const node = box.current
+    if (node === null) return
+    const { x, y } = measureElement(node)
+    const inset = screenReader ? 0 : 1
+    const position = {
+      // Horizontally the frame costs a border and a padding cell; vertically
+      // only the border.
+      x: x + inset * 2 + PROMPT_CELLS + caretColumn,
+      // Plus one: Ink moves the cursor up from the last line of output rather
+      // than from the line after it, so a position lands one row high.
+      // Measured against a real terminal, and the screen test holds it there --
+      // if a future Ink corrects the arithmetic, that test goes red rather than
+      // the cursor drifting quietly.
+      y: y + inset + caretRow + 1,
+    }
+    const key = `${String(position.x)}:${String(position.y)}`
+    if (applied.current === key) return
+    applied.current = key
+    setCursorPosition(position)
+    requestFlush(tick => tick + 1)
+  }, [caretColumn, caretRow, screenReader, setCursorPosition, snapshot])
+
   return (
-    <Box {...frame} flexDirection="column">
+    <Box {...frame} flexDirection="column" ref={box}>
       {/*
         * The hint is drawn inside the same row layout as real text: same `› `
         * prefix, same cursor cell. Drawing it without the prefix left the

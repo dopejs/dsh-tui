@@ -167,6 +167,15 @@ export class ScreenHarness {
     return this.#exitCode
   }
 
+  /**
+   * Shift-Enter, as a terminal speaking the Kitty keyboard protocol reports
+   * it: CSI 13 (Enter) with modifier 2 (shift+1). A plain terminal has no way
+   * to say this, which is the whole reason the protocol is asked for.
+   */
+  shiftEnter(): void {
+    this.#process.write(`${String.fromCodePoint(0x1b)}[13;2u`)
+  }
+
   type(text: string): void {
     this.#process.write(text)
   }

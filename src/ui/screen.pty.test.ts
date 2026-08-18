@@ -352,4 +352,62 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
     expect(code).toBe(0)
     expect(harness.rawOutput()).toContain(DISABLE_MOUSE)
   }, 30_000)
+
+  /*
+   * The caret drawn in the composer is an inverted cell, which a person can
+   * see and an input method cannot. A composing character -- half-typed pinyin
+   * -- is drawn by the terminal at the hardware cursor, so if that sits
+   * anywhere else, the text being composed appears outside the composer.
+   */
+  it('puts the terminal cursor on the caret, where an IME will compose', async () => {
+    harness = new ScreenHarness({ columns: 60, rows: 20, scenario: 'empty' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('command palette')),
+      'the composer hint',
+    )
+
+    harness.type('nihao')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('nihao')),
+      'the typed text',
+    )
+    await harness.settle()
+
+    const screen = harness.screen()
+    const caret = harness.invertedCells()
+    const cursor = harness.cursor()
+
+    expect(caret).toHaveLength(1)
+    expect(cursor).toEqual({ column: caret[0]?.column, row: caret[0]?.row })
+
+    // And that is inside the composer's box, not on some line below it.
+    const top = screen.findIndex(line => line.startsWith('╭'))
+    const bottom = screen.findLastIndex(line => line.startsWith('╰'))
+    expect(cursor.row).toBeGreaterThan(top)
+    expect(cursor.row).toBeLessThan(bottom)
+  }, 30_000)
+
+  // The case an input method actually produces. A CJK character occupies two
+  // cells, so counting characters instead of cells drifts the cursor left by
+  // one cell for every wide character already committed -- and the composing
+  // text lands on top of what was typed before it.
+  it('keeps the cursor on the caret after wide characters', async () => {
+    harness = new ScreenHarness({ columns: 60, rows: 20, scenario: 'empty' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('command palette')),
+      'the composer hint',
+    )
+
+    harness.type('\u4f60\u597d\u4e16\u754c')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('\u4f60\u597d')),
+      'the typed text',
+    )
+    await harness.settle()
+
+    const caret = harness.invertedCells()
+    expect(caret).toHaveLength(1)
+    expect(harness.cursor()).toEqual({ column: caret[0]?.column, row: caret[0]?.row })
+  }, 30_000)
+
 })

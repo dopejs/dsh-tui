@@ -1396,7 +1396,15 @@ export function InteractiveTui({
       })
       return
     }
-    if (key.return && (key.ctrl || key.meta)) {
+    /*
+     * Ctrl-J and Alt-Enter insert a newline. Shift-Enter is accepted too, and
+     * arrives only where the terminal reports it distinctly -- most terminals
+     * send the same byte for Enter and Shift-Enter, so there is nothing to
+     * tell apart. Asking for the Kitty keyboard protocol would distinguish
+     * them, and does not ship yet: the terminal's reply to the capability
+     * query reached the composer as text.
+     */
+    if (key.return && (key.ctrl || key.meta || key.shift)) {
       if (editor.insert('\n') === 'limit-exceeded') {
         setNotice(`Composer exceeds ${String(editor.textLimit)} code units.`)
       }

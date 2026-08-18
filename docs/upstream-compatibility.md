@@ -550,3 +550,38 @@ are decoded and delivered, and nothing consumes them yet.
 | --- | --- | --- | --- |
 | `0.5.0` | npm `0.1.0-rc.7` | Wheel scrolling | 665 tests including thirteen on a live PTY; clean-profile launch and install resolution green. |
 
+### 0.5.1
+
+Half-typed pinyin appeared outside the composer, on whatever line happened to
+be below it.
+
+The caret drawn in the composer is an inverted cell — something a person can
+see and an input method cannot. A composing character is drawn by the terminal
+at the *hardware* cursor, which Ink parks wherever it last wrote. The terminal
+cursor is now placed on the caret, measured in cells rather than code units so a
+CJK character, which occupies two, does not drift it left by one cell per
+character already committed.
+
+Two things had to be got right, both found against a real terminal:
+
+- Ink writes the cursor while flushing a render, and setting a position does not
+  itself cause one, so the last move was never flushed and the cursor stayed
+  where the previous keystroke left it. One extra frame is forced when the
+  position actually changes; it settles immediately, because the next pass
+  computes the same position and asks for nothing.
+- Ink moves the cursor up from the last line of output rather than from the line
+  after it, so a position lands one row high. Corrected by measurement, and the
+  screen test holds it there: if a future Ink fixes the arithmetic, that test
+  goes red rather than the cursor drifting quietly.
+
+Shift-Enter is accepted as a newline where a terminal reports it distinctly.
+Most do not — the same byte is sent for Enter and Shift-Enter — and the Kitty
+keyboard protocol, which would distinguish them, is not enabled: asking for it
+made the terminal's reply to the capability query arrive in the composer as
+text, five invisible characters ahead of the caret. Ctrl-J and Alt-Enter remain
+the newline that works everywhere.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.5.1` | npm `0.1.0-rc.7` | IME cursor placement | 669 tests including fifteen on a live PTY; clean-profile launch green. |
+
