@@ -1,4 +1,10 @@
-export type TranscriptRowKind = 'assistant' | 'system' | 'tool' | 'user'
+/**
+ * `context` is content the host injected on the user's behalf -- AGENTS.md,
+ * skill bodies, runtime reminders. It is kept apart from `system`, which is a
+ * notice the user is meant to read, so the transcript can leave one out
+ * without losing the other.
+ */
+export type TranscriptRowKind = 'assistant' | 'context' | 'system' | 'tool' | 'user'
 
 export interface ToolCardModel {
   readonly card: 'diff' | 'generic' | 'read' | 'search' | 'terminal' | 'web'
@@ -52,6 +58,14 @@ export interface ScreenModel {
   readonly contextWindow?: number
   readonly modal?: InteractionModal
   readonly rows: readonly TranscriptRow[]
+  /**
+   * Injected context is drawn only on request. It is what the model was given,
+   * so it is never discarded -- but a turn that carries three reminders spends
+   * three lines on content the user did not ask to read, before the answer.
+   */
+  readonly showContext?: true
+  /** Injected rows currently withheld, so the count can say they exist. */
+  readonly hiddenContextRows?: number
   readonly sessionId: string
   readonly permissionPreset?: string
   readonly status: 'busy' | 'idle'
@@ -82,6 +96,8 @@ export interface WindowOptions {
   readonly sessionId: string
   readonly permissionPreset?: string
   readonly status: 'busy' | 'idle'
+  /** Draw injected context inline instead of withholding it. */
+  readonly showContext?: boolean
   readonly terminalRows: number
   readonly unseenRows?: number
   readonly totalTokens?: number
@@ -101,6 +117,12 @@ export function createScreenModel(
   options: WindowOptions,
   modal?: InteractionModal,
 ): ScreenModel {
+  // Counted over every retained row, not the visible window: the count answers
+  // "what is being withheld from this session", and a number that changed as
+  // the user scrolled would answer nothing.
+  const hiddenContextRows = options.showContext === true
+    ? 0
+    : rows.filter(row => row.kind === 'context').length
   const scrollOffset = Math.max(0, options.scrollOffset ?? 0)
   const modalRows = modal === undefined ? 0 : Math.max(0, options.modalRows ?? 4)
   const metadataRows = [
@@ -135,8 +157,10 @@ export function createScreenModel(
     ...(options.approvalPolicy === undefined ? {} : { approvalPolicy: options.approvalPolicy }),
     ...(options.contextWindow === undefined ? {} : { contextWindow: options.contextWindow }),
     ...(modal === undefined ? {} : { modal }),
+    ...(hiddenContextRows === 0 ? {} : { hiddenContextRows }),
     rows: rows.slice(start, end),
     sessionId: options.sessionId,
+    ...(options.showContext === true ? { showContext: true as const } : {}),
     ...(options.permissionPreset === undefined ? {} : { permissionPreset: options.permissionPreset }),
     status: options.status,
     totalRows: rows.length,

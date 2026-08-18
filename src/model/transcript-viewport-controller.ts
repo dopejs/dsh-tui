@@ -94,6 +94,7 @@ function saturatingAdd(left: number, right: number): number {
 function textLabel(row: TranscriptRow): string {
   switch (row.kind) {
     case 'assistant': return 'Assistant'
+    case 'context': return 'Context'
     case 'system': return 'System'
     case 'tool': return 'Tool'
     case 'user': return 'User'

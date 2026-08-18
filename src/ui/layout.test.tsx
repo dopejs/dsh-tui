@@ -57,21 +57,39 @@ describe('screen layout (M6.9)', () => {
     expect(output).not.toContain('working ·')
   })
 
-  // Injected reminders are what the model was given, so they stay reachable --
-  // but a turn carrying three of them used to spend six lines saying nothing
-  // the user asked for, because each fold summary claimed a line of its own.
-  it('folds an injected reminder onto a single line', () => {
+  // The user is shown the conversation, not what the host injected on their
+  // behalf. A turn carrying three reminders spent three lines on content
+  // nobody asked to read, ahead of the answer.
+  it('withholds injected context by default, and says how much', () => {
     const injected = `<system-reminder>\n${Array.from({ length: 40 }, (_, i) => `line ${String(i)}`).join('\n')}`
     const output = renderInkFrame({
       ...BASE,
-      rows: [{ content: injected, id: 's', kind: 'system' }],
+      rows: [
+        { content: injected, id: 's', kind: 'context' },
+        { content: 'hello', id: 'u', kind: 'user' },
+      ],
+      hiddenContextRows: 1,
+      totalRows: 2,
+    }, 70)
+
+    expect(output).not.toContain('system-reminder')
+    expect(output).not.toContain('line 12')
+    // Withheld, not discarded: the status says it is there.
+    expect(output).toContain('1 context hidden')
+  })
+
+  it('draws it inline on request, folded to a single line', () => {
+    const injected = `<system-reminder>\n${Array.from({ length: 40 }, (_, i) => `line ${String(i)}`).join('\n')}`
+    const output = renderInkFrame({
+      ...BASE,
+      rows: [{ content: injected, id: 's', kind: 'context' }],
+      showContext: true,
       totalRows: 1,
     }, 70)
 
     const rendered = lines(output).filter(line => line.includes('<system-reminder>'))
     expect(rendered).toHaveLength(1)
     expect(rendered[0]).toContain('40 lines')
-    // The body is folded away, not merely pushed off screen.
     expect(output).not.toContain('line 12')
   })
 
@@ -79,7 +97,8 @@ describe('screen layout (M6.9)', () => {
     const injected = `<system-reminder>\n${Array.from({ length: 40 }, (_, i) => `line ${String(i)}`).join('\n')}`
     const output = renderInkFrame({
       ...BASE,
-      rows: [{ content: injected, id: 's', kind: 'system' }],
+      rows: [{ content: injected, id: 's', kind: 'context' }],
+      showContext: true,
       totalRows: 1,
     }, 70, new Set(['s']))
     expect(output).toContain('line 12')

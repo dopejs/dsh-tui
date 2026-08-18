@@ -6,7 +6,7 @@ distributed as an out-of-tree Harness bundle and runs in the same process as
 the agent runtime.
 
 > [!IMPORTANT]
-> This is `0.3.1`. Harness peers are declared `^0.1.0-rc.6` and optional: the
+> This is `0.4.0`. Harness peers are declared `^0.1.0-rc.6` and optional: the
 > `dsh` CLI provides the Harness runtime, so nothing installs them on our
 > behalf and npm must not try. Both the global and local installs are verified
 > against the host's current `latest` on every CI run.
@@ -67,7 +67,7 @@ pnpm check
 npm pack --pack-destination /tmp
 pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.7 \
   plugin --profile tui add \
-  /tmp/dopejs-dsh-tui-0.3.1.tgz
+  /tmp/dopejs-dsh-tui-0.4.0.tgz
 pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.7 --profile tui
 ```
 

@@ -1,5 +1,6 @@
 import { useSyncExternalStore } from 'react'
 import { Box, Text, renderToString } from 'ink'
+import stringWidth from 'string-width'
 
 import type { TranscriptStore } from '../model/transcript-controller'
 import type { InteractionSnapshot, InteractionStore } from '../model/interaction-controller'
@@ -17,9 +18,21 @@ import { DEFAULT_TIPS, Welcome } from './welcome'
  */
 export const ROW_MARKERS: Record<TranscriptRowKind, string> = {
   assistant: '⏺',
+  context: '⋯',
   system: 'ℹ',
   tool: '⚒',
   user: '❯',
+}
+
+/**
+ * Pads a line so a band spans the terminal rather than stopping at the text.
+ *
+ * Measured in cells, not code units: a CJK turn is twice as wide as its length
+ * suggests, and padding by length would run the band past the right edge.
+ */
+function padToWidth(text: string, columns: number): string {
+  const used = stringWidth(text)
+  return used >= columns ? text : text + ' '.repeat(columns - used)
 }
 
 /** The glyph marking the focused row; kept distinct from every role marker. */
@@ -33,6 +46,7 @@ export const WORKING_MARKER = '· '
 
 const ROW_TONE: Record<TranscriptRowKind, SemanticTone | undefined> = {
   assistant: 'accent',
+  context: 'muted',
   system: 'muted',
   tool: undefined,
   user: undefined,
@@ -99,6 +113,9 @@ export function StatusFooter({ columns, model }: FrameProps) {
       ? 'transcript empty'
       : `transcript ${model.visibleRange.start}–${model.visibleRange.end} of ${model.totalRows}`,
     ...(model.droppedRows === undefined ? [] : [`${String(model.droppedRows)} evicted`]),
+    ...(model.hiddenContextRows === undefined
+      ? []
+      : [`${String(model.hiddenContextRows)} context hidden`]),
     ...(model.unseenRows === undefined ? [] : [`${String(model.unseenRows)} new`]),
     ...(sources === undefined ? [] : [sources]),
   ]
@@ -141,10 +158,10 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
         />
       ) : null}
       <Box flexDirection="column">
-        {model.rows.map((row) => {
+        {model.rows.filter(row => model.showContext === true || row.kind !== 'context').map((row) => {
           // Injected context is folded so a session does not open on a wall of
           // instructions; the content stays reachable, not discarded.
-          const injected = row.kind === 'system' && row.toolCard === undefined
+          const injected = row.kind === 'context' && row.toolCard === undefined
             ? foldInjectedContent(row.content, expandedRowIds?.has(row.id) === true)
             : undefined
           const prose = row.kind === 'assistant' && row.toolCard === undefined
@@ -172,6 +189,20 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
                 {'  '}{model.welcome?.reasoningHiddenText ?? 'reasoning hidden · ^E show'}
               </Text>
             )}
+            {/*
+              * A user turn is drawn as a band across the full width. Without
+              * it every row began the same way and the eye had nothing to
+              * land on: finding where an exchange started meant reading.
+              */}
+            {row.kind === 'user' ? (
+              <Text inverse wrap="truncate-end">
+                {padToWidth(
+                  `${model.focusedRowId === row.id ? FOCUS_MARKER : ''}`
+                  + `${ROW_MARKERS[row.kind]} ${row.content}`,
+                  columns,
+                )}
+              </Text>
+            ) : (
             <Text {...tone(ROW_TONE[row.kind])} wrap="truncate-end">
               {model.focusedRowId === row.id ? FOCUS_MARKER : ''}
               {ROW_MARKERS[row.kind]}
@@ -193,6 +224,7 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
               ) : null}
               {row.status === undefined ? '' : ROW_STATUS[row.status]}
             </Text>
+            )}
             {prose !== undefined && prose.rest.length > 0 ? (
               <Box marginLeft={2}>
                 <MarkdownView blocks={prose.rest} theme={theme} />

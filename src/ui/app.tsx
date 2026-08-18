@@ -266,6 +266,11 @@ export function InteractiveTui({
   // Resolved per render so /lang takes effect without a restart, and so an
   // unset preference follows the host locale rather than assuming English.
   const text = messages(resolveLanguage(preferenceSnapshot.language))
+  // Injected context is withheld by default: it is what the model was given,
+  // not what the user asked to read, and a turn carrying three reminders spent
+  // three lines on it before the answer. Withheld, never discarded -- the
+  // palette draws it back inline.
+  const [showContext, setShowContext] = useState(false)
   const [notice, setNotice] = useState(
     initialNotice ?? (firstRun
       // A first-run user has no way to discover the panels yet; the palette is
@@ -582,6 +587,12 @@ export function InteractiveTui({
       case 'transcript.search':
         viewport.openSearch()
         setNotice('Transcript search opened.')
+        return
+      case 'transcript.toggle-context':
+        setShowContext((shown) => {
+          setNotice(shown ? 'Injected context hidden.' : 'Injected context shown.')
+          return !shown
+        })
         return
       case 'transcript.to-end':
         viewport.toEnd()
@@ -1475,6 +1486,7 @@ export function InteractiveTui({
     projectedRows,
     {
       activityCount: activitySnapshot.totalActivity,
+      showContext,
       working: workingStatus({
         elapsedMs: turnStartedAt === undefined ? 0 : now - turnStartedAt,
         ...(projectionSnapshot.usage?.outputTokens === undefined

@@ -392,3 +392,32 @@ terminal and was mutation-verified.
 | --- | --- | --- | --- |
 | `0.3.1` | npm `0.1.0-rc.7` | Reasoning placement | 639 tests including eight on a live PTY; clean-profile launch and install resolution green. |
 
+### 0.4.0
+
+Injected context is withheld from the conversation by default, and a user turn
+is drawn as a band across the terminal.
+
+A session opened on the host's injections — `<system-reminder>`, runtime context
+snapshots, instruction files — three of them ahead of the first answer. Folding
+each to one line, in `0.2.5`, was not enough: the user is reading a
+conversation, and none of that is conversation. Each injection is content the
+model was given, not content anyone asked to read.
+
+So they are withheld, never discarded. Injected content now has its own row
+kind, `context`, separate from `system` — which stays visible, because a notice
+like "Approval policy changed to never" is meant to be read. The status line
+reports how much is being held back (`1 context hidden`), and the command
+palette draws it inline again, still folded to one line per injection and still
+expandable. The whole round trip is asserted on a live terminal: Ctrl-P, search,
+Enter, and the reminder appears.
+
+Every row also used to begin the same way, so finding where an exchange started
+meant reading rather than looking. A user turn is now inverted across the full
+terminal width — measured in cells, not code units, so a CJK turn does not run
+the band past the right edge. The screen test counts the inverted cells on the
+user's row against the terminal width, and asserts the reply carries none.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.4.0` | npm `0.1.0-rc.7` | Transcript legibility | 641 tests including nine on a live PTY; clean-profile launch and install resolution green. |
+

@@ -71,17 +71,63 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
     expect(screen).not.toContain('Reasoning: The user said hello')
   })
 
-  it('folds an injected reminder onto one line', async () => {
-    harness = new ScreenHarness({ scenario: 'conversation' })
+  // The user reads the conversation, not what the host injected on their
+  // behalf. Withheld, never discarded: the status says how much is being held
+  // back, and the palette draws it inline again.
+  it('withholds injected context, and brings it back on request', async () => {
+    harness = new ScreenHarness({ rows: 24, scenario: 'conversation' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('would you like to work on')),
+      'the assistant reply',
+    )
+    await harness.settle()
+
+    expect(harness.screen().join('\n')).not.toContain('system-reminder')
+    expect(harness.screen().join('\n')).toContain('context hidden')
+
+    // Ctrl-P, search, enter -- the way a user reaches it.
+    harness.type('\u0010')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('Command palette')),
+      'the command palette',
+    )
+    harness.type('injected context')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('Toggle injected context')),
+      'the toggle action',
+    )
+    harness.type('\r')
+
     await harness.waitFor(
       screen => screen.some(line => line.includes('system-reminder')),
-      'the injected reminder',
+      'the injected reminder drawn inline',
     )
-
+    // Drawn as one folded line, not as forty.
     const folded = harness.screen().filter(line => line.includes('system-reminder'))
     expect(folded).toHaveLength(1)
-    expect(folded[0]).toContain('expand')
     expect(harness.screen().join('\n')).not.toContain('reminder 12')
+  })
+
+  // Every row began the same way, so finding where an exchange started meant
+  // reading rather than looking. A user turn is a band across the full width.
+  it('marks the user turn with a band across the terminal', async () => {
+    harness = new ScreenHarness({ columns: 60, rows: 24, scenario: 'conversation' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('would you like to work on')),
+      'the assistant reply',
+    )
+    await harness.settle()
+
+    const screen = harness.screen()
+    const userRow = screen.findIndex(line => line.includes('hello'))
+    expect(userRow).toBeGreaterThanOrEqual(0)
+
+    const banded = harness.invertedCells().filter(cell => cell.row === userRow)
+    expect(banded).toHaveLength(60)
+
+    // And the reply is not banded, or the distinction would say nothing.
+    const answerRow = screen.findIndex(line => line.includes('I am in the doper workspace'))
+    expect(harness.invertedCells().filter(cell => cell.row === answerRow)).toHaveLength(0)
   })
 
   // Nothing may overwrite anything else: a fixed-height layout that clips

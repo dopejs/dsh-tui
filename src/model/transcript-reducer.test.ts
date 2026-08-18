@@ -128,7 +128,9 @@ describe('transcript reducer', () => {
     expect(initial.rows).toEqual([])
     expect(plugin.rows).toEqual([
       { content: 'hello', id: 'event:0', kind: 'user', status: 'complete' },
-      { content: 'workspace changed', id: 'event:1', kind: 'system', status: 'complete' },
+      // Injected content is its own kind, so the transcript can withhold it
+      // without also withholding notices the user is meant to read.
+      { content: 'workspace changed', id: 'event:1', kind: 'context', status: 'complete' },
     ])
     expect(Object.isFrozen(plugin.rows)).toBe(true)
     expect(plugin.rows.every(Object.isFrozen)).toBe(true)

@@ -15,6 +15,9 @@ function model(rows: ScreenModel['rows']): ScreenModel {
   return {
     rows,
     sessionId: 'session',
+    // These cases are about how injected content is drawn once drawn at all.
+    // Whether it is drawn by default is asserted separately, in layout.test.
+    showContext: true,
     status: 'idle',
     totalRows: rows.length,
   }
@@ -23,7 +26,7 @@ function model(rows: ScreenModel['rows']): ScreenModel {
 const injectedRow = {
   content: AGENTS_MD,
   id: 'row-1',
-  kind: 'system' as const,
+  kind: 'context' as const,
 }
 
 describe('injected context rendering (M6)', () => {

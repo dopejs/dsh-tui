@@ -201,7 +201,7 @@ function projectAssistantMessage(
 }
 
 function userRowKind(event: SessionEvent<'user/message'>): TranscriptRowKind {
-  return event.data.source.kind === 'user' ? 'user' : 'system'
+  return event.data.source.kind === 'user' ? 'user' : 'context'
 }
 
 function assistantKey(turn: number, step: number): string {

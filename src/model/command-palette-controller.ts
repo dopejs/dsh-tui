@@ -25,6 +25,7 @@ export type TuiActionId =
   | 'transcript.copy-visible'
   | 'transcript.search'
   | 'transcript.to-end'
+  | 'transcript.toggle-context'
   | 'transcript.to-start'
   | 'tui.exit'
 
@@ -162,6 +163,12 @@ export const DEFAULT_TUI_ACTIONS: readonly TuiActionDescriptor[] = Object.freeze
     id: 'transcript.copy-visible',
     keywords: Object.freeze(['clipboard', 'osc52']),
     title: 'Copy visible transcript',
+  }),
+  Object.freeze({
+    description: 'Draw injected reminders and instructions inline, or withhold them again',
+    id: 'transcript.toggle-context',
+    keywords: Object.freeze(['inject', 'reminder', 'instructions', 'agents']),
+    title: 'Toggle injected context',
   }),
   Object.freeze({
     description: 'Search the retained transcript window',
