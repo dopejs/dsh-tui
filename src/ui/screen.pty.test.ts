@@ -59,12 +59,12 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
   it('shows the answer, not the reasoning, when a turn completes', async () => {
     harness = new ScreenHarness({ scenario: 'conversation' })
     await harness.waitFor(
-      screen => screen.some(line => line.includes('How can I help you')),
+      screen => screen.some(line => line.includes('would you like to work on')),
       'the assistant reply',
     )
 
     const screen = harness.screen().join('\n')
-    expect(screen).toContain('Hi! How can I help you with doper today?')
+    expect(screen).toContain('Hi! I am in the doper workspace.')
     expect(screen).not.toContain('Answer briefly')
     expect(screen).toContain('reasoning hidden')
     // The answer stands on its own line, not appended to scratch work.
@@ -89,7 +89,7 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
   it('draws every row without overwriting another', async () => {
     harness = new ScreenHarness({ scenario: 'conversation' })
     await harness.waitFor(
-      screen => screen.some(line => line.includes('How can I help you')),
+      screen => screen.some(line => line.includes('would you like to work on')),
       'the assistant reply',
     )
     await harness.settle()
@@ -111,7 +111,7 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
   it('fills the terminal, with the composer at the bottom', async () => {
     harness = new ScreenHarness({ rows: 24, scenario: 'conversation' })
     await harness.waitFor(
-      screen => screen.some(line => line.includes('How can I help you')),
+      screen => screen.some(line => line.includes('would you like to work on')),
       'the assistant reply',
     )
     await harness.settle()
@@ -160,5 +160,29 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
       expect(`${line}:${String(interior.includes('╮') || interior.includes('╯'))}`)
         .toBe(`${line}:false`)
     }
+  })
+
+  // The fold marker used to be drawn between the answer's first line and the
+  // rest of it, cutting one reply in half around a note about scratch work.
+  // Reasoning comes first in the durable log, and it reads that way too: the
+  // deliberation above, the answer whole and contiguous below.
+  it('keeps the answer contiguous, with reasoning above it', async () => {
+    harness = new ScreenHarness({ rows: 24, scenario: 'conversation' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('would you like to work on')),
+      'the assistant reply',
+    )
+    await harness.settle()
+
+    const screen = harness.screen()
+    const fold = screen.findIndex(line => line.includes('reasoning hidden'))
+    const answerStart = screen.findIndex(line => line.includes('I am in the doper workspace'))
+    const answerEnd = screen.findIndex(line => line.includes('would you like to work on'))
+
+    expect(fold).toBeGreaterThanOrEqual(0)
+    expect(answerStart).toBeGreaterThanOrEqual(0)
+    expect(answerEnd).toBeGreaterThan(answerStart)
+    // Above the answer, and not inside it.
+    expect(fold).toBeLessThan(answerStart)
   })
 })

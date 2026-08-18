@@ -80,7 +80,10 @@ function conversation() {
       message: {
         content: [
           { text: 'The user said hello. Answer briefly.', type: 'reasoning' },
-          { text: 'Hi! How can I help you with doper today?', type: 'text' },
+          {
+            text: 'Hi! I am in the doper workspace.\n\nWhat would you like to work on?',
+            type: 'text',
+          },
         ],
         id: 'a1',
         role: 'assistant',

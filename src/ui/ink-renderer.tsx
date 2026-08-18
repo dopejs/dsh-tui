@@ -152,6 +152,26 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
             : undefined
           return (
           <Box flexDirection="column" key={row.id}>
+            {/*
+              * Scratch work, above the answer and never inside it.
+              *
+              * Drawn between the answer's first line and the rest of it, this
+              * cut one reply in half around a note about deliberation. The
+              * durable log emits reasoning before the text block, and it reads
+              * in that order too: the thinking first, folded; then the answer,
+              * whole.
+              */}
+            {row.reasoning === undefined ? null : expandedRowIds?.has(row.id) === true ? (
+              <Box flexDirection="column" marginLeft={2}>
+                {row.reasoning.split('\n').map((line, index) => (
+                  <Text {...tone('muted')} key={index} wrap="truncate-end">{line}</Text>
+                ))}
+              </Box>
+            ) : (
+              <Text {...tone('muted')} wrap="truncate-end">
+                {'  '}{model.welcome?.reasoningHiddenText ?? 'reasoning hidden · ^E show'}
+              </Text>
+            )}
             <Text {...tone(ROW_TONE[row.kind])} wrap="truncate-end">
               {model.focusedRowId === row.id ? FOCUS_MARKER : ''}
               {ROW_MARKERS[row.kind]}
@@ -173,19 +193,6 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
               ) : null}
               {row.status === undefined ? '' : ROW_STATUS[row.status]}
             </Text>
-            {/* Scratch work, folded by default: a human may want it, but it is
-                not the answer and must not be mistaken for one. */}
-            {row.reasoning === undefined ? null : expandedRowIds?.has(row.id) === true ? (
-              <Box flexDirection="column" marginLeft={2}>
-                {row.reasoning.split('\n').map((line, index) => (
-                  <Text {...tone('muted')} key={index} wrap="truncate-end">{line}</Text>
-                ))}
-              </Box>
-            ) : (
-              <Text {...tone('muted')} wrap="truncate-end">
-                {'  '}{model.welcome?.reasoningHiddenText ?? 'reasoning hidden · ^E show'}
-              </Text>
-            )}
             {prose !== undefined && prose.rest.length > 0 ? (
               <Box marginLeft={2}>
                 <MarkdownView blocks={prose.rest} theme={theme} />

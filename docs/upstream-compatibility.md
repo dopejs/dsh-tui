@@ -368,3 +368,27 @@ Two things worth stating plainly:
 | --- | --- | --- | --- |
 | `0.3.0` | npm `0.1.0-rc.7` | Fullscreen layout | 638 tests including seven on a live PTY; clean-profile launch and install resolution green. |
 
+### 0.3.1
+
+The reasoning fold was drawn between the answer's first line and the rest of
+it, cutting one reply in half around a note about scratch work:
+
+    ⏺ Hi! I'm in the doper workspace — a Web canvas rendering engine…
+      reasoning hidden · ^E show
+      What would you like to work on?
+
+Both halves are one answer. The fold now sits above the row, which is also the
+order the durable log emits: a `reasoning` block at index 0, the `text` block
+carrying the answer at index 1. Deliberation first, folded; then the answer,
+whole and contiguous.
+
+The reasoning-policy tests asserted that reasoning was folded and excluded from
+the clipboard and `--print`, and every one of them passed while the fold split
+the answer — they constrained what reasoning must not leak into, never where it
+is drawn relative to the text. The screen test asserts the placement on a live
+terminal and was mutation-verified.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.3.1` | npm `0.1.0-rc.7` | Reasoning placement | 639 tests including eight on a live PTY; clean-profile launch and install resolution green. |
+
