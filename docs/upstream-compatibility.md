@@ -537,6 +537,12 @@ kept the process alive after the interface was gone; macOS exited regardless, so
 only CI saw it — the first platform-specific defect this project has hit since
 the OSC 8 assertion in `0.1.0`.
 
+The exit assertion was flaky on Linux with Node 24, roughly one run in two,
+while passing everywhere else. It pressed Enter as soon as the action appeared
+in the palette, which is a different moment from the action being selected. It
+now waits for the selection marker. A flaky red is worse than no gate: it
+teaches you to re-run rather than to read.
+
 Clicking is not implemented: only the wheel. Reports for presses and releases
 are decoded and delivered, and nothing consumes them yet.
 

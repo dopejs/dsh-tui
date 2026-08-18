@@ -338,9 +338,14 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
     )
     harness.type('Exit TUI')
     await harness.waitFor(
-      screen => screen.some(line => line.includes('Exit TUI')),
-      'the exit action',
+      screen => screen.some(line => line.includes('› Exit TUI')),
+      'the exit action to be the selected one',
     )
+    // The action appearing and the action being selected are different
+    // moments. Pressing Enter on the first made this fail on Linux with Node
+    // 24 roughly one run in two, which is worse than no gate: a flaky red
+    // teaches you to re-run it.
+    await harness.settle()
     harness.type('\r')
     const code = await harness.waitForExit()
 
