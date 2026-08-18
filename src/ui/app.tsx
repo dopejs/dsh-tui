@@ -386,12 +386,12 @@ export function InteractiveTui({
   // Start the clock on idle→running and clear it on the way back, so a second
   // turn never inherits the first one's start time.
   useEffect(() => {
+    // A state updater must stay pure, so the clock is set alongside it rather
+    // than from inside it.
     if (agentStatus === 'running') {
-      setTurnStartedAt((current) => {
-        if (current !== undefined) return current
-        setNow(Date.now())
-        return Date.now()
-      })
+      const startedAt = Date.now()
+      setTurnStartedAt(current => current ?? startedAt)
+      setNow(startedAt)
     } else setTurnStartedAt(undefined)
   }, [agentStatus])
 

@@ -77,13 +77,20 @@ The composer chip UI is deferred: the submit-time report names every refused
 reference, which is the property that matters — a silent drop is the one
 outcome a user cannot detect.
 
-## M6.5 Session workflow (+4) — partial
+## M6.5 Session workflow (+4) — withdrawn
 
-- `/compact` registered against `ctx.compaction`, and **only** when that service
-  is mounted: a command that exists but cannot work is worse than one the user
-  never sees;
-- `/export` opens the recovery workbench rather than duplicating its
-  capability-gated export path.
+This slice was implemented and then removed, because it was solving a problem
+that did not exist.
+
+Harness already registers the session commands its own services own, `/compact`
+among them, and the palette has always merged them. Registering a second
+`/compact` threw `command "compact" is already registered` — and because that
+happened during binding creation, the whole interactive TUI failed to render.
+`pnpm check` passed throughout; only launching the installed package caught it,
+which is the third time that gate has caught something nothing else could.
+
+The lesson is recorded rather than the code: before adding a command, check
+whether the composition already provides it. The palette is the inventory.
 
 `/rename` is **not implemented and will not be** on this baseline.
 `SessionPersistence` publishes `create`, `append`, `load`, `inspect`, `list`,
