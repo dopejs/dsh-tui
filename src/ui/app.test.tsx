@@ -159,7 +159,7 @@ describe('InteractiveTui', () => {
       fixture/model
       transcript empty
       ╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.2.1                                   │
+      │ dsh-tui v0.2.2                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
@@ -192,7 +192,7 @@ describe('InteractiveTui', () => {
       fixture/model
       transcript empty
       ╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.2.1                                   │
+      │ dsh-tui v0.2.2                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
@@ -226,7 +226,7 @@ describe('InteractiveTui', () => {
       fixture/model
       transcript empty
       ╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.2.1                                   │
+      │ dsh-tui v0.2.2                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
@@ -319,7 +319,7 @@ describe('InteractiveTui', () => {
       fixture/model
       transcript empty
       ╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.2.1                                   │
+      │ dsh-tui v0.2.2                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │

@@ -179,3 +179,33 @@ turns it red with `ERESOLVE`.
 | --- | --- | --- | --- |
 | `0.2.1` | npm `0.1.0-rc.7` | Peer-range widening | No behaviour change; 617 tests, clean-profile launch, and registry peer resolution all green. |
 
+### 0.2.2
+
+`npm install -g @deepseek-ai/dsh @dopejs/dsh-tui` — the command this README has
+documented since `0.1.0` — had never once succeeded. Under `0.1.0` and `0.2.0`
+it failed with `ERESOLVE`; once `0.2.1` widened the ranges it failed with an npm
+internal crash, `Cannot read properties of null (reading 'children')`, thrown
+from arborist's `PlaceDep`.
+
+The cause is that the twenty Harness `peerDependencies` were never satisfiable
+by any installer. A `tui` profile installs four small packages
+(`cosmokit`, `dsh-cmdline`, `dsh-code-runtime-worker-thread`, `schemastery`);
+the Harness runtime comes from the `dsh` CLI's own dependency tree at load time.
+The peer ranges are a compatibility declaration, not an install instruction — so
+they are now `peerDependenciesMeta: { optional: true }` and npm stops trying to
+place them at the global root.
+
+Tradeoff: npm no longer refuses an install on a peer-range mismatch. That signal
+was never real (nothing installed the peers, so nothing checked them at install
+time); what does check is `--doctor`, which resolves every required service
+against the running host and reports what is missing. Compatibility remains
+tracked in this document rather than enforced by the resolver.
+
+`pnpm check:peers` now installs the tarball **globally** beside
+`@deepseek-ai/dsh@latest` and asserts `dtui` lands on PATH. Mutation-verified:
+removing `peerDependenciesMeta` reproduces the arborist crash exactly.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.2.2` | npm `0.1.0-rc.7` | Global install path | `npm i -g` succeeds; `dtui --doctor` bootstraps the profile and reports all 8 required services resolved. No behaviour change. |
+
