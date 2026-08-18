@@ -77,20 +77,27 @@ The composer chip UI is deferred: the submit-time report names every refused
 reference, which is the property that matters — a silent drop is the one
 outcome a user cannot detect.
 
-## M6.5 Session workflow (+4)
+## M6.5 Session workflow (+4) — partial
 
-Everyday operations currently require leaving the TUI or the recovery panel.
+- `/compact` registered against `ctx.compaction`, and **only** when that service
+  is mounted: a command that exists but cannot work is worse than one the user
+  never sees;
+- `/export` opens the recovery workbench rather than duplicating its
+  capability-gated export path.
 
-- `/new`, `/compact`, `/export`, `/rename` registered as TUI commands so they
-  appear in the palette beside Harness's own;
-- `/model` switching mid-session through the public model registry, applied to
-  a newly created agent with the existing no-overlap transition;
-- double-`Esc` opens the rewind/fork chooser over the retained transcript,
-  reusing the M2.3 fork path rather than a second mechanism.
+`/rename` is **not implemented and will not be** on this baseline.
+`SessionPersistence` publishes `create`, `append`, `load`, `inspect`, `list`,
+and `readFrom` — nothing that writes session metadata. Renaming would mean
+rewriting a persisted header, which the delivery invariants forbid.
 
-Verification: each command against a missing service; `/compact` asserted to
-leave the durable log intact; a rewind that is cancelled leaves the attachment
-usable; model switch applies to the exact new agent.
+Deferred, with the reason:
+
+- `/new` and `/model` mid-session both mean creating an agent and transferring
+  the attachment. The session coordinator already does this for fork and
+  resume, and reusing it correctly is a larger change than a command
+  registration; doing it badly would risk the no-overlap invariant that M1.4
+  and M2.3 established.
+- double-`Esc` rewind depends on that same transition.
 
 ## M6.6 Working status (+3)
 

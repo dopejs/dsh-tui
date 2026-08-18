@@ -422,6 +422,41 @@ export async function startTuiRuntime(
           reportError: diagnostics.report,
         })
         bindingOwner.own('attachments controller', () => attachments.dispose())
+        // Session commands live beside Harness's own in the palette. Each is
+        // registered only when its service is actually mounted; a command that
+        // exists but cannot work is worse than one the user never sees.
+        const compaction = ctx.get('compaction')
+        if (compaction !== undefined) {
+          bindingOwner.own('compact command', commands.register({
+            description: 'Compact this session transcript through the Harness engine',
+            handler: async (invocation) => {
+              try {
+                const result = await compaction.compactNow(
+                  invocation.agent as never,
+                  invocation.signal,
+                  invocation.commandId,
+                )
+                return result === null
+                  ? { kind: 'success', text: 'Nothing to compact.' }
+                  : { kind: 'success', text: 'Session compacted.' }
+              } catch (error) {
+                diagnostics.report(error)
+                return { kind: 'error', text: `Compaction failed: ${diagnosticMessage(error)}` }
+              }
+            },
+            name: 'compact',
+            recordInput: false,
+          }))
+        }
+        bindingOwner.own('export command', commands.register({
+          description: 'Export this session to a file through the recovery workbench',
+          handler: () => {
+            overlay.open('recovery')
+            return { kind: 'success', text: 'Recovery opened; choose Raw session export.' }
+          },
+          name: 'export',
+          recordInput: false,
+        }))
         const editor = new EditorController()
         bindingOwner.own('editor controller', () => editor.dispose())
         const workspaceRoot = attachment.agent.session.header.cwd ?? dependencies.cwd()
