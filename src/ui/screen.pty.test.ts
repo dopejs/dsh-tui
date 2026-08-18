@@ -328,7 +328,7 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
       screen => screen.some(line => line.includes('command palette')),
       'the composer hint',
     )
-    expect(harness.rawOutput()).toContain(ENABLE_MOUSE)
+    await harness.waitForOutput(ENABLE_MOUSE, 'the request to start reporting')
 
     // Through the palette, which is the path a user has: Ctrl-P, search, Enter.
     harness.type('\u0010')
@@ -429,6 +429,7 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
       'the composer hint',
     )
 
+    await harness.waitForOutput(ENABLE_MOUSE, 'the request to start reporting')
     const raw = harness.rawOutput()
     const alternateScreen = raw.indexOf('[?1049h')
     const reporting = raw.indexOf(ENABLE_MOUSE)

@@ -152,6 +152,25 @@ export class ScreenHarness {
     return this.#raw
   }
 
+  /**
+   * Waits for a byte sequence in the raw output.
+   *
+   * Mode changes never land in a cell, so the grid cannot answer for them, and
+   * they are not written in step with the frame that follows: asserting one the
+   * instant its frame appeared was green locally and red on a slower runner.
+   */
+  async waitForOutput(needle: string, description: string, timeoutMs = 15_000): Promise<void> {
+    const deadline = Date.now() + timeoutMs
+    while (!this.#raw.includes(needle)) {
+      if (Date.now() >= deadline) {
+        throw new Error(
+          `Timed out waiting for ${description}.\nLast output:\n${this.#raw.slice(-2_000)}`,
+        )
+      }
+      await delay(25)
+    }
+  }
+
   /** Waits for the process to exit on its own, rather than killing it. */
   async waitForExit(timeoutMs = 15_000): Promise<number> {
     const deadline = Date.now() + timeoutMs
