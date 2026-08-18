@@ -35,7 +35,7 @@ The M1–M5 invariants continue to apply. Two more govern this milestone:
   discoverable expand key; role markers verified one cell wide and mutually
   distinct; framed composer with an empty-draft hint.
 
-## M6.3 Streaming and Markdown (+5)
+## M6.3 Streaming and Markdown (+5) — complete
 
 The single largest remaining difference in how a session *feels*. The reducer
 already folds `assistant/chunk`, so the work is presentation.
@@ -77,10 +77,9 @@ The composer chip UI is deferred: the submit-time report names every refused
 reference, which is the property that matters — a silent drop is the one
 outcome a user cannot detect.
 
-## M6.5 Session workflow (+4) — withdrawn
+## M6.5 Session workflow (+4) — complete, after one wrong turn
 
-This slice was implemented and then removed, because it was solving a problem
-that did not exist.
+The slice began by re-implementing something that already existed.
 
 Harness already registers the session commands its own services own, `/compact`
 among them, and the palette has always merged them. Registering a second
@@ -196,3 +195,25 @@ M6.8 is last: the largest surface, the least daily impact.
   implementations here stay ours, with attribution where a pattern is borrowed.
 - Regress the reported capability boundaries. Where this baseline publishes no
   seam, the panel keeps saying so rather than growing a plausible fiction.
+
+## Status
+
+M6.0 through M6.8 are complete, with two exclusions recorded above rather than
+left implicit: `/rename`, which no public seam supports, and the Windows
+launcher, which has no execution path that avoids passing user arguments
+through a shell.
+
+The suite is 67 files and 616 tests; every source module is reachable. Three
+gates run in CI — `pnpm check`, the module-reachability guard, and the
+clean-profile install-and-launch — and the third caught two defects in this
+milestone that nothing else could see: a duplicate command registration that
+left the interface dead, and, earlier, one-shot runs that never exited.
+
+## What M6 changed about how this repo works
+
+Every defect that escaped in M5 and M6 shared a shape: the local gate was
+satisfied by code that had never been run the way a user runs it. The
+clean-profile launch gate now closes that, and three habits came out of it —
+verify a claim before building on it (two M6.4 items already existed), check
+whether the composition already provides a thing before adding it, and prefer a
+reported limitation to a plausible-looking guess.
