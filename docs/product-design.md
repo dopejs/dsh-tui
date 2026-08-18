@@ -7,7 +7,11 @@ MVP. The target is a keyboard-first coding workspace with the daily usability,
 safety, orchestration, and extension visibility expected from tools such as
 Claude Code, while preserving DeepSeek Harness ownership and event semantics.
 
-The target is measured as product capability, not visual imitation. Harness is
+The target is measured as product capability **and** interface parity. An
+earlier revision of this document said "product capability, not visual
+imitation"; that was wrong about the goal, and building to it produced a tool
+whose surface was materially harder to use than its references. Interface work
+is tracked in [M6 roadmap](roadmap-m6.md). Harness is
 the authority for agents, sessions, commands, permissions, tools, projections,
 skills, and plugins. The TUI owns terminal editing, layout, navigation, local
 preferences, and presentation state.

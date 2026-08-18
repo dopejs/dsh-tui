@@ -14,6 +14,7 @@ or code volume. A slice moves the total only after its exit criteria pass.
 | M3 Orchestration | M3.1–M3.4 | 62% | 78% |
 | M4 Extension Workbench | M4.1–M4.4 | 78% | 90% |
 | M5 Productization | M5.1–M5.4 | 90% | 100% |
+| M6 Interface parity | M6.0–M6.8 | — | see [M6 roadmap](roadmap-m6.md) |
 
 All milestones are complete; see the [final completion audit](#final-completion-audit).
 
