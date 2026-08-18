@@ -55,7 +55,17 @@ export class ScreenHarness {
       {
         cols: columns,
         cwd: resolve(import.meta.dirname, '..'),
-        env: { ...process.env, CI: '', FORCE_COLOR: '3', TERM: 'xterm-256color' },
+        env: {
+          ...process.env,
+          CI: '',
+          // The emulator and a real terminal disagree about where Ink's output
+          // ends, so the offset that lands on the caret differs. Pinned here to
+          // the emulator's value: these tests verify that the offset is applied
+          // correctly, not what it should be on any particular terminal.
+          DSH_TUI_CURSOR_ROW_OFFSET: '1',
+          FORCE_COLOR: '3',
+          TERM: 'xterm-256color',
+        },
         name: 'xterm-256color',
         rows,
       },

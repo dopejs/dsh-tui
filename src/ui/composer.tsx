@@ -198,6 +198,23 @@ export function createComposerView(
 const PROMPT_CELLS = 2
 
 /**
+ * Rows added when placing the terminal cursor.
+ *
+ * Ink moves the cursor up from the end of its output, so where a position
+ * lands depends on where the terminal thinks that end is -- and a terminal and
+ * an emulator do not agree about it. Calibrated against the emulator alone,
+ * the composing text of an input method appeared one row above the composer on
+ * a real terminal, drawn over its border.
+ *
+ * Overridable so the right value can be established by looking at a terminal,
+ * rather than inferred through another release.
+ */
+const CURSOR_ROW_OFFSET = (() => {
+  const configured = Number(process.env.DSH_TUI_CURSOR_ROW_OFFSET)
+  return Number.isSafeInteger(configured) ? configured : 2
+})()
+
+/**
  * Cells between the start of a row's content and the caret.
  *
  * Measured in terminal cells rather than code units, because a CJK character
@@ -291,12 +308,7 @@ export function Composer({
       // Horizontally the frame costs a border and a padding cell; vertically
       // only the border.
       x: x + inset * 2 + PROMPT_CELLS + caretColumn,
-      // Plus one: Ink moves the cursor up from the last line of output rather
-      // than from the line after it, so a position lands one row high.
-      // Measured against a real terminal, and the screen test holds it there --
-      // if a future Ink corrects the arithmetic, that test goes red rather than
-      // the cursor drifting quietly.
-      y: y + inset + caretRow + 1,
+      y: y + inset + caretRow + CURSOR_ROW_OFFSET,
     }
     const key = `${String(position.x)}:${String(position.y)}`
     if (applied.current === key) return

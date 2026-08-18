@@ -657,3 +657,30 @@ noticed on its own:
 | --- | --- | --- | --- |
 | `0.6.0` | npm `0.1.0-rc.7` | Shift-Enter newline | 676 tests including twenty on a live PTY; clean-profile launch and install resolution green. |
 
+### 0.6.1
+
+An answer changed colour halfway through. The role tone was applied to the
+whole row, which coloured only the first paragraph — the one drawn on the
+marker's line — while every paragraph after it went through the Markdown view
+untinted. The tone now belongs to the marker, and the words are one colour.
+
+The cursor offset is no longer a constant calibrated against the emulator.
+Ink moves the cursor up from the end of its output, so where a position lands
+depends on where the terminal thinks that end is, and a terminal and an
+emulator do not agree about it: the `+1` that made the screen test exact put an
+input method's composing text one row above the composer on Ghostty, drawn over
+its border. It is now `CURSOR_ROW_OFFSET`, overridable through
+`DSH_TUI_CURSOR_ROW_OFFSET`, so the right value can be established by looking at
+a terminal instead of inferred through another release. The screen tests pin the
+emulator's value explicitly: they verify the offset is applied, not what it
+should be anywhere in particular.
+
+This is the second time the emulator has disagreed with a real terminal — the
+first was per-buffer mode state in `0.5.2` — and the second time a magic
+constant shipped on its word alone. An emulator settles what a program writes;
+it does not settle what a terminal does with it.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.6.1` | npm `0.1.0-rc.7` | Answer colour, cursor offset | 676 tests including twenty on a live PTY; clean-profile launch green. |
+

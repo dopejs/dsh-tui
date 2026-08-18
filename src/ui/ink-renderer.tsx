@@ -220,9 +220,17 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
                 })()}
               </Text>
             ) : (
-            <Text {...tone(ROW_TONE[row.kind])} wrap="truncate-end">
+            // The role tone belongs to the marker, not to the words. Applied to
+            // the whole line it coloured only an answer's first paragraph --
+            // the one drawn here -- while every paragraph after it went through
+            // the Markdown view untinted, so a reply changed colour halfway
+            // through for no reason a reader could infer.
+            <Text
+              {...(row.kind === 'assistant' ? {} : tone(ROW_TONE[row.kind]))}
+              wrap="truncate-end"
+            >
               {model.focusedRowId === row.id ? FOCUS_MARKER : ''}
-              {ROW_MARKERS[row.kind]}
+              <Text {...tone(ROW_TONE[row.kind])}>{ROW_MARKERS[row.kind]}</Text>
               {' '}
               {/* Only assistant prose is Markdown; a user turn and a tool card
                   are shown as written, since interpreting them would change
