@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { appendFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
+import { isAbsolute, relative, resolve } from 'node:path'
 import type { Context } from '@deepseek-ai/cordis'
 import type { ModelSelection } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-agent-default-model'
@@ -423,7 +424,35 @@ export async function startTuiRuntime(
         bindingOwner.own('attachments controller', () => attachments.dispose())
         const editor = new EditorController()
         bindingOwner.own('editor controller', () => editor.dispose())
-        const input = new InputController({ agent: attachment.agent, commands })
+        const workspaceRoot = attachment.agent.session.header.cwd ?? dependencies.cwd()
+        const input = new InputController({
+          agent: attachment.agent,
+          commands,
+          references: {
+            ...(attachmentStore === undefined
+              ? {}
+              : {
+                  attachImage: async (path: string) => {
+                    const outcome = await attachments.attach(
+                      path,
+                      async candidate => new Uint8Array(await readFile(candidate)),
+                    )
+                    if (outcome !== 'attached') throw new Error('the attachment store refused it')
+                    const staged = attachments.getSnapshot().rows.at(-1)
+                    return staged?.attachmentId ?? ''
+                  },
+                }),
+            readFile: async (path: string) => new Uint8Array(await readFile(path)),
+            // Reuse the same containment rule the path completion enforces.
+            resolveInWorkspace: (candidate: string) => {
+              const absolute = resolve(workspaceRoot, candidate)
+              const inside = relative(workspaceRoot, absolute)
+              return inside === '' || (!inside.startsWith('..') && !isAbsolute(inside))
+                ? absolute
+                : undefined
+            },
+          },
+        })
         bindingOwner.own('input controller', () => input.dispose())
         let exportLocation: string | undefined
         try {

@@ -104,8 +104,21 @@ function removeLastCharacter(value: string): string {
 
 function submissionNotice(submission: InputSubmission): string {
   switch (submission.kind) {
-    case 'message':
-      return submission.mode === 'steer' ? 'Steering queued.' : 'Message queued.'
+    case 'message': {
+      const queued = submission.mode === 'steer' ? 'Steering queued.' : 'Message queued.'
+      const refused = (submission.references ?? []).filter(entry => entry.kind === 'refused')
+      const attached = (submission.references ?? []).filter(entry => entry.kind !== 'refused')
+      // A refused reference is reported: the user believes the file went with
+      // the message, and a silent drop is the one outcome they cannot detect.
+      if (refused.length > 0) {
+        return `${queued} Not sent: ${refused
+          .map(entry => `${entry.path} (${entry.kind === 'refused' ? entry.reason : ''})`)
+          .join(', ')}`
+      }
+      return attached.length === 0
+        ? queued
+        : `${queued} Included ${String(attached.length)} reference${attached.length === 1 ? '' : 's'}.`
+    }
     case 'command':
       return submission.execution.result.text
         ?? (submission.execution.result.kind === 'success' ? 'Command completed.' : 'Command failed.')

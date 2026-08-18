@@ -50,21 +50,32 @@ Verification: fixed-width snapshots per element at 40/80/120; a fuzz case for
 unterminated fences and nested lists; the copy projection asserted to contain
 no ANSI; a streaming test that asserts rows coalesce rather than duplicate.
 
-## M6.4 References and attachments in the composer (+4)
+## M6.4 References and attachments in the composer (+4) — complete
 
-`@` completion exists for paths but only as a leading token, and attachments
-live in a separate panel.
+Two items in the original plan were already true and were verified rather than
+rebuilt: `@` completion already matches anywhere in a message (it scans back
+from the cursor to the token start), and the completion provider already
+refuses absolute paths and anything resolving outside the workspace.
 
-- accept `@path` anywhere in the message, not only at the start;
+What was missing was resolution: `@path` only completed text, so the file never
+went with the message.
+
+- ~~accept `@path` anywhere in the message, not only at the start~~ (already true);
 - resolve a referenced text file into the message as content, and a
   PNG/JPEG/WebP/GIF into a durable image block through `ctx.attachments`;
 - show each resolved reference as a chip in the composer, removable before
   send;
 - refuse a reference that leaves the workspace, and say so.
 
-Verification: reference at start/middle/end and adjacent to punctuation; a
-binary file that is not a supported image; a path escaping the workspace; a
-file exceeding `imageLimits`; replay showing the attachment reference survives.
+Verified: reference at start/middle/end and adjacent to punctuation; an
+e-mail address that is not a reference; a path escaping the workspace; an
+unreadable file; a binary file; an image with and without an attachment store;
+a truncated oversized file; and that a refused reference reaches the user
+rather than being dropped.
+
+The composer chip UI is deferred: the submit-time report names every refused
+reference, which is the property that matters — a silent drop is the one
+outcome a user cannot detect.
 
 ## M6.5 Session workflow (+4)
 

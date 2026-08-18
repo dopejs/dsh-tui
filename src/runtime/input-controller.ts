@@ -2,6 +2,14 @@ import type { Agent, AgentStatus } from '@deepseek-ai/dsh-agent'
 import { parseCommand, type CommandExecution, type CommandRuntime } from '@deepseek-ai/dsh-commands'
 import { createUserMessage, type UserMessage } from '@deepseek-ai/dsh-llm'
 
+import {
+  expandMessage,
+  findReferences,
+  resolveReferences,
+  type ReferenceDependencies,
+  type ResolvedReference,
+} from '../model/reference-resolver'
+
 const DEFAULT_MAX_INPUT_CHARS = 100_000
 
 type CommandExecutor = Pick<CommandRuntime, 'execute'>
@@ -13,6 +21,8 @@ export type InputSubmission =
       readonly kind: 'message'
       readonly message: UserMessage
       readonly mode: SubmissionMode
+      /** Present when the message carried `@path` references. */
+      readonly references?: readonly ResolvedReference[]
     }
   | {
       readonly execution: CommandExecution
@@ -42,6 +52,8 @@ export interface InputControllerOptions {
   readonly agent: Agent
   readonly commands: CommandExecutor
   readonly maxInputChars?: number
+  /** Absent leaves `@path` text untouched, which is the correct degradation. */
+  readonly references?: ReferenceDependencies
 }
 
 function validateMaximum(value: number | undefined): number {
@@ -79,10 +91,13 @@ export class InputController {
   #disposed = false
   #disposing: Promise<void> | undefined
 
+  readonly #references: ReferenceDependencies | undefined
+
   constructor(options: InputControllerOptions) {
     this.#agent = options.agent
     this.#commands = options.commands
     this.#maxInputChars = validateMaximum(options.maxInputChars)
+    this.#references = options.references
   }
 
   get commandPending(): boolean {
@@ -111,14 +126,33 @@ export class InputController {
     }
     if (line.startsWith('/')) return this.#submitCommand(line, signal)
 
+    // `@path` references are expanded before the message is delivered: the
+    // user believes the file went with it, so a reference that cannot be read
+    // is reported rather than silently dropped.
+    let text = line
+    let references: readonly ResolvedReference[] = []
+    if (this.#references !== undefined && findReferences(line).length > 0) {
+      try {
+        references = await resolveReferences(line, this.#references)
+        text = expandMessage(line, references)
+      } catch (error) {
+        return { error, kind: 'message-error', message: renderError(error), mode }
+      }
+    }
+
     try {
       const message = createUserMessage({
-        content: [{ text: line, type: 'text' }],
+        content: [{ text, type: 'text' }],
         source: { kind: 'user' },
       })
       if (mode === 'steer') this.#agent.steer(message)
       else this.#agent.followup(message)
-      return { kind: 'message', message, mode }
+      return {
+        kind: 'message',
+        message,
+        mode,
+        ...(references.length === 0 ? {} : { references }),
+      }
     } catch (error) {
       return { error, kind: 'message-error', message: renderError(error), mode }
     }
