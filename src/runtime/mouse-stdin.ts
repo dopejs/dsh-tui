@@ -18,7 +18,14 @@ import { parseMouse, type MouseEvent } from './mouse'
 export type MouseListener = (event: MouseEvent) => void
 
 export interface MouseFilteredStdin {
-  /** Stop filtering and release the source listener. */
+  /**
+   * Stop feeding the filter, leaving the stream Ink holds open.
+   *
+   * Separate from `dispose` because ending that stream while the renderer is
+   * still mounted is what a renderer notices: it is reading it.
+   */
+  readonly detach: () => void
+  /** Close the filter. Safe only once the renderer is gone. */
   readonly dispose: () => void
   /** Subscribe to decoded mouse events; returns an unsubscribe. */
   readonly onMouse: (listener: MouseListener) => () => void
@@ -108,13 +115,21 @@ export function filterMouseFromStdin(source: NodeJS.ReadStream): MouseFilteredSt
     },
   })
 
+  let detached = false
+  const detach = () => {
+    if (detached) return
+    detached = true
+    source.unpipe(filter)
+    source.pause()
+    listeners.clear()
+  }
+
   return Object.freeze({
+    detach,
     dispose: () => {
       if (disposed) return
       disposed = true
-      source.unpipe(filter)
-      source.pause()
-      listeners.clear()
+      detach()
       filter.end()
     },
     onMouse: (listener: MouseListener) => {

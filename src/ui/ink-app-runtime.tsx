@@ -117,21 +117,24 @@ export function mountInkApplication(
    * Reporting must stop before the process does: a terminal left reporting
    * prints escape sequences into the user's shell on every click afterwards.
    *
-   * The renderer is torn down first. Ink is reading the filtered stream, so
-   * ending it underneath a live renderer left the installed TUI unable to exit
-   * at all -- the launch gate caught that, and nothing else would have.
+   * Order is the whole of this. Feeding stops first, so the renderer unmounts
+   * against a quiet stream; the stream itself is closed only afterwards,
+   * because ending it under a live renderer is something a renderer reading it
+   * notices -- that left the installed TUI unable to exit at all.
    */
   return Object.freeze({
     ...mounted,
     dispose: async () => {
       try {
+        stdout.write(DISABLE_MOUSE)
+      } catch {
+        // A closed stdout is already being reported through `exited`.
+      }
+      mouse.detach()
+      try {
         await mounted.dispose()
       } finally {
-        try {
-          stdout.write(DISABLE_MOUSE)
-        } finally {
-          mouse.dispose()
-        }
+        mouse.dispose()
       }
     },
   })
