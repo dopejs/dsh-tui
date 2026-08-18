@@ -130,12 +130,16 @@ function row(
   maximum: number,
   status?: TranscriptRow['status'],
   alreadyTruncated = false,
+  reasoning?: string,
 ): TranscriptRow {
   const bounded = boundText(content, maximum)
   return Object.freeze({
     content: bounded.text,
     id,
     kind,
+    // Reasoning is carried beside the answer, never concatenated into it: the
+    // renderer folds it, the clipboard omits it, and `--print` never sees it.
+    ...(reasoning === undefined || reasoning === '' ? {} : { reasoning }),
     ...(status === undefined ? {} : { status }),
     ...(bounded.truncated || alreadyTruncated ? { truncated: true as const } : {}),
   })
@@ -201,10 +205,9 @@ function trackIndex(indexes: readonly number[], index: number): readonly number[
   return Object.freeze([...indexes, index])
 }
 
+/** The answer alone; reasoning travels separately. */
 function renderAssistant(pending: PendingAssistant): string {
-  if (pending.reasoning === '') return pending.text
-  if (pending.text === '') return `Reasoning: ${pending.reasoning}`
-  return `Reasoning: ${pending.reasoning}\n${pending.text}`
+  return pending.text
 }
 
 function updatePendingAssistant(
@@ -448,8 +451,8 @@ export function reduceTranscript(
         })
       const next = updatePendingAssistant(previous, event.data.chunk, maximum)
       const content = renderAssistant(next)
-      if (content !== '') {
-        const nextRow = row(key, 'assistant', content, maximum, 'streaming')
+      if (content !== '' || next.reasoning !== '') {
+        const nextRow = row(key, 'assistant', content, maximum, 'streaming', false, next.reasoning)
         if (!updateRow(fold.rows, key, nextRow)) appendRow(fold, nextRow, state.limits)
       }
       fold.pendingAssistants = [

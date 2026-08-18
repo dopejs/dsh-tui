@@ -144,10 +144,13 @@ describe('transcript reducer', () => {
       assistantChunk(5, { block: { text: 'hello', type: 'text' }, index: 1, type: 'block-end' }),
     ])
 
+    // Reasoning travels beside the answer, not concatenated into it, so the
+    // renderer can fold it and the clipboard can leave it out.
     expect(streamed.rows).toEqual([{
-      content: 'Reasoning: think\nhello',
+      content: 'hello',
       id: 'assistant:0:0',
       kind: 'assistant',
+      reasoning: 'think',
       status: 'streaming',
     }])
     expect(streamed.pendingAssistants).toHaveLength(1)

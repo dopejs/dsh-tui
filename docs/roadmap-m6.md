@@ -121,15 +121,21 @@ and reduced motion opts out of ticking entirely.
 Git branch and dirty state are **not** included: reading them means running git
 per turn boundary, and this milestone has no seam that reports them.
 
-## M6.7 Reasoning policy (+2)
+## M6.7 Reasoning policy (+2) — complete
 
-Reasoning is currently rendered inline in the transcript while `--print`
-deliberately excludes it. That inconsistency is unresolved, not intentional.
+The transcript rendered reasoning inline while `--print` excluded it. The cause
+was structural: the reducer concatenated `Reasoning: …` into the row's content,
+so no surface downstream could tell the two apart.
 
-- decide one policy: folded-by-default in the interactive transcript, still
-  excluded from `--print`, on the grounds that a human may want the scratch
-  work but a pipeline consumer must not act on it;
-- make it a preference, defaulting to folded.
+Reasoning now travels as its own field beside the answer. One policy applies
+across all three surfaces, and a test asserts they agree rather than trusting
+each in isolation:
+
+- the transcript folds it behind `^E`, because a human may want the scratch
+  work but must not mistake it for the conclusion;
+- the clipboard omits it — pasting a model's deliberation into an issue as if
+  it were the answer is the failure this prevents;
+- `--print` omits it, because a pipeline consumer must never act on it.
 
 ## M6.8 Render modes and platform (+3)
 

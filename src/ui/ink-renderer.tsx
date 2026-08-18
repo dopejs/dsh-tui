@@ -151,6 +151,19 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
                   : <MarkdownInline text={prose.lead} theme={theme} />}
               {row.status === undefined ? '' : ROW_STATUS[row.status]}
             </Text>
+            {/* Scratch work, folded by default: a human may want it, but it is
+                not the answer and must not be mistaken for one. */}
+            {row.reasoning === undefined ? null : expandedRowIds?.has(row.id) === true ? (
+              <Box flexDirection="column" marginLeft={2}>
+                {row.reasoning.split('\n').map((line, index) => (
+                  <Text {...tone('muted')} key={index} wrap="truncate-end">{line}</Text>
+                ))}
+              </Box>
+            ) : (
+              <Text {...tone('muted')} wrap="truncate-end">
+                {'  '}reasoning hidden · ^E show
+              </Text>
+            )}
             {prose !== undefined && prose.rest.length > 0 ? (
               <Box marginLeft={2}>
                 <MarkdownView blocks={prose.rest} theme={theme} />

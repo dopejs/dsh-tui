@@ -11,6 +11,8 @@ export interface TranscriptRow {
   readonly content: string
   readonly id: string
   readonly kind: TranscriptRowKind
+  /** Model scratch work, kept apart from the answer it precedes. */
+  readonly reasoning?: string
   readonly status?: 'complete' | 'error' | 'pending' | 'streaming'
   readonly toolCard?: ToolCardModel
   readonly truncated?: true
