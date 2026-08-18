@@ -89,8 +89,16 @@ happened during binding creation, the whole interactive TUI failed to render.
 `pnpm check` passed throughout; only launching the installed package caught it,
 which is the third time that gate has caught something nothing else could.
 
-The lesson is recorded rather than the code: before adding a command, check
-whether the composition already provides it. The palette is the inventory.
+The lesson is recorded and enforced: every TUI command now registers through a
+guard that skips a name the composition already provides, so a future collision
+degrades to a logged skip instead of a dead interface.
+
+`/new` and `/model` were then added on that footing. Both were previously
+deferred as risky; they are not. The session coordinator already exposes
+`createSession`, which fork and resume use, so the no-overlap ownership
+invariant holds for these without a second mechanism. `/model` parses the exact
+`provider/model` selector the startup flag validates and applies it to the newly
+created agent.
 
 `/rename` is **not implemented and will not be** on this baseline.
 `SessionPersistence` publishes `create`, `append`, `load`, `inspect`, `list`,

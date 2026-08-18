@@ -423,10 +423,71 @@ export async function startTuiRuntime(
           reportError: diagnostics.report,
         })
         bindingOwner.own('attachments controller', () => attachments.dispose())
-        // Harness already registers the session commands its own services own
-        // — /compact among them — and a duplicate registration throws, which
-        // takes the whole binding down with it. The palette merges those
-        // commands already, so the TUI adds none of them.
+        // Harness registers the session commands its own services own, and a
+        // duplicate registration throws — which, during binding creation,
+        // takes the whole interactive TUI down. So every TUI command is added
+        // only if the composition does not already provide it.
+        const registerIfAbsent = (definition: Parameters<typeof commands.register>[0]) => {
+          if (commands.list(attachment.agent).some(entry => entry.name === definition.name)) {
+            diagnostics.report(new Error(
+              `Skipping /${definition.name}: the composition already provides it`,
+            ))
+            return
+          }
+          bindingOwner.own(`${definition.name} command`, commands.register(definition))
+        }
+
+        const startSession = (
+          selection: { readonly model: string, readonly provider: string } | undefined,
+          label: string,
+        ): { kind: 'error' | 'success', text: string } => {
+          const activeCoordinator = coordinatorRef.current
+          if (activeCoordinator === undefined) {
+            return { kind: 'error', text: 'Session transition coordinator is not ready.' }
+          }
+          if (activeCoordinator.getSnapshot().status !== 'attached') {
+            return { kind: 'error', text: 'Another session transition is already running.' }
+          }
+          const freshId = dependencies.sessionId()
+          // Reuses the coordinator transition fork and resume already use, so
+          // the no-overlap ownership invariant holds for this path too.
+          const transition = activeCoordinator.createSession(
+            freshId,
+            transitionSignal => createBinding({
+              cwd: attachment.agent.session.header.cwd ?? dependencies.cwd(),
+              kind: 'create',
+              ...(selection === undefined ? {} : { modelSelection: selection }),
+              sessionId: freshId,
+            }, transitionSignal),
+            subagentAttachments.signal,
+          )
+          void transition.catch(diagnostics.report)
+          return { kind: 'success', text: `${label} ${freshId}.` }
+        }
+
+        registerIfAbsent({
+          description: 'Start a fresh session, disposing this one first',
+          handler: () => startSession(undefined, 'Starting a new session'),
+          name: 'new',
+          recordInput: false,
+        })
+        registerIfAbsent({
+          description: 'Start a fresh session on an exact provider/model',
+          handler: (invocation) => {
+            const requested = invocation.rawInput.trim()
+            if (requested === '') {
+              return { kind: 'error', text: 'Usage: /model provider/model' }
+            }
+            try {
+              const selection = parseModelSelector(requested)
+              return startSession(selection, `Starting ${requested} in session`)
+            } catch (error) {
+              return { kind: 'error', text: diagnosticMessage(error) }
+            }
+          },
+          name: 'model',
+          recordInput: false,
+        })
         const editor = new EditorController()
         bindingOwner.own('editor controller', () => editor.dispose())
         const workspaceRoot = attachment.agent.session.header.cwd ?? dependencies.cwd()
