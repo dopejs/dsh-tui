@@ -60,6 +60,14 @@ interface QuestionDraft {
   readonly selected: readonly string[]
 }
 
+/**
+ * Lines the transcript moves per wheel notch.
+ *
+ * Three is what a terminal's own scrollback does, so the gesture arrives
+ * already calibrated to what the hand expects.
+ */
+const WHEEL_LINES = 3
+
 export interface InteractiveTuiProps {
   readonly acceptsInput?: () => boolean
   readonly activity: ActivityCenterController
@@ -83,6 +91,12 @@ export interface InteractiveTuiProps {
    * would blank out the shell's own output, so it grows with its content.
    */
   readonly renderMode?: 'alternate' | 'inline'
+  /** Decoded mouse events, when the terminal reports them. */
+  readonly mouse?: { readonly onMouse: (listener: (event: {
+    readonly column: number
+    readonly kind: 'press' | 'release' | 'wheel-down' | 'wheel-up'
+    readonly row: number
+  }) => void) => () => void }
   readonly interaction: InteractionController
   readonly jobs: JobsController
   readonly mcp: McpInventoryController
@@ -224,6 +238,7 @@ export function InteractiveTui({
   columns: fixedColumns,
   completion,
   editor,
+  mouse,
   renderMode = 'alternate',
   firstRun = false,
   input,
@@ -399,6 +414,27 @@ export function InteractiveTui({
     attachments.getSnapshot,
     attachments.getSnapshot,
   )
+
+  /*
+   * The wheel scrolls the transcript.
+   *
+   * Three lines a notch is what a terminal scrollback does, and matching it
+   * means the gesture already feels calibrated. Scrolling away from the tail
+   * detaches the viewport exactly as the keyboard does, so the two cannot
+   * disagree about where the user is looking.
+   */
+  useEffect(() => {
+    if (mouse === undefined) return undefined
+    return mouse.onMouse((event) => {
+      if (!acceptsInput()) return
+      // The offset counts rows back from the tail, so scrolling up is a
+      // positive step -- the same convention the up arrow uses. Reading it the
+      // other way round leaves the wheel inert at the tail, where a session
+      // spends most of its time, and the gesture looks unimplemented.
+      if (event.kind === 'wheel-up') viewport.scrollLines(WHEEL_LINES)
+      else if (event.kind === 'wheel-down') viewport.scrollLines(-WHEEL_LINES)
+    })
+  }, [mouse, viewport])
 
   // Start the clock on idle→running and clear it on the way back, so a second
   // turn never inherits the first one's start time.

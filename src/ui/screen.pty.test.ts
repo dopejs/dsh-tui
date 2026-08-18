@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { DISABLE_MOUSE, ENABLE_MOUSE } from '../runtime/mouse'
 import { ScreenHarness } from '../../test-fixtures/screen-harness'
 
 const onPosix = process.platform === 'win32' ? describe.skip : describe
@@ -279,4 +280,71 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
     expect(assistantRow).toBeGreaterThan(userRow + 1)
     expect((screen[assistantRow - 1] ?? 'x').trim()).toBe('')
   })
+
+  // Ink 7 has no mouse API, so the terminal is asked to report and the reports
+  // are decoded here. The proof is that a wheel notch moves the transcript,
+  // on a real terminal, and that the sequence never reaches the composer.
+  it('scrolls the transcript with the wheel', async () => {
+    harness = new ScreenHarness({ rows: 20, scenario: 'overflow' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('turn 59 of a long conversation')),
+      'the tail of the conversation',
+    )
+    await harness.settle()
+
+    const tail = harness.screen().join('\n')
+    expect(tail).toContain('turn 59 of a long conversation')
+
+    harness.wheel('up')
+    harness.wheel('up')
+    await harness.waitFor(
+      screen => !screen.some(line => line.includes('turn 59 of a long conversation')),
+      'the transcript to scroll back',
+    )
+
+    // Scrolled away from the tail, and the report never reached the composer.
+    // The composer is found by its own hint: `›` also marks the focused
+    // transcript row once scrolling detaches the viewport, so looking for the
+    // glyph finds the wrong line.
+    const scrolled = harness.screen()
+    expect(scrolled.join('\n')).not.toContain('[<')
+    expect(scrolled.some(line => line.includes('Try "explain this repository"'))).toBe(true)
+
+    harness.wheel('down')
+    harness.wheel('down')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('turn 59 of a long conversation')),
+      'the transcript to return to the tail',
+    )
+  }, 30_000)
+
+  // The consequential half of mouse support. A terminal left reporting prints
+  // escape sequences into the user's shell on every click afterwards -- it
+  // looks like a corrupted terminal, and it outlives the process that caused
+  // it. Asserted after a real exit, because nothing on screen can show it.
+  it('stops the terminal reporting before it exits', async () => {
+    harness = new ScreenHarness({ rows: 20, scenario: 'conversation' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('command palette')),
+      'the composer hint',
+    )
+    expect(harness.rawOutput()).toContain(ENABLE_MOUSE)
+
+    // Through the palette, which is the path a user has: Ctrl-P, search, Enter.
+    harness.type('\u0010')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('Command palette')),
+      'the command palette',
+    )
+    harness.type('Exit TUI')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('Exit TUI')),
+      'the exit action',
+    )
+    harness.type('\r')
+    const code = await harness.waitForExit()
+
+    expect(code).toBe(0)
+    expect(harness.rawOutput()).toContain(DISABLE_MOUSE)
+  }, 30_000)
 })

@@ -6,6 +6,8 @@ import type {
   SessionAttachmentSnapshot,
   SwitchableSessionBinding,
 } from '../runtime/session-attachment-coordinator'
+import { DISABLE_MOUSE, ENABLE_MOUSE } from '../runtime/mouse'
+import { filterMouseFromStdin, type MouseFilteredStdin } from '../runtime/mouse-stdin'
 import { InteractiveTui, type InteractiveTuiProps } from './app'
 import { mountOwnedInkRenderer, type MountedInkRenderer } from './ink-lifecycle'
 
@@ -23,6 +25,8 @@ export interface InkApplicationOptions {
   readonly firstRun?: boolean
   /** Terminal occupancy; `inline` leaves the session in scrollback. */
   readonly renderMode?: 'alternate' | 'inline'
+  /** Decoded mouse events, when the terminal was asked to report them. */
+  readonly mouse?: MouseFilteredStdin
   readonly onQuit: (code: number) => void
   readonly sessionCenter: SessionCenterController
   readonly sessions: TuiSessionStore
@@ -38,6 +42,7 @@ export interface InkApplicationStreams {
 
 export function SessionApplication({
   firstRun = false,
+  mouse,
   onQuit,
   renderMode = 'alternate',
   sessionCenter,
@@ -64,6 +69,7 @@ export function SessionApplication({
     key={`${snapshot.binding.sessionId}:${String(snapshot.revision)}`}
     {...snapshot.binding.application}
     firstRun={firstRun}
+    {...(mouse === undefined ? {} : { mouse })}
     renderMode={renderMode}
     {...(snapshot.error === undefined
       ? {}
@@ -78,20 +84,55 @@ export function mountInkApplication(
   streams: InkApplicationStreams = {},
 ): MountedInkApplication {
   const stdout = streams.stdout ?? process.stdout
+  const stdin = streams.stdin ?? process.stdin
   // Read once at mount: switching buffers under a live render would strand
   // whatever was already drawn in the buffer being left behind.
   const alternateScreen = options.renderMode !== 'inline'
-  return mountOwnedInkRenderer(
-    () => render(<SessionApplication {...options} />, {
-      alternateScreen,
-      exitOnCtrlC: false,
-      incrementalRendering: true,
-      interactive: true,
-      maxFps: 20,
-      stderr: streams.stderr ?? process.stderr,
-      stdin: streams.stdin ?? process.stdin,
-      stdout,
-    }),
+
+  // Mouse reporting is asked for only when there is a terminal to ask. Writing
+  // the sequence to a pipe puts it in whatever is consuming the output.
+  const interactive = stdin.isTTY === true && stdout.isTTY === true
+  const mouse = interactive ? filterMouseFromStdin(stdin) : undefined
+  if (mouse !== undefined) stdout.write(ENABLE_MOUSE)
+
+  const mounted = mountOwnedInkRenderer(
+    () => render(
+      <SessionApplication {...options} {...(mouse === undefined ? {} : { mouse })} />,
+      {
+        alternateScreen,
+        exitOnCtrlC: false,
+        incrementalRendering: true,
+        interactive: true,
+        maxFps: 20,
+        stderr: streams.stderr ?? process.stderr,
+        stdin: mouse?.stream ?? stdin,
+        stdout,
+      },
+    ),
     stdout,
   )
+
+  if (mouse === undefined) return mounted
+  /*
+   * Reporting must stop before the process does: a terminal left reporting
+   * prints escape sequences into the user's shell on every click afterwards.
+   *
+   * The renderer is torn down first. Ink is reading the filtered stream, so
+   * ending it underneath a live renderer left the installed TUI unable to exit
+   * at all -- the launch gate caught that, and nothing else would have.
+   */
+  return Object.freeze({
+    ...mounted,
+    dispose: async () => {
+      try {
+        await mounted.dispose()
+      } finally {
+        try {
+          stdout.write(DISABLE_MOUSE)
+        } finally {
+          mouse.dispose()
+        }
+      }
+    },
+  })
 }

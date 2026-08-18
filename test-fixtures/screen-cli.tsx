@@ -13,7 +13,7 @@
  * and the transcript is seeded from a named scenario so runs are deterministic.
  */
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { render } from 'ink'
+import { mountInkApplication } from '../src/ui/ink-app-runtime'
 
 import type { AgentStatusStore } from '../src/model/agent-status-controller'
 import { ActivityCenterController } from '../src/model/activity-center-controller'
@@ -38,7 +38,7 @@ import { SubagentTreeController } from '../src/model/subagent-tree-controller'
 import { TranscriptController } from '../src/model/transcript-controller'
 import { TranscriptViewportController } from '../src/model/transcript-viewport-controller'
 import type { InputController } from '../src/runtime/input-controller'
-import { InteractiveTui } from '../src/ui/app'
+import type { InteractiveTuiProps } from '../src/ui/app'
 
 const scenario = process.argv[2] ?? 'empty'
 
@@ -165,35 +165,55 @@ const sessionCenter = new SessionCenterController(
 const runtimeStatus = new RuntimeStatusController({ model: 'model', provider: 'fixture' })
 const interaction = new InteractionController()
 
-render(
-  <InteractiveTui
-    activity={activity}
-    attachments={attachments}
-    changes={changes}
-    completion={completion}
-    editor={editor}
-    input={input}
-    interaction={interaction}
-    jobs={jobs}
-    mcp={mcp}
-    modelLabel="fixture/model"
-    onQuit={() => process.exit(0)}
-    overlay={overlay}
-    palette={palette}
-    permission={permission}
-    plugins={plugins}
-    preferences={preferences}
-    projections={projections}
-    recovery={recovery}
-    runtimeStatus={runtimeStatus}
-    sessionCenter={sessionCenter}
-    sessionId="session-screen"
-    skills={skills}
-    status={status}
-    subagents={subagents}
-    transcript={transcript}
-    viewport={viewport}
-    workspace="/fixture/workspace"
-  />,
-  { alternateScreen: true, exitOnCtrlC: false, incrementalRendering: true, interactive: true, maxFps: 20 },
-)
+/*
+ * Mounted through `mountInkApplication`, the same entry point the plugin uses.
+ *
+ * Mounting `InteractiveTui` directly left the mouse plumbing -- asking the
+ * terminal to report, filtering the reports out of Ink's input, and stopping on
+ * the way out -- outside everything the screen tests exercise. Removing the
+ * filter kept them green.
+ */
+const application: Omit<InteractiveTuiProps, 'onQuit' | 'sessionCenter'> = {
+  activity,
+  attachments,
+  changes,
+  completion,
+  editor,
+  input,
+  interaction,
+  jobs,
+  mcp,
+  modelLabel: 'fixture/model',
+  overlay,
+  palette,
+  permission,
+  plugins,
+  preferences,
+  projections,
+  recovery,
+  runtimeStatus,
+  sessionId: 'session-screen',
+  skills,
+  status,
+  subagents,
+  transcript,
+  viewport,
+  workspace: '/fixture/workspace',
+}
+
+const snapshot = {
+  binding: { application, sessionId: 'session-screen' },
+  revision: 0,
+  status: 'attached',
+} as never
+
+// Disposed before exiting, because that is what stops the terminal reporting.
+// Exiting straight from `onQuit` leaves the terminal printing escape sequences
+// into the user's shell on every click afterwards.
+const mounted = mountInkApplication({
+  onQuit: () => {
+    void mounted.dispose().then(() => process.exit(0), () => process.exit(1))
+  },
+  sessionCenter,
+  sessions: { getSnapshot: () => snapshot, subscribe: () => () => undefined },
+})

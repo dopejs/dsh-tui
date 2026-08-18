@@ -34,6 +34,8 @@ export class ScreenHarness {
   readonly #terminal: InstanceType<typeof Terminal>
   readonly #process: IPty
   #disposed = false
+  #raw = ''
+  #exitCode: number | undefined
 
   constructor(options: ScreenHarnessOptions = {}) {
     const columns = options.columns ?? 80
@@ -51,7 +53,13 @@ export class ScreenHarness {
       },
     )
     this.#process.onData((data) => {
+      // Kept alongside the emulated screen: a sequence that only changes modes
+      // never lands in a cell, so the grid cannot answer whether it was sent.
+      this.#raw += data
       this.#terminal.write(data)
+    })
+    this.#process.onExit(({ exitCode }) => {
+      this.#exitCode = exitCode
     })
   }
 
@@ -129,6 +137,31 @@ export class ScreenHarness {
   /** The character drawn in a cell, as the terminal holds it. */
   characterAt(row: number, column: number): string {
     return this.#terminal.buffer.active.getLine(row)?.getCell(column)?.getChars() ?? ''
+  }
+
+  /** A wheel notch, as a terminal reports it in SGR mode. */
+  wheel(direction: 'down' | 'up', column = 1, row = 1): void {
+    const button = direction === 'up' ? 64 : 65
+    this.#process.write(
+      `${String.fromCodePoint(0x1b)}[<${String(button)};${String(column)};${String(row)}M`,
+    )
+  }
+
+  /** Every byte the process wrote, escape sequences included. */
+  rawOutput(): string {
+    return this.#raw
+  }
+
+  /** Waits for the process to exit on its own, rather than killing it. */
+  async waitForExit(timeoutMs = 15_000): Promise<number> {
+    const deadline = Date.now() + timeoutMs
+    while (this.#exitCode === undefined) {
+      if (Date.now() >= deadline) {
+        throw new Error(`Timed out waiting for exit.\nScreen was:\n${this.screen().join('\n')}`)
+      }
+      await delay(25)
+    }
+    return this.#exitCode
   }
 
   type(text: string): void {

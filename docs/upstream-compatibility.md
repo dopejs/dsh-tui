@@ -481,3 +481,59 @@ row.
 | --- | --- | --- | --- |
 | `0.4.2` | npm `0.1.0-rc.7` | Band contrast | 645 tests including eleven on a live PTY; clean-profile launch and install resolution green. |
 
+### 0.5.0
+
+The wheel scrolls the transcript. Ink 7.1.1 exposes no mouse API at all, so the
+protocol is handled here: SGR reporting is asked for at mount, decoded, and
+turned off on the way out.
+
+SGR (`?1006`) rather than the original X10 encoding, which packs coordinates
+into single bytes and silently stops above column 223 — a width a full-screen
+terminal reaches — and which cannot distinguish a release.
+
+Ink reads stdin itself, so a terminal asked to report sends Ink escape sequences
+it can only read as typing: clicking would put `[<0;12;5M` in the composer.
+Filtering after the fact is impossible, since Ink's listener sees the same bytes,
+so Ink is handed a stream this owns, with the reports removed. The proxy
+delegates raw mode, TTY identity and reference counting to the real descriptor,
+because those belong to the real one; only the data is rewritten. A report split
+across two reads is reassembled, and a fragment that never completes is released
+rather than held forever.
+
+Three things the real-terminal test caught that nothing else would have:
+
+- The wheel direction was inverted. The offset counts rows back from the tail,
+  so scrolling up is a positive step. Read the other way the wheel is inert at
+  the tail, where a session spends most of its time, and the feature looks
+  unimplemented. A unit test asserting `scrollLines` was called would have
+  passed.
+- The screen fixture mounted `InteractiveTui` directly, leaving the mouse wiring
+  outside everything the screen tests exercise — removing the stdin filter kept
+  them green. The fixture now mounts through `mountInkApplication`, the same
+  entry point the plugin uses.
+- Nothing asserted that reporting stops. A terminal left reporting prints escape
+  sequences into the user's shell on every click afterwards; it looks like a
+  corrupted terminal and outlives the process that caused it. That is now
+  asserted after a real exit through the command palette, since no cell on
+  screen can show it.
+
+The first implementation attached a `data` listener to stdin. That assumes the
+stream is flowing and that this process reaches it first, and neither is
+guaranteed: under the real host the interface received no keystrokes at all and
+could not even be exited. Piping instead lets Node handle flow control, which
+was the part being assumed. Only `pnpm test:package` caught it — the unit tests
+and the PTY screen tests both passed throughout, because in both the fixture
+owns stdin outright.
+
+Teardown order matters too: Ink reads the filtered stream, so ending it
+underneath a live renderer also left the installed TUI unable to exit. The
+renderer is disposed first, then reporting is turned off, then the filter is
+released.
+
+Clicking is not implemented: only the wheel. Reports for presses and releases
+are decoded and delivered, and nothing consumes them yet.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.5.0` | npm `0.1.0-rc.7` | Wheel scrolling | 665 tests including thirteen on a live PTY; clean-profile launch and install resolution green. |
+
