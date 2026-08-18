@@ -1,19 +1,16 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`renderInkFrame > degrades status metadata deterministically at 40 columns 1`] = `
-"dsh-tui · status-session · idle
-provider/model · permission workspace-w…
+"dsh-tui · status-session · idle · provi…
 transcript empty"
 `;
 
 exports[`renderInkFrame > degrades status metadata deterministically at 80 columns 1`] = `
-"dsh-tui · status-session · idle
-provider/model · permission workspace-write · tokens 1234 · ctx 128000
+"dsh-tui · status-session · idle · provider/model · permission workspace-write ·…
 transcript empty"
 `;
 
 exports[`renderInkFrame > degrades status metadata deterministically at 120 columns 1`] = `
-"dsh-tui · status-session · idle
-provider/model · permission workspace-write · tokens 1234 · ctx 128000 · /very/long/workspace/path
+"dsh-tui · status-session · idle · provider/model · permission workspace-write · tokens 1234 · ctx 128000 · /very/long/w…
 transcript empty"
 `;

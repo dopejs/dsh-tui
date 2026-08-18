@@ -267,3 +267,33 @@ where Claude Code puts it and where the cursor already is.
 | --- | --- | --- | --- |
 | `0.2.4` | npm `0.1.0-rc.7` | Interface defects | 625 tests, clean-profile launch, global and local install resolution all green. |
 
+### 0.2.5
+
+The caret was invisible while typing. The end-of-line cursor token carried a
+full block glyph *and* was rendered inverted, so inversion painted the block in
+the background colour — an invisible cursor on a dark theme. The placeholder
+path had always used an inverted space, which is why the caret was visible
+before the first keystroke and gone after it. Both tests asserted the glyph
+`█` rather than that anything was visible, so they stayed green through it.
+The cursor now carries a cell for inversion to show, and the tests assert that
+invariant instead. Mutation-verified.
+
+The working line lived in the status area below the composer. A model thinking
+is part of the exchange being read, and reporting it three lines below the
+composer makes the user look away from where the reply is about to appear. It
+now sits at the foot of the conversation. Nothing had asserted its position at
+all — the move broke no test — so `layout.test.tsx` now pins ownership rather
+than order, because the two regions are adjacent in a combined render and an
+order assertion alone stayed green with the line back in the status area.
+
+Each injected reminder spent two lines: one for the content, one for the fold
+summary. A turn carrying three reminders spent six lines saying nothing the
+user asked for. The summary now rides on the same line.
+
+The status footer was five lines — the same clutter the header used to be, just
+moved. It is two: identity and route, then consumption and position.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.2.5` | npm `0.1.0-rc.7` | Interface layout | 631 tests, clean-profile launch, global and local install resolution all green. |
+

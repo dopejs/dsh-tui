@@ -25,6 +25,12 @@ export const ROW_MARKERS: Record<TranscriptRowKind, string> = {
 /** The glyph marking the focused row; kept distinct from every role marker. */
 export const FOCUS_MARKER = '› '
 
+/**
+ * The working line's marker, one cell like every role marker so the foot of
+ * the conversation stays column-aligned with the rows above it.
+ */
+export const WORKING_MARKER = '· '
+
 const ROW_TONE: Record<TranscriptRowKind, SemanticTone | undefined> = {
   assistant: 'accent',
   system: 'muted',
@@ -78,47 +84,35 @@ function metadata(model: ScreenModel, columns: number): readonly string[] {
  * composer it describes.
  */
 export function StatusFooter({ columns, model }: FrameProps) {
-  const theme = model.welcome?.theme ?? 'default'
-  const tone = (name: SemanticTone | undefined) => toneStyle(theme, name)
   // Only drawn when usage is actually known: an empty bar labelled 0% asserts
   // "nothing consumed", when the truth may be "not reported".
   const gauge = model.contextUsed === undefined
     ? undefined
     : contextGauge(model.contextUsed, model.contextWindow)
   const sources = describeSources(model.contextSources ?? [])
+  // Two lines, not five. Identity and route on the first, consumption and
+  // position on the second. Five lines of chrome under the composer is the
+  // same clutter the header used to be, just moved.
+  const identity = [`dsh-tui · ${model.sessionId} · ${model.status}`, ...metadata(model, columns)]
+  const position = [
+    model.visibleRange === undefined
+      ? 'transcript empty'
+      : `transcript ${model.visibleRange.start}–${model.visibleRange.end} of ${model.totalRows}`,
+    ...(model.droppedRows === undefined ? [] : [`${String(model.droppedRows)} evicted`]),
+    ...(model.unseenRows === undefined ? [] : [`${String(model.unseenRows)} new`]),
+    ...(sources === undefined ? [] : [sources]),
+  ]
   return (
     <Box flexDirection="column" width={columns}>
-      {/* A terminal that shows nothing while a model thinks reads as hung. */}
-      {model.working === undefined ? null : (
-        <Text {...tone('accent')} wrap="truncate-end">
-          working · {model.working.join(' · ')}
-        </Text>
-      )}
-      <Text bold wrap="truncate-end">
-        dsh-tui · {model.sessionId} · {model.status}
-      </Text>
-      {metadata(model, columns).length === 0 ? null : (
-        <Text dimColor wrap="truncate-end">
-          {metadata(model, columns).join(' · ')}
-        </Text>
-      )}
-      {gauge === undefined ? null : (
-        <Text wrap="truncate-end">
-          <Text dimColor>Context </Text>
-          <Text color={gauge.pressured ? 'yellow' : 'cyan'}>{gauge.bar}</Text>
-          <Text dimColor> {String(gauge.percent)}%</Text>
-          <Text dimColor> · {compactCount(model.contextUsed ?? 0)} tokens</Text>
-        </Text>
-      )}
-      {sources === undefined ? null : (
-        <Text dimColor wrap="truncate-end">{sources}</Text>
-      )}
-      <Text dimColor>
-        {model.visibleRange === undefined
-          ? 'transcript empty'
-          : `transcript ${model.visibleRange.start}–${model.visibleRange.end} of ${model.totalRows}`}
-        {model.droppedRows === undefined ? '' : ` · ${String(model.droppedRows)} evicted`}
-        {model.unseenRows === undefined ? '' : ` · ${String(model.unseenRows)} new`}
+      <Text dimColor wrap="truncate-end">{identity.join(' · ')}</Text>
+      <Text wrap="truncate-end">
+        {gauge === undefined ? null : (
+          <Text>
+            <Text color={gauge.pressured ? 'yellow' : 'cyan'}>{gauge.bar}</Text>
+            <Text dimColor> {String(gauge.percent)}% · {compactCount(model.contextUsed ?? 0)} tokens · </Text>
+          </Text>
+        )}
+        <Text dimColor>{position.join(' · ')}</Text>
       </Text>
     </Box>
   )
@@ -170,6 +164,13 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
                 : prose.lead === undefined
                   ? ''
                   : <MarkdownInline text={prose.lead} theme={theme} />}
+              {/* The fold summary rides on the same line. Given as its own
+                  row it doubled every injection's footprint, so a turn that
+                  carried three reminders spent six lines saying nothing the
+                  user asked for. */}
+              {injected !== undefined && injected.folded ? (
+                <Text dimColor> · {foldSummary(injected.hiddenLines)}</Text>
+              ) : null}
               {row.status === undefined ? '' : ROW_STATUS[row.status]}
             </Text>
             {/* Scratch work, folded by default: a human may want it, but it is
@@ -190,11 +191,6 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
                 <MarkdownView blocks={prose.rest} theme={theme} />
               </Box>
             ) : null}
-            {injected !== undefined && injected.folded ? (
-              <Text dimColor wrap="truncate-end">
-                {'  '}{foldSummary(injected.hiddenLines)}
-              </Text>
-            ) : null}
             {injected !== undefined && !injected.folded
               ? injected.lines.slice(1).map((line, index) => (
                 <Text dimColor key={`${row.id}:ctx:${String(index)}`} wrap="truncate-end">
@@ -211,6 +207,18 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
           </Box>
           )
         })}
+        {/*
+          * The working line sits at the foot of the conversation, where the
+          * reply is about to appear -- not in the status area. A model thinking
+          * is part of the exchange you are reading, and a terminal that reports
+          * it three lines below the composer makes you look away from the place
+          * you are waiting on.
+          */}
+        {model.working === undefined ? null : (
+          <Text {...tone('accent')} wrap="truncate-end">
+            {WORKING_MARKER}working · {model.working.join(' · ')}
+          </Text>
+        )}
       </Box>
       {model.modal === undefined ? null : (
         <Box borderStyle="round" flexDirection="column" paddingX={1}>

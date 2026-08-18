@@ -86,17 +86,23 @@ function measuredTokens(
         && start < selectionEnd
         && end > selectionStart,
       start,
-      text: cursor && measuredWidth === 0 ? `█${segment.segment}` : segment.segment,
+      // A zero-width mark has no cell of its own to invert, so it borrows one.
+      text: cursor && measuredWidth === 0 ? ` ${segment.segment}` : segment.segment,
       width: cursor ? Math.max(1, measuredWidth) : measuredWidth,
     })
   }
   if (snapshot.cursor === line.end) {
+    // A space, not a block glyph: the cursor is drawn by inverting the cell,
+    // and inverting a full block paints it in the background colour, which on
+    // a dark theme is an invisible cursor. The placeholder always used a space,
+    // which is why the caret was visible before the first keystroke and gone
+    // after it.
     tokens.push({
       cursor: true,
       end: line.end,
       selected: false,
       start: line.end,
-      text: '█',
+      text: ' ',
       width: 1,
     })
   }

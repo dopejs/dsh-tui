@@ -156,7 +156,7 @@ describe('InteractiveTui', () => {
 
     expect(renderApp(transcript, interaction)).toMatchInlineSnapshot(`
       "╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.2.4                                   │
+      │ dsh-tui v0.2.5                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
@@ -168,8 +168,7 @@ describe('InteractiveTui', () => {
       ╭──────────────────────────────────────────────────╮
       │ ›  Try "explain this repository" · ^P for the c… │
       ╰──────────────────────────────────────────────────╯
-      dsh-tui · session-app · idle
-      fixture/model
+      dsh-tui · session-app · idle · fixture/model
       transcript empty
       Enter send · ^J newline · ^S steer · ^C cancel"
     `)
@@ -189,7 +188,7 @@ describe('InteractiveTui', () => {
       'Target session failed; restored session-app.',
     )).toMatchInlineSnapshot(`
       "╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.2.4                                   │
+      │ dsh-tui v0.2.5                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
@@ -201,8 +200,7 @@ describe('InteractiveTui', () => {
       ╭──────────────────────────────────────────────────╮
       │ ›  Try "explain this repository" · ^P for the c… │
       ╰──────────────────────────────────────────────────╯
-      dsh-tui · session-app · idle
-      fixture/model
+      dsh-tui · session-app · idle · fixture/model
       transcript empty
       Target session failed; restored session-app."
     `)
@@ -223,7 +221,7 @@ describe('InteractiveTui', () => {
 
     expect(renderApp(transcript, interaction)).toMatchInlineSnapshot(`
       "╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.2.4                                   │
+      │ dsh-tui v0.2.5                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
@@ -241,8 +239,7 @@ describe('InteractiveTui', () => {
       ╭──────────────────────────────────────────────────╮
       │ ›  Try "explain this repository" · ^P for the c… │
       ╰──────────────────────────────────────────────────╯
-      dsh-tui · session-app · idle
-      fixture/model
+      dsh-tui · session-app · idle · fixture/model
       transcript empty
       Enter send · ^J newline · ^S steer · ^C cancel"
     `)
@@ -316,7 +313,7 @@ describe('InteractiveTui', () => {
       viewport.insertSearch('needle')
     })).toMatchInlineSnapshot(`
       "╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.2.4                                   │
+      │ dsh-tui v0.2.5                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
@@ -329,8 +326,7 @@ describe('InteractiveTui', () => {
       ╭──────────────────────────────────────────────────╮
       │ ›  Try "explain this repository" · ^P for the c… │
       ╰──────────────────────────────────────────────────╯
-      dsh-tui · session-app · idle
-      fixture/model
+      dsh-tui · session-app · idle · fixture/model
       transcript empty
       Enter send · ^J newline · ^S steer · ^C cancel"
     `)

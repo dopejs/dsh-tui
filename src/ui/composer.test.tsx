@@ -19,7 +19,7 @@ describe('Composer (M1.1)', () => {
       { columns: 40 },
     )).toMatchInlineSnapshot(`
       "╭──────────────────────────────────────╮
-      │ › █                                  │
+      │ ›                                    │
       ╰──────────────────────────────────────╯"
     `)
 
@@ -84,13 +84,43 @@ describe('Composer (M1.1)', () => {
     editor.dispose()
   })
 
+  // The caret is drawn by inverting a cell, so the cursor token must carry a
+  // cell inversion can show. Asserting a glyph instead let the caret regress to
+  // an inverted full block -- painted in the background colour, and therefore
+  // invisible on a dark theme -- while the test stayed green.
+  it('gives the cursor a cell to invert, at the end of a line', () => {
+    const editor = new EditorController({ initialText: 'hi' })
+    editor.move('document-end')
+    const view = createComposerView(editor.getSnapshot(), 20, 3)
+    const row = view.rows.find(item => item.line === view.cursorLine)
+    const cursor = row?.tokens.find(token => token.cursor)
+    expect(cursor?.text).toBe(' ')
+    editor.dispose()
+  })
+
   it('keeps a cursor visible before a standalone zero-width mark', () => {
     const editor = new EditorController({ initialText: '\u0301' })
     editor.move('document-start')
-    expect(renderToString(
-      <Composer columns={10} maxRows={1} snapshot={editor.getSnapshot()} />,
-      { columns: 10 },
-    )).toContain('█')
+    const view = createComposerView(editor.getSnapshot(), 10, 1)
+    const cursor = view.rows
+      .find(item => item.line === view.cursorLine)
+      ?.tokens.find(token => token.cursor)
+    // The mark has no cell of its own; the cursor borrows one in front of it.
+    expect(cursor?.text).toBe(' \u0301')
+    editor.dispose()
+  })
+
+  // What ultimately makes the caret visible is the inversion itself.
+  it('emits an inversion for the caret when the terminal has colour', () => {
+    const editor = new EditorController({ initialText: 'hi' })
+    editor.move('document-end')
+    const output = renderToString(
+      <Composer columns={30} maxRows={3} snapshot={editor.getSnapshot()} />,
+      { columns: 30 },
+    )
+    // Under a colourless test runner Ink emits no escapes at all; the token
+    // assertions above cover that case, and this one covers a real terminal.
+    if (output.includes('\u001b[')) expect(output).toContain('\u001b[7m')
     editor.dispose()
   })
 
