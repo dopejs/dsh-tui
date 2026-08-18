@@ -475,4 +475,88 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
     await harness.settle()
     expect(harness.screen().join('\n')).toBe(before)
   }, 30_000)
+
+  /*
+   * Shift-Enter inserts a newline, which is what every chat surface does and
+   * what Claude Code does.
+   *
+   * Terminals send the same byte for Enter and Shift-Enter, so the two cannot
+   * be told apart without the Kitty keyboard protocol. The emulator here does
+   * not speak it, so a terminal that does -- Ghostty, Kitty, WezTerm -- is
+   * impersonated by answering the capability query.
+   */
+  it('inserts a newline on Shift-Enter where the terminal reports it', async () => {
+    harness = new ScreenHarness({ columns: 60, kittyKeyboard: true, rows: 20, scenario: 'empty' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('command palette')),
+      'the composer hint',
+    )
+
+    harness.type('first')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('first')),
+      'the first line',
+    )
+    harness.shiftEnter()
+    harness.type('second')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('second')),
+      'the second line',
+    )
+    await harness.settle()
+
+    const screen = harness.screen()
+    const first = screen.findIndex(line => line.includes('first'))
+    const second = screen.findIndex(line => line.includes('second'))
+
+    // Two lines of one draft, and nothing was sent.
+    expect(first).toBeGreaterThanOrEqual(0)
+    expect(second).toBe(first + 1)
+    expect(screen.join('\n')).not.toContain('Try "explain this repository"')
+
+    /*
+     * And the terminal was actually asked to disambiguate.
+     *
+     * Ink's parser understands `CSI 13;2u` whether or not the protocol is on,
+     * so feeding that sequence proves only that the parser works. A real
+     * terminal never sends it unless asked: without this assertion, disabling
+     * the protocol outright left every one of these tests green.
+     */
+    await harness.waitForOutput(
+      `${String.fromCodePoint(0x1b)}[>1u`,
+      'the request to disambiguate escape codes',
+    )
+  }, 30_000)
+
+  // The other half of the same claim: a terminal that stays silent is not
+  // asked to do anything, because it would not understand the request.
+  it('does not ask a terminal that never answered the query', async () => {
+    harness = new ScreenHarness({ columns: 60, rows: 20, scenario: 'empty' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('command palette')),
+      'the composer hint',
+    )
+    await harness.settle()
+    expect(harness.rawOutput()).not.toContain(`${String.fromCodePoint(0x1b)}[>1u`)
+  }, 30_000)
+
+  // And the capability reply is never typed, whether or not it is awaited.
+  it('never lets the capability reply reach the composer', async () => {
+    harness = new ScreenHarness({ columns: 60, kittyKeyboard: true, rows: 20, scenario: 'empty' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('command palette')),
+      'the composer hint',
+    )
+    harness.type('hello')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('hello')),
+      'the typed text',
+    )
+    await harness.settle()
+
+    const composer = harness.screen().find(line => line.includes('\u203a hello')) ?? ''
+    expect(composer).toContain('hello')
+    expect(composer).not.toContain('?1u')
+    expect(composer).not.toContain('hellohello')
+  }, 30_000)
 })

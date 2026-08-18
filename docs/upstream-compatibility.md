@@ -619,3 +619,41 @@ dismissed.
 | --- | --- | --- | --- |
 | `0.5.2` | npm `0.1.0-rc.7` | Mouse mode ordering | 671 tests including seventeen on a live PTY; clean-profile launch green on the second run. |
 
+### 0.6.0
+
+Shift-Enter inserts a newline, where the terminal can say that is what happened
+— Ghostty, Kitty and WezTerm can. Terminals otherwise send the same byte for
+Enter and Shift-Enter, so the two cannot be told apart; Ctrl-J and Alt-Enter
+remain the newline that works everywhere.
+
+Ink can negotiate the Kitty keyboard protocol itself, and `0.5.1` rejected it
+for a reason that turned out to be precise: its negotiation buffers stdin for up
+to 200ms waiting for a reply, then pushes what it buffered back into the input
+pipeline. The application is listening by then, so anything typed in that window
+arrives twice — `hello` became `hellohello`, measured. Terminals that answer
+close the window in a millisecond; terminals that stay silent hold it open for
+the full 200ms.
+
+So the question is asked here instead, before the interface is mounted and while
+nothing is listening for keystrokes, and Ink is told the answer rather than asked
+to find it. The reply is stripped by the same filter that already strips mouse
+reports: both are the terminal answering a question, and either one reaching the
+composer would be sent as part of the user's next message.
+
+Three things were wrong before it worked, none of which any assertion would have
+noticed on its own:
+
+- The probe examined each chunk as it arrived. A terminal may split its answer
+  across reads, and a reply seen half at a time is never recognised.
+- Raw mode was not set yet. A terminal in canonical mode delivers input a line
+  at a time and the reply carries no newline, so it sat in the line buffer.
+- The first version of the test proved nothing. Ink's parser understands
+  `CSI 13;2u` whether or not the protocol is on, so feeding that sequence tested
+  the parser: disabling the protocol outright left the test green. It now asserts
+  that the terminal was actually asked to disambiguate, and that a terminal which
+  never answered is never asked.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.6.0` | npm `0.1.0-rc.7` | Shift-Enter newline | 676 tests including twenty on a live PTY; clean-profile launch and install resolution green. |
+

@@ -256,6 +256,9 @@ function dependencies(
 ): RuntimeDependencies {
   return {
     cwd: () => '/fixture/workspace',
+    // No terminal here, so no protocol: the fixture answers the question the
+    // way a pipe would.
+    probeTerminalKeyboard: async () => ({ kittyKeyboard: false }),
     mountApplication: (options) => {
       fixture.mounted.push(options)
       return {

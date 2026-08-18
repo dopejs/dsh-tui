@@ -1417,12 +1417,11 @@ export function InteractiveTui({
       return
     }
     /*
-     * Ctrl-J and Alt-Enter insert a newline. Shift-Enter is accepted too, and
-     * arrives only where the terminal reports it distinctly -- most terminals
-     * send the same byte for Enter and Shift-Enter, so there is nothing to
-     * tell apart. Asking for the Kitty keyboard protocol would distinguish
-     * them, and does not ship yet: the terminal's reply to the capability
-     * query reached the composer as text.
+     * Shift-Enter inserts a newline, which is what every chat surface does.
+     * It arrives only where the terminal reports it distinctly, which means
+     * the Kitty keyboard protocol -- asked for at startup and enabled only
+     * when the terminal says it speaks it. Ctrl-J and Alt-Enter remain the
+     * newline that works everywhere else.
      */
     if (key.return && (key.ctrl || key.meta || key.shift)) {
       if (editor.insert('\n') === 'limit-exceeded') {

@@ -7,6 +7,7 @@ import type {
   SwitchableSessionBinding,
 } from '../runtime/session-attachment-coordinator'
 import { DISABLE_MOUSE, ENABLE_MOUSE } from '../runtime/mouse'
+import { probeKittySupport } from '../runtime/kitty'
 import { filterMouseFromStdin, type MouseFilteredStdin } from '../runtime/mouse-stdin'
 import { InteractiveTui, type InteractiveTuiProps } from './app'
 import { mountOwnedInkRenderer, type MountedInkRenderer } from './ink-lifecycle'
@@ -25,10 +26,13 @@ export interface InkApplicationOptions {
   readonly firstRun?: boolean
   /** Terminal occupancy; `inline` leaves the session in scrollback. */
   readonly renderMode?: 'alternate' | 'inline'
-  /** Decoded mouse events, when the terminal was asked to report them. */
-  readonly mouse?: Pick<MouseFilteredStdin, 'onMouse'> & {
-    readonly setReporting?: (enabled: boolean) => void
-  }
+  /**
+   * Whether the terminal speaks the Kitty keyboard protocol, already probed.
+   * Absent means it does not, and Shift-Enter cannot be told from Enter.
+   */
+  readonly kittyKeyboard?: boolean
+  /** The stdin filter, when one was already made by the capability probe. */
+  readonly mouse?: MouseFilteredStdin
   readonly onQuit: (code: number) => void
   readonly sessionCenter: SessionCenterController
   readonly sessions: TuiSessionStore
@@ -42,6 +46,10 @@ export interface InkApplicationStreams {
   readonly stdout?: NodeJS.WriteStream
 }
 
+interface SessionApplicationProps extends Omit<InkApplicationOptions, 'mouse'> {
+  readonly mouse?: InteractiveTuiProps['mouse']
+}
+
 export function SessionApplication({
   firstRun = false,
   mouse,
@@ -49,7 +57,7 @@ export function SessionApplication({
   renderMode = 'alternate',
   sessionCenter,
   sessions,
-}: InkApplicationOptions) {
+}: SessionApplicationProps) {
   const snapshot = useSyncExternalStore(
     sessions.subscribe,
     sessions.getSnapshot,
@@ -81,6 +89,39 @@ export function SessionApplication({
   />
 }
 
+/**
+ * Probe the terminal for the Kitty keyboard protocol.
+ *
+ * Done before mounting, through the filter that already owns stdin, so the
+ * reply is stripped rather than typed and nothing is listening for keystrokes
+ * while the question is outstanding.
+ */
+export async function probeTerminalKeyboard(
+  streams: InkApplicationStreams = {},
+): Promise<{ readonly mouse?: MouseFilteredStdin, readonly kittyKeyboard: boolean }> {
+  const stdin = streams.stdin ?? process.stdin
+  const stdout = streams.stdout ?? process.stdout
+  if (stdin.isTTY !== true || stdout.isTTY !== true) {
+    return Object.freeze({ kittyKeyboard: false })
+  }
+  /*
+   * Raw mode first.
+   *
+   * A terminal in canonical mode delivers input a line at a time, and a
+   * capability reply carries no newline -- so it sat in the line buffer and
+   * never arrived, the probe timed out, and the protocol stayed off on
+   * terminals that had answered. Ink sets raw mode again when it mounts;
+   * setting it twice costs nothing.
+   */
+  stdin.setRawMode?.(true)
+  const mouse = filterMouseFromStdin(stdin)
+  const kittyKeyboard = await probeKittySupport({
+    onData: mouse.onRaw,
+    write: text => stdout.write(text),
+  })
+  return Object.freeze({ kittyKeyboard, mouse })
+}
+
 export function mountInkApplication(
   options: InkApplicationOptions,
   streams: InkApplicationStreams = {},
@@ -94,7 +135,7 @@ export function mountInkApplication(
   // Mouse reporting is asked for only when there is a terminal to ask. Writing
   // the sequence to a pipe puts it in whatever is consuming the output.
   const interactive = stdin.isTTY === true && stdout.isTTY === true
-  const mouse = interactive ? filterMouseFromStdin(stdin) : undefined
+  const mouse = options.mouse ?? (interactive ? filterMouseFromStdin(stdin) : undefined)
   /*
    * Reporting can be given back.
    *
@@ -118,13 +159,24 @@ export function mountInkApplication(
     () => render(
       <SessionApplication
         {...options}
-        {...(mouseProp === undefined ? {} : { mouse: mouseProp })}
+        mouse={mouseProp}
       />,
       {
         alternateScreen,
         exitOnCtrlC: false,
         incrementalRendering: true,
         interactive: true,
+        /*
+         * `enabled` or `disabled`, never `auto`. Ink's own negotiation buffers
+         * stdin for up to 200ms and then pushes what it buffered back into the
+         * input pipeline, where the application is already listening -- so
+         * anything typed in that window arrives twice. The answer is probed
+         * before mounting instead, while nothing is listening for keystrokes.
+         */
+        kittyKeyboard: {
+          flags: ['disambiguateEscapeCodes'],
+          mode: options.kittyKeyboard === true ? 'enabled' : 'disabled',
+        },
         maxFps: 20,
         stderr: streams.stderr ?? process.stderr,
         stdin: mouse?.stream ?? stdin,

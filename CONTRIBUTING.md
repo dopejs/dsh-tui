@@ -38,8 +38,8 @@ resource ownership. Include context, decision, consequences, and alternatives.
 Releases are cut by pushing a tag; there is no manual publish step.
 
 ```bash
-git tag v0.5.2
-git push origin v0.5.2
+git tag v0.6.0
+git push origin v0.6.0
 ```
 
 The `Release` workflow then, in order:

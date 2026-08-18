@@ -62,6 +62,7 @@ import { detectTerminalCapabilities } from './ui/terminal-links'
 import type { TuiStartupValues } from './startup'
 import {
   mountInkApplication,
+  probeTerminalKeyboard,
   type InkApplicationOptions,
   type MountedInkApplication,
   type TuiSessionBinding,
@@ -83,6 +84,16 @@ export const inject = [
 export interface RuntimeDependencies {
   readonly cwd: () => string
   readonly mountApplication: (options: InkApplicationOptions) => MountedInkApplication
+  /**
+   * Terminal keyboard capability, asked before the interface is mounted.
+   *
+   * Injected like every other terminal-facing dependency so a test can answer
+   * for it without a TTY.
+   */
+  readonly probeTerminalKeyboard: () => Promise<{
+    readonly kittyKeyboard: boolean
+    readonly mouse?: InkApplicationOptions['mouse']
+  }>
   readonly sessionId: () => string
   readonly stdin: Pick<NodeJS.ReadStream, 'isTTY'>
   readonly stdout: Pick<NodeJS.WriteStream, 'isTTY'>
@@ -91,6 +102,7 @@ export interface RuntimeDependencies {
 const defaultDependencies: RuntimeDependencies = {
   cwd: () => process.cwd(),
   mountApplication: mountInkApplication,
+  probeTerminalKeyboard,
   sessionId: () => `session-${randomUUID()}`,
   stdin: process.stdin,
   stdout: process.stdout,
@@ -763,8 +775,16 @@ export async function startTuiRuntime(
       // Onboarding guidance is not worth failing startup over.
       diagnostics.report(error)
     }
+    /*
+     * Asked before the interface exists, so the terminal's answer is stripped
+     * by the stdin filter rather than typed into the composer, and no window
+     * exists in which a keystroke could be delivered twice.
+     */
+    const keyboard = await dependencies.probeTerminalKeyboard()
     const application = dependencies.mountApplication({
       firstRun,
+      kittyKeyboard: keyboard.kittyKeyboard,
+      ...(keyboard.mouse === undefined ? {} : { mouse: keyboard.mouse }),
       renderMode: preferencesStore.current().renderMode,
       onQuit: requestExit,
       sessionCenter,

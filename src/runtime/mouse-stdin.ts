@@ -13,11 +13,17 @@
  */
 import { Transform } from 'node:stream'
 
+import { parseKittyReply } from './kitty'
 import { parseMouse, type MouseEvent } from './mouse'
 
 export type MouseListener = (event: MouseEvent) => void
 
 export interface MouseFilteredStdin {
+  /**
+   * Subscribe to raw input before any filtering, for a capability probe that
+   * has to see the terminal's answer.
+   */
+  readonly onRaw: (listener: (chunk: string) => void) => () => void
   /**
    * Stop feeding the filter, leaving the stream Ink holds open.
    *
@@ -49,6 +55,7 @@ function looksUnfinished(text: string): boolean {
 
 export function filterMouseFromStdin(source: NodeJS.ReadStream): MouseFilteredStdin {
   const listeners = new Set<MouseListener>()
+  const rawListeners = new Set<(chunk: string) => void>()
   let pending = ''
   let disposed = false
 
@@ -67,7 +74,15 @@ export function filterMouseFromStdin(source: NodeJS.ReadStream): MouseFilteredSt
         done()
         return
       }
-      const parsed = parseMouse(pending + String(chunk))
+      const text = String(chunk)
+      for (const listener of rawListeners) listener(text)
+      /*
+       * A capability reply is a terminal answering a question, exactly as a
+       * mouse report is. Neither is typing, and either one reaching the
+       * composer would be sent as part of the user's next message.
+       */
+      const withoutReply = parseKittyReply(pending + text).rest
+      const parsed = parseMouse(withoutReply)
       for (const event of parsed.events) {
         for (const listener of listeners) listener(event)
       }
@@ -131,6 +146,10 @@ export function filterMouseFromStdin(source: NodeJS.ReadStream): MouseFilteredSt
       disposed = true
       detach()
       filter.end()
+    },
+    onRaw: (listener: (chunk: string) => void) => {
+      rawListeners.add(listener)
+      return () => rawListeners.delete(listener)
     },
     onMouse: (listener: MouseListener) => {
       listeners.add(listener)

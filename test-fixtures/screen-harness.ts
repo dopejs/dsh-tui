@@ -19,6 +19,14 @@ const { Terminal } = pkg
 export interface ScreenHarnessOptions {
   readonly columns?: number
   readonly rows?: number
+  /**
+   * Answer the Kitty keyboard capability query, the way Ghostty or Kitty does.
+   *
+   * The emulator this runs against does not speak the protocol, so a terminal
+   * that supports it has to be impersonated -- otherwise the branch that makes
+   * Shift-Enter distinguishable is never taken by any test.
+   */
+  readonly kittyKeyboard?: boolean
   /** Scenario name passed to the fixture; decides what the transcript holds. */
   readonly scenario?: string
 }
@@ -52,7 +60,16 @@ export class ScreenHarness {
         rows,
       },
     )
+    // Answered when the query is seen, the way a terminal does. Written
+    // eagerly instead, it raced the process still starting up and arrived
+    // before anything was reading -- the probe then timed out, the protocol
+    // stayed off, and the test that should have caught that passed anyway.
+    let answered = options.kittyKeyboard !== true
     this.#process.onData((data) => {
+      if (!answered && data.includes(`${String.fromCodePoint(0x1b)}[?u`)) {
+        answered = true
+        this.#process.write(`${String.fromCodePoint(0x1b)}[?1u`)
+      }
       // Kept alongside the emulated screen: a sequence that only changes modes
       // never lands in a cell, so the grid cannot answer whether it was sent.
       this.#raw += data

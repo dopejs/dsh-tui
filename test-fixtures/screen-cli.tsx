@@ -13,7 +13,7 @@
  * and the transcript is seeded from a named scenario so runs are deterministic.
  */
 import type { Agent } from '@deepseek-ai/dsh-agent'
-import { mountInkApplication } from '../src/ui/ink-app-runtime'
+import { mountInkApplication, probeTerminalKeyboard } from '../src/ui/ink-app-runtime'
 
 import type { AgentStatusStore } from '../src/model/agent-status-controller'
 import { ActivityCenterController } from '../src/model/activity-center-controller'
@@ -210,7 +210,12 @@ const snapshot = {
 // Disposed before exiting, because that is what stops the terminal reporting.
 // Exiting straight from `onQuit` leaves the terminal printing escape sequences
 // into the user's shell on every click afterwards.
+// The same order the plugin uses: ask the terminal first, mount second.
+const keyboard = await probeTerminalKeyboard()
+
 const mounted = mountInkApplication({
+  kittyKeyboard: keyboard.kittyKeyboard,
+  ...(keyboard.mouse === undefined ? {} : { mouse: keyboard.mouse }),
   onQuit: () => {
     /*
      * A stalled teardown is reported, not waited on forever.
