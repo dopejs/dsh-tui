@@ -212,7 +212,30 @@ const snapshot = {
 // into the user's shell on every click afterwards.
 const mounted = mountInkApplication({
   onQuit: () => {
-    void mounted.dispose().then(() => process.exit(0), () => process.exit(1))
+    /*
+     * A stalled teardown is reported, not waited on forever.
+     *
+     * When this hung it hung silently, and three CI rounds went into guessing
+     * which handle was holding the loop open. Exiting with a distinct code
+     * keeps the test red while naming what is still alive.
+     */
+    const watchdog = setTimeout(() => {
+      process.stderr.write(
+        `[fixture] teardown stalled; active: ${JSON.stringify(process.getActiveResourcesInfo())}\n`,
+      )
+      process.exit(97)
+    }, 5_000)
+    void mounted.dispose().then(
+      () => {
+        clearTimeout(watchdog)
+        process.exit(0)
+      },
+      (error: unknown) => {
+        clearTimeout(watchdog)
+        process.stderr.write(`[fixture] teardown failed: ${String(error)}\n`)
+        process.exit(1)
+      },
+    )
   },
   sessionCenter,
   sessions: { getSnapshot: () => snapshot, subscribe: () => () => undefined },

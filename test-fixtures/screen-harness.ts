@@ -157,7 +157,10 @@ export class ScreenHarness {
     const deadline = Date.now() + timeoutMs
     while (this.#exitCode === undefined) {
       if (Date.now() >= deadline) {
-        throw new Error(`Timed out waiting for exit.\nScreen was:\n${this.screen().join('\n')}`)
+        throw new Error(
+          `Timed out waiting for exit.\nScreen was:\n${this.screen().join('\n')}`
+          + `\nLast output:\n${this.#raw.slice(-2_000)}`,
+        )
       }
       await delay(25)
     }
