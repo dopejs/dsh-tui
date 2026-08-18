@@ -105,6 +105,11 @@ function renderApp(
         onQuit={() => undefined}
         overlay={overlay}
         palette={palette}
+        // renderToString models no viewport: it does not clip, it overwrites,
+        // so a fixed height garbles the output here while a real terminal
+        // renders it correctly. These snapshots assert content; screen geometry
+        // is asserted in screen.pty.test.ts, against a live PTY.
+        renderMode="inline"
         preferences={preferences}
         activity={activity}
         jobs={jobs}
@@ -156,7 +161,7 @@ describe('InteractiveTui', () => {
 
     expect(renderApp(transcript, interaction)).toMatchInlineSnapshot(`
       "╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.2.6                                   │
+      │ dsh-tui v0.3.0                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
@@ -188,7 +193,7 @@ describe('InteractiveTui', () => {
       'Target session failed; restored session-app.',
     )).toMatchInlineSnapshot(`
       "╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.2.6                                   │
+      │ dsh-tui v0.3.0                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
@@ -221,7 +226,7 @@ describe('InteractiveTui', () => {
 
     expect(renderApp(transcript, interaction)).toMatchInlineSnapshot(`
       "╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.2.6                                   │
+      │ dsh-tui v0.3.0                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
@@ -313,7 +318,7 @@ describe('InteractiveTui', () => {
       viewport.insertSearch('needle')
     })).toMatchInlineSnapshot(`
       "╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.2.6                                   │
+      │ dsh-tui v0.3.0                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │

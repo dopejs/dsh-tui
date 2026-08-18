@@ -92,8 +92,19 @@ function conversation() {
   ]
 }
 
+/** More turns than any terminal can show, to exercise clipping. */
+function overflowing() {
+  return Array.from({ length: 60 }, (_, index) => event(index, 'user/message', {
+    content: [{ text: `turn ${String(index)} of a long conversation`, type: 'text' }],
+    id: `u${String(index)}`,
+    role: 'user',
+    source: { kind: 'user' },
+  }))
+}
+
 const transcript = new TranscriptController()
 if (scenario === 'conversation') transcript.accept(conversation())
+if (scenario === 'overflow') transcript.accept(overflowing())
 
 const editor = new EditorController()
 const changes = new ChangeIndexController()

@@ -76,6 +76,13 @@ export interface InteractiveTuiProps {
   /** No persisted session was found, so this is a first run. */
   readonly firstRun?: boolean
   readonly initialNotice?: string
+  /**
+   * `alternate` owns the whole screen, so the layout is pinned to the viewport:
+   * the conversation takes the slack and the composer sits at the bottom edge.
+   * `inline` leaves the session in the shell's scrollback, where a fixed height
+   * would blank out the shell's own output, so it grows with its content.
+   */
+  readonly renderMode?: 'alternate' | 'inline'
   readonly interaction: InteractionController
   readonly jobs: JobsController
   readonly mcp: McpInventoryController
@@ -217,6 +224,7 @@ export function InteractiveTui({
   columns: fixedColumns,
   completion,
   editor,
+  renderMode = 'alternate',
   firstRun = false,
   input,
   initialNotice,
@@ -1546,8 +1554,24 @@ export function InteractiveTui({
   }
 
   return (
-    <Box flexDirection="column">
-      <Frame columns={dimensions.columns} expandedRowIds={expandedRowIds} model={screen} />
+    <Box
+      flexDirection="column"
+      {...(renderMode === 'inline' ? {} : { height: dimensions.rows })}
+    >
+      {/*
+        * The conversation takes the slack, which is what pins the composer and
+        * the status to the bottom edge.
+        *
+        * `overflow` is a guard, not the mechanism: what keeps the conversation
+        * inside its space is the row budget above, and removing the clip does
+        * not turn the overflow test red. It stays because if that budget is
+        * ever wrong, content drawn through the composer reads as corruption
+        * rather than as a bug -- but it is untested, and should not be trusted
+        * as though it were.
+        */}
+      <Box flexDirection="column" flexGrow={1} minHeight={0} overflow="hidden">
+        <Frame columns={dimensions.columns} expandedRowIds={expandedRowIds} model={screen} />
+      </Box>
       {activeOverlay === undefined ? null : (
         <OverlayPanel
           active={activeOverlay}

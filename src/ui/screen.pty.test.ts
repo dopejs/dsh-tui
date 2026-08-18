@@ -103,4 +103,62 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
         .toBe(`${line}:false`)
     }
   })
+
+  // Taking the alternate screen without filling it is not fullscreen: the
+  // buffer is swapped and the layout never notices, so the composer floats
+  // wherever the conversation happens to end and the bottom of the terminal is
+  // dead space.
+  it('fills the terminal, with the composer at the bottom', async () => {
+    harness = new ScreenHarness({ rows: 24, scenario: 'conversation' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('How can I help you')),
+      'the assistant reply',
+    )
+    await harness.settle()
+
+    const screen = harness.screen()
+    const lastDrawn = screen.reduce(
+      (last, line, index) => (line.trim() === '' ? last : index),
+      -1,
+    )
+    // The last drawn row is the bottom of the screen, give or take the one row
+    // a terminal keeps for its own cursor.
+    expect(lastDrawn).toBeGreaterThanOrEqual(screen.length - 2)
+
+    const composerBottom = screen.findLastIndex(line => line.startsWith('╰'))
+    const hint = screen.findIndex(line => line.includes('Enter send'))
+    expect(composerBottom).toBeGreaterThan(0)
+    expect(hint).toBeGreaterThan(composerBottom)
+  })
+
+  // The danger in pinning a layout to the viewport: content taller than the
+  // space it was given overwrites whatever is drawn below it. A garbled screen
+  // reads as corruption, which is worse than the dead space it replaced.
+  it('clips a conversation taller than the terminal without garbling it', async () => {
+    harness = new ScreenHarness({ rows: 24, scenario: 'overflow' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('of a long conversation')),
+      'the long conversation',
+    )
+    await harness.settle()
+
+    const screen = harness.screen()
+
+    // The composer keeps its own rows; nothing has been drawn through it.
+    const composerTop = screen.findIndex(line => line.startsWith('╭'))
+    const composerBottom = screen.findLastIndex(line => line.startsWith('╰'))
+    expect(composerTop).toBeGreaterThan(0)
+    expect(composerBottom).toBe(composerTop + 2)
+    expect(screen[composerTop + 1] ?? '').toContain('›')
+
+    // The status still sits below it, in full.
+    expect(screen.slice(composerBottom).join('\n')).toContain('Enter send')
+
+    // And no row is two rows fused together.
+    for (const line of screen) {
+      const interior = line.slice(1, -1)
+      expect(`${line}:${String(interior.includes('╮') || interior.includes('╯'))}`)
+        .toBe(`${line}:false`)
+    }
+  })
 })

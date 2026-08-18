@@ -332,3 +332,39 @@ until this harness existed there was no way to tell a real defect from a
 | --- | --- | --- | --- |
 | `0.2.6` | npm `0.1.0-rc.7` | Real-terminal test harness | 636 tests including five on a live PTY; clean-profile launch and install resolution green. No runtime behaviour change. |
 
+### 0.3.0
+
+Fullscreen, delivered. `alternateScreen: true` had been passed since `0.1.0`,
+so the interface always took the alternate screen — and never filled it. The
+root box had no height, so the conversation, composer and status floated
+wherever the content happened to end and the bottom of the terminal was dead
+space. Swapping the buffer was the whole of what "fullscreen" meant here; the
+layout never noticed.
+
+The layout is now pinned to the viewport on the alternate screen: the
+conversation takes the slack, which puts the composer at the bottom edge with
+the status beneath it. `inline` is unchanged and must stay unchanged — a fixed
+height there would blank out the shell's own scrollback.
+
+This was attempted once before and reverted, because `renderToString` produced
+garbled output and there was no way to tell a real defect from an artefact of
+that helper. With the PTY harness the answer is unambiguous: on a live terminal
+the layout renders correctly, and the garbling was the helper, which does not
+model a viewport — it does not clip, it overwrites. The unit snapshots therefore
+render `inline`; they assert content, and screen geometry is asserted against a
+real terminal.
+
+Two things worth stating plainly:
+
+- The overflow test passes with the clip removed. What keeps the conversation
+  inside its space is the row budget, not `overflow: hidden`. The clip stays as
+  a guard against that budget being wrong, but it is untested and is documented
+  as such rather than trusted.
+- Mouse support remains absent. Ink 7.1.1 exposes no mouse API at all, so it
+  requires enabling SGR mouse mode, parsing the sequences off stdin, and hit
+  testing against `useBoxMetrics`. It is not started.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.3.0` | npm `0.1.0-rc.7` | Fullscreen layout | 638 tests including seven on a live PTY; clean-profile launch and install resolution green. |
+

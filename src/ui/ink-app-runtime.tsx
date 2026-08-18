@@ -39,6 +39,7 @@ export interface InkApplicationStreams {
 export function SessionApplication({
   firstRun = false,
   onQuit,
+  renderMode = 'alternate',
   sessionCenter,
   sessions,
 }: InkApplicationOptions) {
@@ -63,6 +64,7 @@ export function SessionApplication({
     key={`${snapshot.binding.sessionId}:${String(snapshot.revision)}`}
     {...snapshot.binding.application}
     firstRun={firstRun}
+    renderMode={renderMode}
     {...(snapshot.error === undefined
       ? {}
       : { initialNotice: `Session switch failed: ${snapshot.error}` })}
