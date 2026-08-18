@@ -173,13 +173,31 @@ function projectContentBlocks(blocks: readonly ContentBlock[]): string {
     .join('\n')
 }
 
-function projectAssistantContent(blocks: readonly ContentBlock[]): string {
-  return blocks
-    .map(block => block.type === 'tool-call' || block.type === 'tool-result'
+/**
+ * The finished assistant message, split the way the streaming path splits it.
+ *
+ * Reasoning must not be folded into the answer here either. It used to be, with
+ * a `Reasoning: ` prefix, which meant the row rebuilt on `assistant/message`
+ * silently undid the streaming split: the fold key stopped working, the
+ * clipboard carried deliberation, and the answer read as a continuation of the
+ * model's scratch work.
+ */
+function projectAssistantMessage(
+  blocks: readonly ContentBlock[],
+): { readonly content: string, readonly reasoning: string } {
+  const content = blocks
+    .map(block => block.type === 'tool-call'
+      || block.type === 'tool-result'
+      || block.type === 'reasoning'
       ? undefined
       : projectContentBlock(block))
     .filter((value): value is string => value !== undefined && value !== '')
     .join('\n')
+  const reasoning = blocks
+    .map(block => block.type === 'reasoning' ? block.text : undefined)
+    .filter((value): value is string => value !== undefined && value !== '')
+    .join('\n')
+  return { content, reasoning }
 }
 
 function userRowKind(event: SessionEvent<'user/message'>): TranscriptRowKind {
@@ -463,11 +481,11 @@ export function reduceTranscript(
     }
     case 'assistant/message': {
       const key = assistantKey(event.data.turn, event.data.step)
-      const content = projectAssistantContent(event.data.message.content)
-      if (content === '') {
+      const { content, reasoning } = projectAssistantMessage(event.data.message.content)
+      if (content === '' && reasoning === '') {
         removeRow(fold.rows, key)
       } else {
-        const finalRow = row(key, 'assistant', content, maximum, 'complete')
+        const finalRow = row(key, 'assistant', content, maximum, 'complete', false, reasoning)
         if (!updateRow(fold.rows, key, finalRow)) appendRow(fold, finalRow, state.limits)
       }
       fold.pendingAssistants = fold.pendingAssistants.filter(item => item.rowId !== key)

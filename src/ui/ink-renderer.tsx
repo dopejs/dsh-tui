@@ -68,7 +68,16 @@ function metadata(model: ScreenModel, columns: number): readonly string[] {
     .filter((value): value is string => value !== undefined)
 }
 
-export function Frame({ columns, expandedRowIds, model }: FrameProps) {
+/**
+ * The status chrome, drawn below the composer.
+ *
+ * It used to sit above the transcript, which pushed the conversation down the
+ * screen and put five lines of session metadata where the first thing you read
+ * should be. Claude Code keeps the conversation at the top and the status where
+ * the cursor already is; this follows that, and the status stays next to the
+ * composer it describes.
+ */
+export function StatusFooter({ columns, model }: FrameProps) {
   const theme = model.welcome?.theme ?? 'default'
   const tone = (name: SemanticTone | undefined) => toneStyle(theme, name)
   // Only drawn when usage is actually known: an empty bar labelled 0% asserts
@@ -79,6 +88,12 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
   const sources = describeSources(model.contextSources ?? [])
   return (
     <Box flexDirection="column" width={columns}>
+      {/* A terminal that shows nothing while a model thinks reads as hung. */}
+      {model.working === undefined ? null : (
+        <Text {...tone('accent')} wrap="truncate-end">
+          working · {model.working.join(' · ')}
+        </Text>
+      )}
       <Text bold wrap="truncate-end">
         dsh-tui · {model.sessionId} · {model.status}
       </Text>
@@ -98,12 +113,6 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
       {sources === undefined ? null : (
         <Text dimColor wrap="truncate-end">{sources}</Text>
       )}
-      {/* A terminal that shows nothing while a model thinks reads as hung. */}
-      {model.working === undefined ? null : (
-        <Text {...tone('accent')} wrap="truncate-end">
-          working · {model.working.join(' · ')}
-        </Text>
-      )}
       <Text dimColor>
         {model.visibleRange === undefined
           ? 'transcript empty'
@@ -111,6 +120,15 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
         {model.droppedRows === undefined ? '' : ` · ${String(model.droppedRows)} evicted`}
         {model.unseenRows === undefined ? '' : ` · ${String(model.unseenRows)} new`}
       </Text>
+    </Box>
+  )
+}
+
+export function Frame({ columns, expandedRowIds, model }: FrameProps) {
+  const theme = model.welcome?.theme ?? 'default'
+  const tone = (name: SemanticTone | undefined) => toneStyle(theme, name)
+  return (
+    <Box flexDirection="column" width={columns}>
       {model.firstScreen === true && model.welcome !== undefined ? (
         <Welcome
           columns={columns}
@@ -296,12 +314,16 @@ export function renderInkFrame(
   columns: number,
   expandedRowIds?: ReadonlySet<string>,
 ): string {
+  // Mirrors the real screen order: conversation first, status underneath.
   return renderToString(
-    <Frame
-      columns={columns}
-      {...(expandedRowIds === undefined ? {} : { expandedRowIds })}
-      model={model}
-    />,
+    <Box flexDirection="column">
+      <Frame
+        columns={columns}
+        {...(expandedRowIds === undefined ? {} : { expandedRowIds })}
+        model={model}
+      />
+      <StatusFooter columns={columns} model={model} />
+    </Box>,
     { columns },
   )
 }

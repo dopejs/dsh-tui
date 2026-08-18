@@ -49,7 +49,7 @@ import { Composer, createComposerView } from './composer'
  */
 // Resolved per render so a /lang change takes effect without a restart.
 import { writeOsc52Clipboard } from './clipboard'
-import { Frame } from './ink-renderer'
+import { Frame, StatusFooter } from './ink-renderer'
 import { OverlayPanel } from './overlay'
 import { TUI_VERSION } from './version'
 import type { TerminalCapabilities } from './terminal-links'
@@ -1585,6 +1585,7 @@ export function InteractiveTui({
         screenReader={preferenceSnapshot.screenReader}
         snapshot={editorSnapshot}
       />
+      <StatusFooter columns={dimensions.columns} model={screen} />
       <Text dimColor wrap="truncate-end">{notice}</Text>
     </Box>
   )

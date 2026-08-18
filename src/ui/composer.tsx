@@ -218,8 +218,15 @@ export function Composer({
     : { borderColor: 'gray' as const, borderStyle: 'round' as const, paddingX: 1 }
   return (
     <Box {...frame} flexDirection="column">
+      {/*
+        * The hint is drawn inside the same row layout as real text: same `› `
+        * prefix, same cursor cell. Drawing it without the prefix left the
+        * cursor reading as an indent rather than a caret, and the line jumped
+        * sideways the moment the first character arrived.
+        */}
       {showPlaceholder ? (
         <Text wrap="truncate-end">
+          {'› '}
           <Text inverse> </Text>
           <Text dimColor>{placeholder}</Text>
         </Text>

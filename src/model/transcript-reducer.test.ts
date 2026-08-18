@@ -169,10 +169,15 @@ describe('transcript reducer', () => {
       ]),
     )
 
+    // Reasoning travels beside the answer, never inside it. Folding it into
+    // the content here is what made a real reply read as a continuation of the
+    // model's scratch work, with the fold key inert because the row no longer
+    // carried any reasoning of its own.
     expect(complete.rows).toEqual([{
-      content: 'Reasoning: think\nhello!',
+      content: 'hello!',
       id: 'assistant:0:0',
       kind: 'assistant',
+      reasoning: 'think',
       status: 'complete',
     }])
     expect(complete.pendingAssistants).toEqual([])

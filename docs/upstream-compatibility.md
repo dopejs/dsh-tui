@@ -235,3 +235,35 @@ were mutation-verified.
 | --- | --- | --- | --- |
 | `0.2.3` | npm `0.1.0-rc.7` | Upgrade path | `dtui` realigns a stale profile and starts. 624 tests, clean-profile launch, global and local install resolution all green. |
 
+### 0.2.4
+
+Three interface defects, all found by running a real session rather than by any
+gate.
+
+The reply was invisible. The durable log was correct — a `reasoning` block at
+index 0, a `text` block at index 1 carrying the answer — but the row rebuilt on
+`assistant/message` ran the blocks through a projection that prefixed reasoning
+with `Reasoning: ` and joined it to the answer. The streaming path split them
+correctly and the finished-message path glued them back together, so every
+reasoning guarantee held until the turn ended and then silently stopped: the
+fold key went inert, the clipboard carried deliberation, and the answer read as
+a continuation of the model's scratch work.
+
+Worse, a test asserted the broken output as expected (`'Reasoning: think\nhello!'`)
+while `reasoning-policy.test.ts` asserted the opposite policy. Two suites
+contradicted each other and the runtime followed the wrong one. The policy suite
+now covers the finished-message path, where it actually broke, and was
+mutation-verified.
+
+The composer drew its placeholder without the `› ` prefix, so the cursor cell
+read as an indent rather than a caret and the line jumped sideways on the first
+keystroke. The hint now uses the same row layout as real text.
+
+The status chrome sat above the transcript, pushing the conversation down behind
+five lines of session metadata. It now renders below the composer, which is
+where Claude Code puts it and where the cursor already is.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.2.4` | npm `0.1.0-rc.7` | Interface defects | 625 tests, clean-profile launch, global and local install resolution all green. |
+

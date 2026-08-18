@@ -44,15 +44,15 @@ describe('renderInkFrame', () => {
     )
 
     expect(renderInkFrame(model, 48)).toMatchInlineSnapshot(`
-      "dsh-tui · spike-session · busy
-      transcript 1–3 of 3
-      ❯ hello
+      "❯ hello
       ⏺ 寬字 é emoji 👩🏽‍💻
       ⚒ pnpm test
       ╭──────────────────────────────────────────────╮
       │ Approval · agent root                        │
       │ Allow command?                               │
-      ╰──────────────────────────────────────────────╯"
+      ╰──────────────────────────────────────────────╯
+      dsh-tui · spike-session · busy
+      transcript 1–3 of 3"
     `)
   })
 
@@ -77,9 +77,9 @@ describe('renderInkFrame', () => {
       }),
       48,
     )).toMatchInlineSnapshot(`
-      "dsh-tui · live-session · busy
-      transcript 1–1 of 1
-      ⏺ working [streaming]"
+      "⏺ working [streaming]
+      dsh-tui · live-session · busy
+      transcript 1–1 of 1"
     `)
 
     expect(
@@ -137,11 +137,7 @@ describe('renderInkFrame', () => {
         terminalRows={8}
       />,
       { columns: 48 },
-    )).toMatchInlineSnapshot(`
-      "dsh-tui · live-session · idle
-      transcript 1–1 of 1
-      ⏺ done"
-    `)
+    )).toMatchInlineSnapshot(`"⏺ done"`)
     await controller.dispose()
   })
 
@@ -163,12 +159,12 @@ describe('renderInkFrame', () => {
     })
 
     expect(renderInkFrame(model, 44)).toMatchInlineSnapshot(`
-      "dsh-tui · tool-session · idle
-      transcript 1–1 of 1
-      ⚒ Run tests
+      "⚒ Run tests
         $ pnpm test
         all tests passed
-        exit: 0"
+        exit: 0
+      dsh-tui · tool-session · idle
+      transcript 1–1 of 1"
     `)
   })
 
@@ -192,10 +188,10 @@ describe('renderInkFrame', () => {
     })
 
     expect(renderInkFrame(model, 48)).toMatchInlineSnapshot(`
-      "dsh-tui · viewport-session · busy
-      transcript 1–1 of 1 · 7 evicted · 3 new
-      › ⚒ Run suite
-        [12 detail lines folded]"
+      "› ⚒ Run suite
+        [12 detail lines folded]
+      dsh-tui · viewport-session · busy
+      transcript 1–1 of 1 · 7 evicted · 3 new"
     `)
   })
 
@@ -226,9 +222,7 @@ describe('renderInkFrame', () => {
       />,
       { columns: 48 },
     )).toMatchInlineSnapshot(`
-      "dsh-tui · review-session · idle
-      transcript empty
-      ╭──────────────────────────────────────────────╮
+      "╭──────────────────────────────────────────────╮
       │ Plan review · agent root-agent               │
       │ Plan                                         │
       │ Proceed?                                     │
