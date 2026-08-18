@@ -21,6 +21,8 @@ export interface TuiSessionStore {
 export interface InkApplicationOptions {
   /** No persisted session was found, so onboarding guidance is shown. */
   readonly firstRun?: boolean
+  /** Terminal occupancy; `inline` leaves the session in scrollback. */
+  readonly renderMode?: 'alternate' | 'inline'
   readonly onQuit: (code: number) => void
   readonly sessionCenter: SessionCenterController
   readonly sessions: TuiSessionStore
@@ -74,9 +76,12 @@ export function mountInkApplication(
   streams: InkApplicationStreams = {},
 ): MountedInkApplication {
   const stdout = streams.stdout ?? process.stdout
+  // Read once at mount: switching buffers under a live render would strand
+  // whatever was already drawn in the buffer being left behind.
+  const alternateScreen = options.renderMode !== 'inline'
   return mountOwnedInkRenderer(
     () => render(<SessionApplication {...options} />, {
-      alternateScreen: true,
+      alternateScreen,
       exitOnCtrlC: false,
       incrementalRendering: true,
       interactive: true,

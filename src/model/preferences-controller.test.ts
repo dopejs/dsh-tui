@@ -68,5 +68,17 @@ describe('PreferencesController (M1.5)', () => {
     controller.replace({ theme: 'default' })
     expect(listener).toHaveBeenCalledOnce()
   })
+
+  it('accepts both render modes and rejects anything else', () => {
+    expect(new PreferencesController({ renderMode: 'inline' }).getSnapshot().renderMode)
+      .toBe('inline')
+    expect(new PreferencesController().getSnapshot().renderMode).toBe('alternate')
+
+    const controller = new PreferencesController()
+    expect(controller.replace({ renderMode: 'fullscreen' }))
+      .toMatchObject({ error: 'unsupported renderMode', kind: 'rejected' })
+    // A rejected document changes nothing.
+    expect(controller.getSnapshot().renderMode).toBe('alternate')
+  })
 })
 

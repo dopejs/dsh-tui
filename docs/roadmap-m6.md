@@ -137,14 +137,27 @@ each in isolation:
   it were the answer is the failure this prevents;
 - `--print` omits it, because a pipeline consumer must never act on it.
 
-## M6.8 Render modes and platform (+3)
+## M6.8 Render modes and platform (+3) — partial
 
-- inline versus alternate-screen rendering, chosen by preference and by whether
-  the terminal supports it;
-- Windows launcher support, which needs an execution path that does not pass
-  user arguments through a shell;
-- `/lang` interface language, which requires extracting the currently inlined
-  English strings into one table.
+Render mode is a preference: `alternate` keeps the shell clean, `inline` leaves
+the session in the terminal's own scrollback. Neither is universally right, so
+it is chosen rather than assumed. It is read once at mount — switching buffers
+under a live render would strand whatever was already drawn in the buffer being
+left behind.
+
+**Windows launcher support is not done, and not for want of trying.** Node
+cannot execute a `.cmd` without a shell, and a shell would interpret the
+arguments this launcher passes through from the user. Every workaround
+available here — locating the shim's target JS by parsing it, or resolving the
+CLI through a package path it is not a dependency of — is fragile in a way that
+fails at the user's machine rather than in CI. Shipping `shell: true` to close
+the gap would trade a missing feature for a command-injection surface, so the
+launcher continues to decline and name the direct command. This needs an
+upstream seam or a documented shim contract, not a local guess.
+
+`/lang` is not started. It is a mechanical extraction of the inlined English
+strings into one table plus a preference, and it is the least valuable item
+here for an English-speaking user; it is left as the obvious next piece.
 
 ## Sequencing
 

@@ -10,6 +10,16 @@ export type PreferenceAction =
 export type TuiTheme = 'default' | 'high-contrast' | 'no-color'
 
 /**
+ * How the TUI occupies the terminal.
+ *
+ * `alternate` takes the alternate screen and restores the scrollback on exit;
+ * `inline` draws in the normal buffer, so the session stays in scrollback
+ * afterwards. Neither is universally right: alternate keeps the shell clean,
+ * inline keeps the transcript greppable in the terminal's own history.
+ */
+export type TuiRenderMode = 'alternate' | 'inline'
+
+/**
  * Where the current preferences are being kept. `settings` means writes reach
  * the user's document; `process-only` means the settings service is absent or
  * read-only and edits last until exit. The distinction is surfaced rather than
@@ -22,6 +32,7 @@ export interface TuiPreferences {
   readonly keymap: Readonly<Record<PreferenceAction, string>>
   /** Suppress non-essential motion and transient redraws. */
   readonly reducedMotion: boolean
+  readonly renderMode: TuiRenderMode
   /**
    * Drop box drawing and decorative glyphs. A screen reader announces border
    * characters as content, so a bordered panel is read out as noise around the
@@ -51,10 +62,12 @@ const DEFAULT_KEYMAP: Readonly<Record<PreferenceAction, string>> = Object.freeze
 
 const ACTIONS = Object.freeze(Object.keys(DEFAULT_KEYMAP) as PreferenceAction[])
 const THEMES = Object.freeze(['default', 'high-contrast', 'no-color'] as const)
+const RENDER_MODES = Object.freeze(['alternate', 'inline'] as const)
 
 export const DEFAULT_PREFERENCES: TuiPreferences = Object.freeze({
   keymap: DEFAULT_KEYMAP,
   reducedMotion: false,
+  renderMode: 'alternate',
   screenReader: false,
   theme: 'default',
 })
@@ -72,6 +85,7 @@ export function resolvePreferences(input: unknown): TuiPreferences {
   const candidate = input as {
     readonly keymap?: unknown
     readonly reducedMotion?: unknown
+    readonly renderMode?: unknown
     readonly screenReader?: unknown
     readonly theme?: unknown
   }
@@ -81,6 +95,10 @@ export function resolvePreferences(input: unknown): TuiPreferences {
   if (typeof reducedMotion !== 'boolean') throw new Error('reducedMotion must be a boolean')
   const screenReader = candidate.screenReader ?? false
   if (typeof screenReader !== 'boolean') throw new Error('screenReader must be a boolean')
+  const renderMode = candidate.renderMode ?? 'alternate'
+  if (!RENDER_MODES.includes(renderMode as TuiRenderMode)) {
+    throw new Error('unsupported renderMode')
+  }
   const keymap = { ...DEFAULT_KEYMAP }
   if (candidate.keymap !== undefined) {
     if (
@@ -108,6 +126,7 @@ export function resolvePreferences(input: unknown): TuiPreferences {
   return Object.freeze({
     keymap: Object.freeze(keymap),
     reducedMotion,
+    renderMode: renderMode as TuiRenderMode,
     screenReader,
     theme: theme as TuiTheme,
   })
@@ -186,6 +205,7 @@ export class PreferencesController {
       keymap: this.#preferences.keymap,
       persistence: this.#persistence,
       reducedMotion: this.#preferences.reducedMotion,
+      renderMode: this.#preferences.renderMode,
       revision: this.#revision,
       screenReader: this.#preferences.screenReader,
       theme: this.#preferences.theme,

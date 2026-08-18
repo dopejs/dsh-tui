@@ -289,6 +289,7 @@ export async function startTuiRuntime(
               z.object({
                 keymap: z.dict(z.string()).default({}),
                 reducedMotion: z.boolean().default(false),
+                renderMode: z.union(['alternate', 'inline'] as const).default('alternate'),
                 screenReader: z.boolean().default(false),
                 theme: z.union(['default', 'high-contrast', 'no-color'] as const)
                   .default('default'),
@@ -715,6 +716,7 @@ export async function startTuiRuntime(
     }
     const application = dependencies.mountApplication({
       firstRun,
+      renderMode: preferencesStore.current().renderMode,
       onQuit: requestExit,
       sessionCenter,
       sessions: coordinator,
