@@ -30,7 +30,6 @@
   },
   "files": [
     "bin/",
-    "!bin/**/*.test.js",
     "lib/**/*.js",
     "lib/**/*.d.ts",
     "cordis.patch.yml"

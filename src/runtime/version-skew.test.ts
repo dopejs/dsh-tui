@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { compare, skewAction } from './version-skew.js'
+import { compare, skewAction } from '../../bin/version-skew.js'
 
 describe('compare (launcher)', () => {
   it('orders by release core', () => {

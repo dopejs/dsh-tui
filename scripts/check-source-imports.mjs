@@ -6,6 +6,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 const sourceDirectories = ['src', 'benchmarks', 'test-fixtures']
 const sourceExtensions = new Set(['.ts', '.tsx'])
 const explicitSourceExtension = /(?:\bfrom\s+|\bimport\s*(?:\(\s*)?)['"](\.{1,2}\/[^'"]+\.(?:js|jsx|ts|tsx))['"]/g
+const launcherImport = /(?:^|\/)bin\/[^/]+\.js$/
 
 async function sourceFiles(directory) {
   const entries = await readdir(directory, { withFileTypes: true })
@@ -22,6 +23,11 @@ for (const directory of sourceDirectories) {
   for (const file of await sourceFiles(join(root, directory))) {
     const text = await readFile(file, 'utf8')
     for (const match of text.matchAll(explicitSourceExtension)) {
+      // `bin/` is unbundled runtime ESM that Node loads directly, so its
+      // specifiers must carry the extension. A test reaching into it has to
+      // spell the path the way the launcher does, or it would be asserting
+      // against a module the launcher cannot itself import.
+      if (launcherImport.test(match[1])) continue
       failures.push(`${relative(root, file)}: local source import must omit the extension: ${match[1]}`)
     }
   }
