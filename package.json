@@ -1,6 +1,6 @@
 {
   "name": "@dopejs/dsh-tui",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "description": "A plugin-native terminal user interface for DeepSeek Harness",
   "type": "module",
   "license": "MIT",
@@ -183,6 +183,7 @@
     "@types/node": "22.19.20",
     "@types/react": "19.2.18",
     "@types/terminal-kit": "2.5.7",
+    "@xterm/headless": "6.0.0",
     "eslint": "10.8.1",
     "terminal-kit": "3.1.4",
     "tsdown": "0.22.14",

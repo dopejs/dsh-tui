@@ -297,3 +297,38 @@ moved. It is two: identity and route, then consumption and position.
 | --- | --- | --- | --- |
 | `0.2.5` | npm `0.1.0-rc.7` | Interface layout | 631 tests, clean-profile launch, global and local install resolution all green. |
 
+### 0.2.6
+
+Every interface defect this project shipped survived the suite, because the
+suite renders through `renderToString`. That helper produces text. A terminal is
+a grid that escape sequences mutate: cells get overwritten, inversion is what
+makes a caret visible, and the alternate screen is a separate buffer. Nothing
+could see any of that.
+
+`test-fixtures/screen-harness.ts` drives the real `InteractiveTui` under a PTY
+and feeds the bytes through a headless terminal emulator, so a test can read the
+screen as a user sees it — glyphs, cell attributes, cursor, buffer identity.
+`src/ui/screen.pty.test.ts` asserts, on a real terminal, that the interface takes
+the alternate screen, draws a visible caret while typing, shows the answer while
+folding reasoning, folds an injected reminder onto one line, and never overwrites
+one row with another.
+
+Two things it caught immediately, both of which every prior gate had missed:
+
+- `isInverse()` answers with a bit flag, not `1`. The harness's own first
+  assertion compared it against `1` and reported every caret as missing.
+- Inversion alone is not visibility. Restoring the shipped defect — a full block
+  glyph under the caret — leaves the cell inverted, so an inversion-only
+  assertion stays green. What made it invisible was the glyph: inverting a cell
+  that is already full paints it in the background colour. The test now
+  constrains the glyph, and reinstating the defect turns it red.
+
+Fullscreen is still not delivered. Pinning the layout to the viewport height was
+attempted and reverted: content exceeding a fixed height garbles cells, and
+until this harness existed there was no way to tell a real defect from a
+`renderToString` artefact. That work now has something to verify against.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.2.6` | npm `0.1.0-rc.7` | Real-terminal test harness | 636 tests including five on a live PTY; clean-profile launch and install resolution green. No runtime behaviour change. |
+

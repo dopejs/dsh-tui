@@ -156,7 +156,7 @@ describe('InteractiveTui', () => {
 
     expect(renderApp(transcript, interaction)).toMatchInlineSnapshot(`
       "╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.2.5                                   │
+      │ dsh-tui v0.2.6                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
@@ -188,7 +188,7 @@ describe('InteractiveTui', () => {
       'Target session failed; restored session-app.',
     )).toMatchInlineSnapshot(`
       "╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.2.5                                   │
+      │ dsh-tui v0.2.6                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
@@ -221,7 +221,7 @@ describe('InteractiveTui', () => {
 
     expect(renderApp(transcript, interaction)).toMatchInlineSnapshot(`
       "╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.2.5                                   │
+      │ dsh-tui v0.2.6                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
@@ -313,7 +313,7 @@ describe('InteractiveTui', () => {
       viewport.insertSearch('needle')
     })).toMatchInlineSnapshot(`
       "╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.2.5                                   │
+      │ dsh-tui v0.2.6                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
