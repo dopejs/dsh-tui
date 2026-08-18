@@ -8,6 +8,7 @@ import { createScreenModel } from '../model/view-model'
 import { compactCount, contextGauge, describeSources } from '../model/status-bar'
 import { foldInjectedContent, foldSummary } from '../model/context-fold'
 import { toneStyle, type SemanticTone } from './theme'
+import { MarkdownInline, MarkdownView, splitLeadingText } from './markdown-view'
 import { DEFAULT_TIPS, Welcome } from './welcome'
 
 /**
@@ -125,13 +126,30 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
           const injected = row.kind === 'system' && row.toolCard === undefined
             ? foldInjectedContent(row.content, expandedRowIds?.has(row.id) === true)
             : undefined
+          const prose = row.kind === 'assistant' && row.toolCard === undefined
+            ? splitLeadingText(row.content)
+            : undefined
           return (
           <Box flexDirection="column" key={row.id}>
             <Text {...tone(ROW_TONE[row.kind])} wrap="truncate-end">
               {model.focusedRowId === row.id ? FOCUS_MARKER : ''}
-              {ROW_MARKERS[row.kind]} {row.toolCard?.title ?? injected?.lines[0] ?? row.content}
+              {ROW_MARKERS[row.kind]}
+              {' '}
+              {/* Only assistant prose is Markdown; a user turn and a tool card
+                  are shown as written, since interpreting them would change
+                  what the user typed or what the tool reported. */}
+              {prose === undefined
+                ? row.toolCard?.title ?? injected?.lines[0] ?? row.content
+                : prose.lead === undefined
+                  ? ''
+                  : <MarkdownInline text={prose.lead} theme={theme} />}
               {row.status === undefined ? '' : ROW_STATUS[row.status]}
             </Text>
+            {prose !== undefined && prose.rest.length > 0 ? (
+              <Box marginLeft={2}>
+                <MarkdownView blocks={prose.rest} theme={theme} />
+              </Box>
+            ) : null}
             {injected !== undefined && injected.folded ? (
               <Text dimColor wrap="truncate-end">
                 {'  '}{foldSummary(injected.hiddenLines)}
