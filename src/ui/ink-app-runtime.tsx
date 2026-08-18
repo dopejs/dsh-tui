@@ -26,7 +26,9 @@ export interface InkApplicationOptions {
   /** Terminal occupancy; `inline` leaves the session in scrollback. */
   readonly renderMode?: 'alternate' | 'inline'
   /** Decoded mouse events, when the terminal was asked to report them. */
-  readonly mouse?: MouseFilteredStdin
+  readonly mouse?: Pick<MouseFilteredStdin, 'onMouse'> & {
+    readonly setReporting?: (enabled: boolean) => void
+  }
   readonly onQuit: (code: number) => void
   readonly sessionCenter: SessionCenterController
   readonly sessions: TuiSessionStore
@@ -93,11 +95,31 @@ export function mountInkApplication(
   // the sequence to a pipe puts it in whatever is consuming the output.
   const interactive = stdin.isTTY === true && stdout.isTTY === true
   const mouse = interactive ? filterMouseFromStdin(stdin) : undefined
-  if (mouse !== undefined) stdout.write(ENABLE_MOUSE)
+  /*
+   * Reporting can be given back.
+   *
+   * While a terminal is reporting, it hands mouse events to this process
+   * instead of making a selection of its own, so dragging no longer selects
+   * text. Most terminals let Shift bypass that, but not every one does and
+   * nobody should have to know -- so it can simply be turned off, at which
+   * point selection behaves exactly as it did before any of this existed.
+   */
+  let reporting = false
+  const setReporting = (enabled: boolean) => {
+    if (enabled === reporting) return
+    reporting = enabled
+    stdout.write(enabled ? ENABLE_MOUSE : DISABLE_MOUSE)
+  }
+  const mouseProp = mouse === undefined
+    ? undefined
+    : { onMouse: mouse.onMouse, setReporting }
 
   const mounted = mountOwnedInkRenderer(
     () => render(
-      <SessionApplication {...options} {...(mouse === undefined ? {} : { mouse })} />,
+      <SessionApplication
+        {...options}
+        {...(mouseProp === undefined ? {} : { mouse: mouseProp })}
+      />,
       {
         alternateScreen,
         exitOnCtrlC: false,
@@ -113,6 +135,17 @@ export function mountInkApplication(
   )
 
   if (mouse === undefined) return mounted
+
+  /*
+   * Asked for after the renderer has taken the alternate screen, not before.
+   *
+   * Terminals keep private mode state per screen buffer, so a mode set on the
+   * primary screen is not in effect once the alternate one is entered. Set
+   * first, reporting was discarded on a real terminal -- Ghostty reported
+   * nothing at all -- while the emulator the screen tests run against does not
+   * separate the buffers and kept it, so every test stayed green.
+   */
+  setReporting(true)
   /*
    * Reporting must stop before the process does: a terminal left reporting
    * prints escape sequences into the user's shell on every click afterwards.

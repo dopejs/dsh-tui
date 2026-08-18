@@ -92,11 +92,15 @@ export interface InteractiveTuiProps {
    */
   readonly renderMode?: 'alternate' | 'inline'
   /** Decoded mouse events, when the terminal reports them. */
-  readonly mouse?: { readonly onMouse: (listener: (event: {
-    readonly column: number
-    readonly kind: 'press' | 'release' | 'wheel-down' | 'wheel-up'
-    readonly row: number
-  }) => void) => () => void }
+  readonly mouse?: {
+    readonly onMouse: (listener: (event: {
+      readonly column: number
+      readonly kind: 'press' | 'release' | 'wheel-down' | 'wheel-up'
+      readonly row: number
+    }) => void) => () => void
+    /** Hand mouse reporting back to the terminal, restoring text selection. */
+    readonly setReporting?: (enabled: boolean) => void
+  }
   readonly interaction: InteractionController
   readonly jobs: JobsController
   readonly mcp: McpInventoryController
@@ -286,6 +290,12 @@ export function InteractiveTui({
   // three lines on it before the answer. Withheld, never discarded -- the
   // palette draws it back inline.
   const [showContext, setShowContext] = useState(false)
+  /*
+   * While the terminal reports mouse events it stops making selections of its
+   * own, so dragging no longer selects text. Most terminals let Shift bypass
+   * that; not all do, and nobody should have to know. This hands it back.
+   */
+  const [mouseReporting, setMouseReporting] = useState(true)
   const [notice, setNotice] = useState(
     initialNotice ?? (firstRun
       // A first-run user has no way to discover the panels yet; the palette is
@@ -431,10 +441,11 @@ export function InteractiveTui({
       // positive step -- the same convention the up arrow uses. Reading it the
       // other way round leaves the wheel inert at the tail, where a session
       // spends most of its time, and the gesture looks unimplemented.
+      if (!mouseReporting) return
       if (event.kind === 'wheel-up') viewport.scrollLines(WHEEL_LINES)
       else if (event.kind === 'wheel-down') viewport.scrollLines(-WHEEL_LINES)
     })
-  }, [mouse, viewport])
+  }, [mouse, mouseReporting, viewport])
 
   // Start the clock on idle→running and clear it on the way back, so a second
   // turn never inherits the first one's start time.
@@ -623,6 +634,15 @@ export function InteractiveTui({
       case 'transcript.search':
         viewport.openSearch()
         setNotice('Transcript search opened.')
+        return
+      case 'tui.toggle-mouse':
+        setMouseReporting((on) => {
+          mouse?.setReporting?.(!on)
+          setNotice(on
+            ? 'Mouse reporting off — dragging selects text again.'
+            : 'Mouse reporting on — the wheel scrolls; hold Shift to select text.')
+          return !on
+        })
         return
       case 'transcript.toggle-context':
         setShowContext((shown) => {

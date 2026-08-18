@@ -585,3 +585,37 @@ the newline that works everywhere.
 | --- | --- | --- | --- |
 | `0.5.1` | npm `0.1.0-rc.7` | IME cursor placement | 669 tests including fifteen on a live PTY; clean-profile launch green. |
 
+### 0.5.2
+
+Mouse reporting did nothing on Ghostty, and took text selection away
+everywhere.
+
+It was asked for before the renderer took the alternate screen. Terminals keep
+private mode state per screen buffer, so a mode set on the primary screen is not
+in effect once the alternate one is entered: the request was simply discarded.
+The emulator the screen tests run against does not separate the buffers, kept
+the mode, and stayed green through all of it — the first defect this harness has
+missed, and a reminder that an emulator is a model of a terminal, not a
+terminal. Reporting is now asked for after the screen is taken, and the test
+asserts that order in the byte stream rather than the behaviour it produces.
+
+The second half was not a bug but a cost nobody was told about: while a terminal
+reports mouse events it stops making selections of its own, so dragging no
+longer selects text. Most terminals let Shift bypass that; not all do, and
+nobody should have to know. `Toggle mouse reporting` in the command palette
+hands it back outright, at which point selection behaves exactly as it did
+before any of this existed. The screen test drives the toggle through the
+palette and asserts both that the terminal was told to stop and that the wheel
+then does nothing.
+
+Two flakes, handled differently. The exit assertion typed a phrase with a space
+into the palette, giving per-keystroke filtering a chance to be mid-update when
+Enter arrived; it now types a single word, and twelve consecutive runs are
+green. The clean-profile smoke failed once at the session-centre step under load
+and passed on re-run — observed, not diagnosed, and recorded here rather than
+dismissed.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.5.2` | npm `0.1.0-rc.7` | Mouse mode ordering | 671 tests including seventeen on a live PTY; clean-profile launch green on the second run. |
+

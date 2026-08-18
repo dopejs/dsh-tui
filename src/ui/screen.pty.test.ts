@@ -336,7 +336,10 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
       screen => screen.some(line => line.includes('Command palette')),
       'the command palette',
     )
-    harness.type('Exit TUI')
+    // A single word, typed as one write: filtering runs per keystroke, and a
+    // phrase with a space gives the list more chances to be mid-update when
+    // Enter arrives. This test was intermittently red for exactly that reason.
+    harness.type('exit')
     await harness.waitFor(
       screen => screen.some(line => line.includes('› Exit TUI')),
       'the exit action to be the selected one',
@@ -410,4 +413,65 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
     expect(harness.cursor()).toEqual({ column: caret[0]?.column, row: caret[0]?.row })
   }, 30_000)
 
+  /*
+   * Mouse reporting is asked for after the alternate screen is taken.
+   *
+   * Terminals keep private mode state per screen buffer, so a mode set on the
+   * primary screen is not in effect once the alternate one is entered. Asked
+   * for first, mouse reporting was silently discarded on a real terminal --
+   * Ghostty reported nothing at all -- while this emulator, which does not
+   * separate the buffers, kept it and stayed green.
+   */
+  it('asks for mouse reporting only after taking the alternate screen', async () => {
+    harness = new ScreenHarness({ rows: 20, scenario: 'empty' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('command palette')),
+      'the composer hint',
+    )
+
+    const raw = harness.rawOutput()
+    const alternateScreen = raw.indexOf('[?1049h')
+    const reporting = raw.indexOf(ENABLE_MOUSE)
+
+    expect(alternateScreen).toBeGreaterThanOrEqual(0)
+    expect(reporting).toBeGreaterThanOrEqual(0)
+    expect(reporting).toBeGreaterThan(alternateScreen)
+  }, 30_000)
+
+  // Reporting takes text selection away: while it is on, the terminal hands
+  // mouse events here instead of making a selection of its own. Shift bypasses
+  // that on most terminals but not all, so it can be handed back outright.
+  it('hands mouse reporting back on request', async () => {
+    harness = new ScreenHarness({ rows: 20, scenario: 'overflow' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('turn 59 of a long conversation')),
+      'the tail of the conversation',
+    )
+
+    harness.type('\u0010')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('Command palette')),
+      'the command palette',
+    )
+    harness.type('mouse')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('\u203a Toggle mouse reporting')),
+      'the toggle to be selected',
+    )
+    await harness.settle()
+    harness.type('\r')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('selects text again')),
+      'the confirmation',
+    )
+
+    // The terminal was actually told to stop, and the wheel no longer moves
+    // the transcript.
+    expect(harness.rawOutput()).toContain(DISABLE_MOUSE)
+    const before = harness.screen().join('\n')
+    harness.wheel('up')
+    harness.wheel('up')
+    await harness.settle()
+    expect(harness.screen().join('\n')).toBe(before)
+  }, 30_000)
 })

@@ -26,6 +26,7 @@ export type TuiActionId =
   | 'transcript.search'
   | 'transcript.to-end'
   | 'transcript.toggle-context'
+  | 'tui.toggle-mouse'
   | 'transcript.to-start'
   | 'tui.exit'
 
@@ -187,6 +188,12 @@ export const DEFAULT_TUI_ACTIONS: readonly TuiActionDescriptor[] = Object.freeze
     id: 'transcript.to-start',
     keywords: Object.freeze(['oldest', 'top']),
     title: 'Go to transcript start',
+  }),
+  Object.freeze({
+    description: 'Hand the mouse back to the terminal so dragging selects text again',
+    id: 'tui.toggle-mouse',
+    keywords: Object.freeze(['select', 'copy', 'wheel', 'scroll', 'drag']),
+    title: 'Toggle mouse reporting',
   }),
   Object.freeze({
     description: 'Gracefully close the interactive TUI',
