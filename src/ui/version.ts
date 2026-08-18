@@ -5,4 +5,4 @@
  * no readable manifest relative to the bundled entry point, and a version the
  * UI cannot resolve would render as a lie or a blank.
  */
-export const TUI_VERSION = '0.4.1'
+export const TUI_VERSION = '0.4.2'

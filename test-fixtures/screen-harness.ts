@@ -102,6 +102,30 @@ export class ScreenHarness {
     return found
   }
 
+  /**
+   * Cells whose background is not the terminal's default — what draws a band.
+   *
+   * Distinct from inversion: a band that inverts every cell is the strongest
+   * signal a terminal has, and spending it on an ordinary row reads as glare.
+   * The band is a raised background, so that is what has to be asserted.
+   */
+  bandedCells(): { column: number, row: number }[] {
+    const buffer = this.#terminal.buffer.active
+    const found: { column: number, row: number }[] = []
+    for (let row = 0; row < this.#terminal.rows; row += 1) {
+      const line = buffer.getLine(row)
+      if (line === undefined) continue
+      for (let column = 0; column < this.#terminal.cols; column += 1) {
+        // `isBgDefault` answers with a boolean while `isInverse` answers with
+        // a bit flag. Comparing either against a specific number is how a cell
+        // attribute silently reads as absent.
+        const cell = line.getCell(column)
+        if (cell !== undefined && !cell.isBgDefault()) found.push({ column, row })
+      }
+    }
+    return found
+  }
+
   /** The character drawn in a cell, as the terminal holds it. */
   characterAt(row: number, column: number): string {
     return this.#terminal.buffer.active.getLine(row)?.getCell(column)?.getChars() ?? ''

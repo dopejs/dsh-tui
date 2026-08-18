@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { isMonochrome, toneStyle, type SemanticTone } from './theme'
+import { bandStyle, bandsUserTurn, isMonochrome, toneStyle, type SemanticTone } from './theme'
 
 const TONES: readonly SemanticTone[] = [
   'accent',
@@ -52,5 +52,24 @@ describe('semantic theme (M4.1)', () => {
 
   it('treats an absent tone as no styling', () => {
     expect(toneStyle('default', undefined)).toEqual({})
+  })
+})
+
+describe('bandStyle (M6.11)', () => {
+  // Inverting the row is the loudest thing a terminal can do. Spent on the most
+  // ordinary row on screen it reads as a bar of glare, so the default theme
+  // raises the background instead and leaves inversion to the theme that asks
+  // for maximum distinction.
+  it('raises the background by default and inverts only for high contrast', () => {
+    expect(bandStyle('default')).toEqual({ backgroundColor: 'blackBright' })
+    expect(bandStyle('high-contrast')).toEqual({ inverse: true })
+  })
+
+  // The theme promises no colour; the role marker still tells the rows apart.
+  it('draws no band at all without colour', () => {
+    expect(bandStyle('no-color')).toEqual({})
+    expect(bandsUserTurn('no-color')).toBe(false)
+    expect(bandsUserTurn('default')).toBe(true)
+    expect(bandsUserTurn('high-contrast')).toBe(true)
   })
 })

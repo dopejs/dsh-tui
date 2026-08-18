@@ -122,12 +122,16 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
     const userRow = screen.findIndex(line => line.includes('hello'))
     expect(userRow).toBeGreaterThanOrEqual(0)
 
-    const banded = harness.invertedCells().filter(cell => cell.row === userRow)
+    const banded = harness.bandedCells().filter(cell => cell.row === userRow)
     expect(banded).toHaveLength(60)
+
+    // A raised background, not an inversion: inverting the row is the loudest
+    // thing a terminal can do, and it reads as glare on an ordinary turn.
+    expect(harness.invertedCells().filter(cell => cell.row === userRow)).toHaveLength(0)
 
     // And the reply is not banded, or the distinction would say nothing.
     const answerRow = screen.findIndex(line => line.includes('I am in the doper workspace'))
-    expect(harness.invertedCells().filter(cell => cell.row === answerRow)).toHaveLength(0)
+    expect(harness.bandedCells().filter(cell => cell.row === answerRow)).toHaveLength(0)
   })
 
   // Nothing may overwrite anything else: a fixed-height layout that clips

@@ -456,3 +456,28 @@ are the same field.
 | --- | --- | --- | --- |
 | `0.4.1` | npm `0.1.0-rc.7` | Thinking duration, turn spacing | 643 tests including eleven on a live PTY; clean-profile launch and install resolution green. |
 
+### 0.4.2
+
+The user band inverted every cell in the row. Inversion is the loudest thing a
+terminal can do, and spent on the most ordinary row on screen it reads as a bar
+of glare rather than as a marker. The default theme now raises the background
+instead — `blackBright`, present enough to find at a glance and quiet enough to
+sit behind text. `high-contrast` keeps the inversion, which is the point of that
+theme, and `no-color` draws no band at all: it promises no colour, and the role
+marker already tells the rows apart. A row is padded to the terminal width only
+when a band is actually drawn.
+
+The screen test now asserts the band by background rather than by inversion, and
+asserts the user row carries no inversion — otherwise swapping one for the other
+would have left it green either way.
+
+The harness had the same defect twice over: `isBgDefault()` answers with a
+boolean while `isInverse()` answers with a bit flag, and comparing either
+against a specific number reports the attribute as absent. The first version of
+the band assertion compared against `0` and found nothing on a correctly banded
+row.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.4.2` | npm `0.1.0-rc.7` | Band contrast | 645 tests including eleven on a live PTY; clean-profile launch and install resolution green. |
+

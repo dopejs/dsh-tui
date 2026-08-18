@@ -54,6 +54,37 @@ const THEMES: Readonly<Record<TuiTheme, Readonly<Record<SemanticTone, ToneStyle>
   'no-color': NO_COLOR_TONES,
 })
 
+/** The Ink `Text` props that draw a user turn as a band. */
+export interface BandStyle {
+  readonly backgroundColor?: string
+  readonly inverse?: true
+}
+
+/**
+ * How a user turn is set apart from everything around it.
+ *
+ * A full inversion was the first attempt and reads as a bar of glare on a dark
+ * terminal: it is the strongest signal the terminal offers, spent on the most
+ * ordinary row on screen. The default theme uses a raised background instead —
+ * present enough to find at a glance, quiet enough to sit behind text.
+ *
+ * `high-contrast` keeps the inversion, which is the point of that theme, and
+ * `no-color` gets no band at all: it promises no colour, and the role marker
+ * already distinguishes the row.
+ */
+export function bandStyle(theme: TuiTheme): BandStyle {
+  switch (theme) {
+    case 'high-contrast': return Object.freeze({ inverse: true as const })
+    case 'no-color': return Object.freeze({})
+    default: return Object.freeze({ backgroundColor: 'blackBright' })
+  }
+}
+
+/** Whether a band is drawn at all, so a row is padded only when it shows. */
+export function bandsUserTurn(theme: TuiTheme): boolean {
+  return theme !== 'no-color'
+}
+
 /**
  * Resolve one semantic tone into Ink `Text` props for a theme. The result is
  * spread, so a tone that sets nothing contributes nothing — which is what keeps

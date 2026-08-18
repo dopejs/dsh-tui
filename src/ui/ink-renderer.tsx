@@ -9,7 +9,7 @@ import { createScreenModel } from '../model/view-model'
 import { compactCount, contextGauge, describeSources } from '../model/status-bar'
 import { formatElapsed } from '../model/working-status'
 import { foldInjectedContent, foldSummary } from '../model/context-fold'
-import { toneStyle, type SemanticTone } from './theme'
+import { bandStyle, bandsUserTurn, toneStyle, type SemanticTone } from './theme'
 import { MarkdownInline, MarkdownView, splitLeadingText } from './markdown-view'
 import { DEFAULT_TIPS, Welcome } from './welcome'
 
@@ -210,12 +210,14 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
               * land on: finding where an exchange started meant reading.
               */}
             {row.kind === 'user' ? (
-              <Text inverse wrap="truncate-end">
-                {padToWidth(
-                  `${model.focusedRowId === row.id ? FOCUS_MARKER : ''}`
-                  + `${ROW_MARKERS[row.kind]} ${row.content}`,
-                  columns,
-                )}
+              <Text {...bandStyle(theme)} wrap="truncate-end">
+                {(() => {
+                  const line = `${model.focusedRowId === row.id ? FOCUS_MARKER : ''}`
+                    + `${ROW_MARKERS[row.kind]} ${row.content}`
+                  // Padded only when a band is drawn: trailing spaces behind no
+                  // background are invisible work.
+                  return bandsUserTurn(theme) ? padToWidth(line, columns) : line
+                })()}
               </Text>
             ) : (
             <Text {...tone(ROW_TONE[row.kind])} wrap="truncate-end">
