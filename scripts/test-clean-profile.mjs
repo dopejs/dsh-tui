@@ -6,7 +6,7 @@ import { clearTimeout, setTimeout } from 'node:timers'
 import { fileURLToPath, URL } from 'node:url'
 import { spawn } from '@lydell/node-pty'
 
-const DSH_VERSION = '0.1.0-rc.6'
+const DSH_VERSION = '0.1.0-rc.7'
 const dshDlx = ['dlx', '--allow-build=node-pty', `@deepseek-ai/dsh@${DSH_VERSION}`]
 const root = fileURLToPath(new URL('..', import.meta.url))
 const sandbox = mkdtempSync(join(tmpdir(), 'dsh-tui-package-smoke-'))

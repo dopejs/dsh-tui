@@ -43,3 +43,10 @@ jobs:
       - name: Clean-profile install and launch
         if: matrix.os == 'ubuntu-latest' && matrix.node == '22.19.0'
         run: pnpm test:package
+
+      # Upstream publishing a new release can turn a correct peer pin into an
+      # ERESOLVE for every new user. Resolve against the host's current
+      # `latest`, the way the README tells them to install.
+      - name: Peer ranges resolve against the published host
+        if: matrix.os == 'ubuntu-latest' && matrix.node == '22.19.0'
+        run: pnpm check:peers

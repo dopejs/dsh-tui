@@ -6,9 +6,9 @@ distributed as an out-of-tree Harness bundle and runs in the same process as
 the agent runtime.
 
 > [!IMPORTANT]
-> This is `0.1.0`, the first published release. It pins exact `0.1.0-rc.6`
-> Harness peers, so it does not assume compatibility across Harness release
-> candidates.
+> This is `0.2.1`. It accepts `^0.1.0-rc.6` Harness peers and is verified
+> against the host's current `latest` on every CI run, so a new upstream
+> release candidate cannot silently make it uninstallable.
 
 ## Capabilities
 
@@ -64,23 +64,23 @@ Prerequisites are Node.js `^22.19.0 || >=24.0.0` and pnpm `11.7.0`.
 pnpm install --frozen-lockfile
 pnpm check
 npm pack --pack-destination /tmp
-pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.6 \
+pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.7 \
   plugin --profile tui add \
-  /tmp/dopejs-dsh-tui-0.2.0.tgz
-pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.6 --profile tui
+  /tmp/dopejs-dsh-tui-0.2.1.tgz
+pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.7 --profile tui
 ```
 
 Start a persisted session again with:
 
 ```bash
-pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.6 \
+pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.7 \
   --profile tui --resume <session-id>
 ```
 
 Select an exact provider/model before creating a new session with:
 
 ```bash
-pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.6 \
+pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.7 \
   --profile tui --model deepseek-official/deepseek-v4-flash
 ```
 
@@ -195,7 +195,7 @@ are never reverse-applied.
 
 The design was validated against DeepSeek Harness commit
 [`47f943859bef60e4160492346772ded9b24f765a`](https://github.com/deepseek-ai/deepseek-harness/commit/47f943859bef60e4160492346772ded9b24f765a)
-and the installable `0.1.0-rc.6` package artifacts published from that source
+and the installable `0.1.0-rc.7` package artifacts published from that source
 baseline. Harness is still a developer preview, so compatibility is tracked
 explicitly rather than assumed.
 

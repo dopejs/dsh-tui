@@ -9,7 +9,7 @@ The initial design was inspected against DeepSeek Harness:
 | Repository | `deepseek-ai/deepseek-harness` |
 | Commit | `47f943859bef60e4160492346772ded9b24f765a` |
 | Source manifest version | `0.1.0-rc.5` |
-| Published package baseline | `0.1.0-rc.6` |
+| Published package baseline | `0.1.0-rc.7` |
 | Source inspection date | 2026-08-14 |
 | Artifact verification date | 2026-08-15 |
 | Node engine | `^22.19.0 || >=24.0.0` |
@@ -24,7 +24,7 @@ artifacts and exercised through their public entry points. Harness is a
 developer preview, so the runtime package pins exact tested peers and does not
 assume compatibility across release candidates.
 
-On Linux, Harness `0.1.0-rc.6` loads `node-pty@1.1.0`, whose npm artifact must
+On Linux, Harness `0.1.0-rc.7` loads `node-pty@1.1.0`, whose npm artifact must
 compile its native addon during installation. pnpm 11 `dlx` invocations must
 therefore pass `--allow-build=node-pty`; no broader dependency-script allowance
 is required by this bundle.
@@ -159,3 +159,23 @@ must identify:
 - tests in both Harness and `dsh-tui`.
 
 UI convenience alone is not a reason to add behavior to the agent loop.
+
+### 0.2.1
+
+Upstream published `0.1.0-rc.7`. `0.2.0` pinned its Harness peers to exactly
+`0.1.0-rc.6`, so the moment the host's `latest` moved, the documented install
+became an `ERESOLVE` for every new user — the package was green in CI and
+uninstallable in practice. `0.2.1` widens every Harness peer to `^0.1.0-rc.6`
+and verifies the whole suite against `0.1.0-rc.7`.
+
+Neither gate could have caught this: `pnpm check` resolves the pinned tree in
+this repository, and the clean-profile smoke pinned the host version too. The
+new `pnpm check:peers` gate installs the real tarball beside
+`@deepseek-ai/dsh@latest` under npm's strict peer resolution, which is what a
+new user actually runs. It was mutation-verified: reinstating the exact pins
+turns it red with `ERESOLVE`.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.2.1` | npm `0.1.0-rc.7` | Peer-range widening | No behaviour change; 617 tests, clean-profile launch, and registry peer resolution all green. |
+
