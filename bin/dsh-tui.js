@@ -20,6 +20,8 @@ import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
+import { skewAction } from './version-skew.js'
+
 const here = dirname(fileURLToPath(import.meta.url))
 const manifest = JSON.parse(readFileSync(join(here, '..', 'package.json'), 'utf8'))
 const OWN_VERSION = manifest.version
@@ -67,31 +69,14 @@ function installedVersion() {
   }
 }
 
-/** Compare two semver-ish versions; prerelease suffixes order before release. */
-function compare(left, right) {
-  const parse = value => value.split('-')[0].split('.').map(Number)
-  const [leftCore, rightCore] = [parse(left), parse(right)]
-  for (let index = 0; index < 3; index += 1) {
-    const difference = (leftCore[index] ?? 0) - (rightCore[index] ?? 0)
-    if (difference !== 0) return difference < 0 ? -1 : 1
-  }
-  const leftPre = left.includes('-')
-  const rightPre = right.includes('-')
-  if (leftPre === rightPre) return 0
-  return leftPre ? -1 : 1
-}
-
-function bootstrap() {
+function install(reason) {
   if (!has('pnpm')) {
     fail(
       `[${PROFILE}] First-run setup needs pnpm, which dsh delegates installs to:\n`
       + '  npm install -g pnpm    (or: corepack enable pnpm)',
     )
   }
-  process.stderr.write(
-    `[${PROFILE}] First run — initializing the ${PROFILE} profile `
-    + `(${PACKAGE}@${OWN_VERSION})…\n`,
-  )
+  process.stderr.write(`[${PROFILE}] ${reason} (${PACKAGE}@${OWN_VERSION})…\n`)
   // Pin the version to this launcher's own, so a warm pnpm store cannot
   // resolve an older package than the launcher was built against.
   const added = spawnSync(
@@ -101,7 +86,7 @@ function bootstrap() {
   )
   if (added.status !== 0) {
     fail(
-      `[${PROFILE}] Profile initialization failed. Run it directly to see why:\n`
+      `[${PROFILE}] Profile setup failed. Run it directly to see why:\n`
       + `  dsh plugin --profile ${PROFILE} add ${PACKAGE}@${OWN_VERSION}`,
       added.status ?? 1,
     )
@@ -109,28 +94,16 @@ function bootstrap() {
 }
 
 const present = installedVersion()
-if (present === undefined) {
-  bootstrap()
-} else if (present !== OWN_VERSION) {
-  const order = compare(present, OWN_VERSION)
-  if (order > 0) {
-    // The profile is ahead. The launcher still starts it; the newer package
-    // brings its own composition.
-    process.stderr.write(
-      `[${PROFILE}] Profile has ${PACKAGE}@${present}, launcher is ${OWN_VERSION}. `
-      + 'Starting the profile version.\n',
-    )
-  } else {
-    // The profile is behind. Refusing is not caution: dsh applies this
-    // launcher's bundle patch to the profile's older package, so starting
-    // would fail on module resolution with a far less obvious error.
-    fail(
-      `[${PROFILE}] Profile has ${PACKAGE}@${present}, launcher is ${OWN_VERSION}. `
-      + 'Starting would apply this launcher\'s bundle patch to the older package '
-      + 'and fail on module resolution. Align them with:\n'
-      + `  dsh plugin --profile ${PROFILE} add ${PACKAGE}@${OWN_VERSION}`,
-    )
-  }
+const skew = skewAction(present, OWN_VERSION)
+if (skew.action === 'install') {
+  install(skew.reason === 'first-run'
+    ? `First run — initializing the ${PROFILE} profile`
+    : `Profile has ${PACKAGE}@${present}, launcher is ${OWN_VERSION} — realigning`)
+} else if (skew.reason === 'profile-ahead') {
+  process.stderr.write(
+    `[${PROFILE}] Profile has ${PACKAGE}@${present}, launcher is ${OWN_VERSION}. `
+    + 'Starting the profile version.\n',
+  )
 }
 
 const child = spawn('dsh', ['--profile', PROFILE, ...process.argv.slice(2)], {

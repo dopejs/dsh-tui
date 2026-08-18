@@ -1,6 +1,6 @@
 {
   "name": "@dopejs/dsh-tui",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "A plugin-native terminal user interface for DeepSeek Harness",
   "type": "module",
   "license": "MIT",
@@ -30,6 +30,7 @@
   },
   "files": [
     "bin/",
+    "!bin/**/*.test.js",
     "lib/**/*.js",
     "lib/**/*.d.ts",
     "cordis.patch.yml"

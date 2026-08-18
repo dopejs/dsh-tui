@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { chmodSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -30,33 +30,42 @@ function profileHomeWith(version: string): string {
  * A stub `dsh` on PATH, so the version logic is reachable without the real
  * CLI. Without it these tests would pass only on a machine that happens to
  * have dsh installed, and fail everywhere else at the availability check.
+ *
+ * It records every invocation, because the realignment path is only correct if
+ * the launcher actually runs the install — a message saying it realigned while
+ * doing nothing would otherwise pass.
  */
-function stubDshDirectory(): string {
+function stubDshDirectory(): { directory: string, log: string } {
   const directory = mkdtempSync(join(tmpdir(), 'dtui-stub-'))
+  const log = join(directory, 'invocations')
   const stub = join(directory, 'dsh')
-  writeFileSync(stub, '#!/bin/sh\nexit 0\n')
+  writeFileSync(stub, `#!/bin/sh\necho "$@" >> ${log}\nexit 0\n`)
   chmodSync(stub, 0o755)
-  return directory
+  return { directory, log }
 }
 
 /**
  * The launcher is a standalone script with no exports, so its behaviour is
  * exercised the way a user gets it: as a process.
  */
-function runLauncher(env: Record<string, string>): { status: number, output: string } {
+function runLauncher(
+  env: Record<string, string>,
+): { status: number, output: string, invocations: string } {
+  const stub = stubDshDirectory()
   // spawnSync rather than execFileSync: the launcher writes its diagnostics to
   // stderr, which the throwing variant only surfaces on a non-zero exit.
   const result = spawnSync(process.execPath, [launcher, '--doctor'], {
     encoding: 'utf8',
     env: {
       ...process.env,
-      PATH: `${stubDshDirectory()}:${process.env.PATH ?? ''}`,
+      PATH: `${stub.directory}:${process.env.PATH ?? ''}`,
       ...env,
     },
     stdio: ['ignore', 'pipe', 'pipe'],
     timeout: 30_000,
   })
   return {
+    invocations: existsSync(stub.log) ? readFileSync(stub.log, 'utf8') : '',
     output: `${result.stdout ?? ''}${result.stderr ?? ''}`,
     status: result.status ?? -1,
   }
@@ -67,14 +76,23 @@ function runLauncher(env: Record<string, string>): { status: number, output: str
 const onPosix = process.platform === 'win32' ? describe.skip : describe
 
 onPosix('dtui launcher (M6)', () => {
-  // Refusing here is not caution: dsh applies this launcher's bundle patch to
-  // the profile's older package, so starting fails on module resolution with a
-  // far less obvious error than this message.
-  it('refuses to start when the profile package is older than the launcher', () => {
+  // `npm i -g` upgrades the launcher and moves nothing else, so an older
+  // profile is what every upgrade looks like. Starting it as-is is not an
+  // option -- dsh applies this launcher's bundle patch to the older package
+  // and fails on module resolution -- but realigning is one unambiguous
+  // action, and printing it for the user to retype is a chore, not a
+  // safeguard.
+  it('realigns a profile older than the launcher instead of refusing', () => {
+    const version = JSON.parse(
+      readFileSync(join(root, 'package.json'), 'utf8'),
+    ) as { version: string }
     const result = runLauncher({ DSH_HOME: profileHomeWith('0.0.9') })
-    expect(result.status).toBe(1)
-    expect(result.output).toContain('Starting would apply this launcher')
-    expect(result.output).toContain('dsh plugin --profile tui add')
+    expect(result.output).toContain('realigning')
+    expect(result.output).not.toContain('Starting would apply')
+    // The message alone would pass while doing nothing.
+    expect(result.invocations)
+      .toContain(`plugin --profile tui add @dopejs/dsh-tui@${version.version}`)
+    expect(result.status).toBe(0)
   })
 
   // The newer package brings its own composition, so the launcher defers to it.

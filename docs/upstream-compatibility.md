@@ -209,3 +209,29 @@ removing `peerDependenciesMeta` reproduces the arborist crash exactly.
 | --- | --- | --- | --- |
 | `0.2.2` | npm `0.1.0-rc.7` | Global install path | `npm i -g` succeeds; `dtui --doctor` bootstraps the profile and reports all 8 required services resolved. No behaviour change. |
 
+### 0.2.3
+
+`0.2.2` fixed the install and left the *upgrade* broken. `npm i -g` moves the
+launcher and moves nothing else, so the first `dtui` after any upgrade found an
+older package in the profile and refused, printing a command for the user to
+retype:
+
+    [tui] Profile has @dopejs/dsh-tui@0.1.0, launcher is 0.2.2. Starting would
+    apply this launcher's bundle patch to the older package and fail on module
+    resolution. Align them with:
+      dsh plugin --profile tui add @dopejs/dsh-tui@0.2.2
+
+Refusing to *start* is still right — the bundle patch really would break module
+resolution — but realigning is one unambiguous action the launcher already knows
+how to take, and it now takes it. Only a profile that is *ahead* is left alone;
+downgrading it would overrule a deliberate install.
+
+The decision moved into `bin/version-skew.js` so it can be tested without a
+network or a global install, and the existing process-level test now asserts the
+launcher actually invokes `dsh plugin add` rather than merely saying so. Both
+were mutation-verified.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.2.3` | npm `0.1.0-rc.7` | Upgrade path | `dtui` realigns a stale profile and starts. 624 tests, clean-profile launch, global and local install resolution all green. |
+
