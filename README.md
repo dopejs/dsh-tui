@@ -66,7 +66,7 @@ pnpm check
 npm pack --pack-destination /tmp
 pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.6 \
   plugin --profile tui add \
-  /tmp/dopejs-dsh-tui-0.1.0.tgz
+  /tmp/dopejs-dsh-tui-0.2.0.tgz
 pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.6 --profile tui
 ```
 

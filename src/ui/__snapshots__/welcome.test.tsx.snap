@@ -2,7 +2,7 @@
 
 exports[`Welcome (M6) > renders identity and guidance side by side at 80 columns 1`] = `
 "╭──────────────────────────────────────────────────────────────────────────────╮
-│ dsh-tui v0.1.0                         Getting started                       │
+│ dsh-tui v0.2.0                         Getting started                       │
 │ deepseek-official/deepseek-chat        ^P  command palette — every action i… │
 │ workspace-write                        ^Y  activity · ^B jobs · ^G subagents │
 │ /Users/dev/Code/project                /exit  quit with a durable teardown   │
@@ -11,7 +11,7 @@ exports[`Welcome (M6) > renders identity and guidance side by side at 80 columns
 
 exports[`Welcome (M6) > stacks the columns at 40 columns instead of squeezing them 1`] = `
 "╭──────────────────────────────────────╮
-│ dsh-tui v0.1.0                       │
+│ dsh-tui v0.2.0                       │
 │ deepseek-official/deepseek-chat      │
 │ workspace-write                      │
 │ /Users/dev/Code/project              │
