@@ -38,6 +38,9 @@ export interface ScreenModel {
   /** Facts the welcome panel needs; absent when there is nothing to greet with. */
   readonly welcome?: {
     readonly cwd: string
+    readonly headingText?: string
+    readonly reasoningHiddenText?: string
+    readonly tips?: readonly string[]
     readonly screenReader: boolean
     readonly theme: 'default' | 'high-contrast' | 'no-color'
     readonly version: string

@@ -39,6 +39,7 @@ import type {
 import { projectTranscriptPlainText } from '../model/transcript-viewport-controller'
 import { createScreenModel, type InteractionModal } from '../model/view-model'
 import { workingStatus } from '../model/working-status'
+import { messages, resolveLanguage } from '../model/i18n'
 import type { InputController, InputSubmission, SubmissionMode } from '../runtime/input-controller'
 import { Composer, createComposerView } from './composer'
 
@@ -46,7 +47,7 @@ import { Composer, createComposerView } from './composer'
  * The empty-composer hint. It names a real task rather than describing the
  * box, because the first thing a new user needs is an example of what to say.
  */
-const COMPOSER_PLACEHOLDER = 'Try "explain this repository" · ^P for the command palette'
+// Resolved per render so a /lang change takes effect without a restart.
 import { writeOsc52Clipboard } from './clipboard'
 import { Frame } from './ink-renderer'
 import { OverlayPanel } from './overlay'
@@ -249,12 +250,20 @@ export function InteractiveTui({
     columns: fixedColumns ?? stdout.columns ?? 80,
     rows: fixedRows ?? stdout.rows ?? 24,
   }))
+  const preferenceSnapshot = useSyncExternalStore(
+    preferences.subscribe,
+    preferences.getSnapshot,
+    preferences.getSnapshot,
+  )
+  // Resolved per render so /lang takes effect without a restart, and so an
+  // unset preference follows the host locale rather than assuming English.
+  const text = messages(resolveLanguage(preferenceSnapshot.language))
   const [notice, setNotice] = useState(
     initialNotice ?? (firstRun
       // A first-run user has no way to discover the panels yet; the palette is
       // the one shortcut that leads to all of them.
-      ? 'Welcome. ^P opens the command palette — every action is listed there. Enter sends.'
-      : 'Enter send · ^J newline · ^S steer · ^C cancel'),
+      ? text.welcome
+      : text.sendHint),
   )
   // Injected context is folded by default; expansion is per-row and lives in
   // presentation state, never in the durable log.
@@ -376,11 +385,6 @@ export function InteractiveTui({
     attachments.subscribe,
     attachments.getSnapshot,
     attachments.getSnapshot,
-  )
-  const preferenceSnapshot = useSyncExternalStore(
-    preferences.subscribe,
-    preferences.getSnapshot,
-    preferences.getSnapshot,
   )
 
   // Start the clock on idle→running and clear it on the way back, so a second
@@ -1481,6 +1485,9 @@ export function InteractiveTui({
       firstScreen: projectedRows.length === 0,
       welcome: {
         cwd: workspace,
+        headingText: text.gettingStarted,
+        reasoningHiddenText: text.reasoningHidden,
+        tips: [text.tipPalette, text.tipActivity, text.tipExit],
         screenReader: preferenceSnapshot.screenReader,
         theme: preferenceSnapshot.theme,
         version: TUI_VERSION,
@@ -1574,7 +1581,7 @@ export function InteractiveTui({
       <Composer
         columns={dimensions.columns}
         maxRows={composerMaxRows}
-        placeholder={COMPOSER_PLACEHOLDER}
+        placeholder={text.composerPlaceholder}
         screenReader={preferenceSnapshot.screenReader}
         snapshot={editorSnapshot}
       />

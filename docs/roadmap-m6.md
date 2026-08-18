@@ -152,7 +152,7 @@ each in isolation:
   it were the answer is the failure this prevents;
 - `--print` omits it, because a pipeline consumer must never act on it.
 
-## M6.8 Render modes and platform (+3) — partial
+## M6.8 Render modes and platform (+3) — complete except Windows
 
 Render mode is a preference: `alternate` keeps the shell clean, `inline` leaves
 the session in the terminal's own scrollback. Neither is universally right, so
@@ -170,9 +170,16 @@ the gap would trade a missing feature for a command-injection surface, so the
 launcher continues to decline and name the direct command. This needs an
 upstream seam or a documented shim contract, not a local guess.
 
-`/lang` is not started. It is a mechanical extraction of the inlined English
-strings into one table plus a preference, and it is the least valuable item
-here for an English-speaking user; it is left as the obvious next piece.
+`/lang` is done. One table, one lookup, no formatting library, and a test that
+requires every key to exist and be non-empty in every language — a
+half-translated interface is worse than an untranslated one, because the
+missing half is the half the user was relying on.
+
+An unset preference follows the host locale rather than defaulting to English:
+a user whose terminal is already Chinese did not choose English, they simply
+never chose. `DSH_TUI_LANG` overrides the locale, and an explicit preference
+overrides both. The table is resolved per render, so `/lang` takes effect
+without a restart.
 
 ## Sequencing
 

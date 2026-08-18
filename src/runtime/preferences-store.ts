@@ -98,6 +98,7 @@ export class PreferencesStore {
     try {
       await scope.update({
         keymap: { ...next.keymap },
+        ...(next.language === undefined ? {} : { language: next.language }),
         reducedMotion: next.reducedMotion,
         renderMode: next.renderMode,
         screenReader: next.screenReader,

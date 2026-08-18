@@ -121,7 +121,10 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
             : { permission: model.permissionPreset })}
           screenReader={model.welcome.screenReader}
           theme={model.welcome.theme}
-          tips={DEFAULT_TIPS}
+          {...(model.welcome.headingText === undefined
+            ? {}
+            : { headingText: model.welcome.headingText })}
+          tips={model.welcome.tips ?? DEFAULT_TIPS}
           version={model.welcome.version}
         />
       ) : null}
@@ -161,7 +164,7 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
               </Box>
             ) : (
               <Text {...tone('muted')} wrap="truncate-end">
-                {'  '}reasoning hidden · ^E show
+                {'  '}{model.welcome?.reasoningHiddenText ?? 'reasoning hidden · ^E show'}
               </Text>
             )}
             {prose !== undefined && prose.rest.length > 0 ? (

@@ -32,6 +32,7 @@ import { JobsController } from './model/jobs-controller'
 import { McpInventoryController } from './model/mcp-inventory-controller'
 import { OverlayController } from './model/overlay-controller'
 import { PreferencesController, resolvePreferences } from './model/preferences-controller'
+import { LANGUAGES, isLanguage, messages } from './model/i18n'
 import { PermissionController } from './model/permission-controller'
 import { PluginInventoryController } from './model/plugin-inventory-controller'
 import { ProjectionHubController } from './model/projection-hub-controller'
@@ -288,6 +289,7 @@ export async function startTuiRuntime(
               settingsNamespace(TUI_SETTINGS_NAMESPACE),
               z.object({
                 keymap: z.dict(z.string()).default({}),
+                language: z.union(['en', 'zh'] as const).default('en'),
                 reducedMotion: z.boolean().default(false),
                 renderMode: z.union(['alternate', 'inline'] as const).default('alternate'),
                 screenReader: z.boolean().default(false),
@@ -465,6 +467,23 @@ export async function startTuiRuntime(
           return { kind: 'success', text: `${label} ${freshId}.` }
         }
 
+        registerIfAbsent({
+          description: 'Switch the interface language (en or zh)',
+          handler: (invocation) => {
+            const requested = invocation.rawInput.trim()
+            if (!isLanguage(requested)) {
+              return { kind: 'error', text: `Usage: /lang ${LANGUAGES.join('|')}` }
+            }
+            void preferencesStore.save({
+              ...preferencesStore.current(),
+              keymap: { ...preferencesStore.current().keymap },
+              language: requested,
+            }).catch(diagnostics.report)
+            return { kind: 'success', text: messages(requested).languageChanged }
+          },
+          name: 'lang',
+          recordInput: false,
+        })
         registerIfAbsent({
           description: 'Start a fresh session, disposing this one first',
           handler: () => startSession(undefined, 'Starting a new session'),

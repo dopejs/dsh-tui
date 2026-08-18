@@ -1,3 +1,5 @@
+import { isLanguage, type TuiLanguage } from './i18n'
+
 export type PreferenceAction =
   | 'activity.center'
   | 'command.palette'
@@ -30,6 +32,8 @@ export type PreferencePersistence = 'process-only' | 'settings'
 
 export interface TuiPreferences {
   readonly keymap: Readonly<Record<PreferenceAction, string>>
+  /** Absent means "not chosen", which lets the host locale decide. */
+  readonly language?: TuiLanguage
   /** Suppress non-essential motion and transient redraws. */
   readonly reducedMotion: boolean
   readonly renderMode: TuiRenderMode
@@ -84,6 +88,7 @@ export function resolvePreferences(input: unknown): TuiPreferences {
   }
   const candidate = input as {
     readonly keymap?: unknown
+    readonly language?: unknown
     readonly reducedMotion?: unknown
     readonly renderMode?: unknown
     readonly screenReader?: unknown
@@ -95,6 +100,10 @@ export function resolvePreferences(input: unknown): TuiPreferences {
   if (typeof reducedMotion !== 'boolean') throw new Error('reducedMotion must be a boolean')
   const screenReader = candidate.screenReader ?? false
   if (typeof screenReader !== 'boolean') throw new Error('screenReader must be a boolean')
+  const language = candidate.language
+  if (language !== undefined && (typeof language !== 'string' || !isLanguage(language))) {
+    throw new Error('unsupported language')
+  }
   const renderMode = candidate.renderMode ?? 'alternate'
   if (!RENDER_MODES.includes(renderMode as TuiRenderMode)) {
     throw new Error('unsupported renderMode')
@@ -125,6 +134,7 @@ export function resolvePreferences(input: unknown): TuiPreferences {
   }
   return Object.freeze({
     keymap: Object.freeze(keymap),
+    ...(language === undefined ? {} : { language }),
     reducedMotion,
     renderMode: renderMode as TuiRenderMode,
     screenReader,
@@ -203,6 +213,9 @@ export class PreferencesController {
   #createSnapshot(warning?: string): PreferencesSnapshot {
     return Object.freeze({
       keymap: this.#preferences.keymap,
+      ...(this.#preferences.language === undefined
+        ? {}
+        : { language: this.#preferences.language }),
       persistence: this.#persistence,
       reducedMotion: this.#preferences.reducedMotion,
       renderMode: this.#preferences.renderMode,

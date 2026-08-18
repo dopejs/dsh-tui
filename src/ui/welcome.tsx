@@ -13,6 +13,8 @@ export interface WelcomeProps {
   /** Drop box drawing for screen readers. */
   readonly screenReader?: boolean
   readonly theme: TuiTheme
+  /** Localized section heading; the tips are already localized by the caller. */
+  readonly headingText?: string
   readonly tips: readonly string[]
   readonly version: string
 }
@@ -39,6 +41,7 @@ function shorten(value: string, maximum: number): string {
 export function Welcome({
   columns,
   cwd,
+  headingText = 'Getting started',
   modelLabel,
   permission,
   screenReader = false,
@@ -66,7 +69,7 @@ export function Welcome({
   )
   const guidance = (
     <Box flexDirection="column" {...(stacked ? {} : { width: Math.floor(width / 2) - 2 })}>
-      <Text {...tone('accent')}>Getting started</Text>
+      <Text {...tone('accent')}>{headingText}</Text>
       {tips.map(tip => (
         <Text key={tip} wrap="truncate-end">{tip}</Text>
       ))}
