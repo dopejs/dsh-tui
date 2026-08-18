@@ -530,6 +530,13 @@ underneath a live renderer also left the installed TUI unable to exit. The
 renderer is disposed first, then reporting is turned off, then the filter is
 released.
 
+And flow control has to reach the real descriptor. The proxy forwarded TTY
+identity and raw mode but not `pause`, so Ink pausing on unmount paused only the
+filter while the real stdin kept flowing with its handle open. On Linux that
+kept the process alive after the interface was gone; macOS exited regardless, so
+only CI saw it — the first platform-specific defect this project has hit since
+the OSC 8 assertion in `0.1.0`.
+
 Clicking is not implemented: only the wheel. Reports for presses and releases
 are decoded and delivered, and nothing consumes them yet.
 

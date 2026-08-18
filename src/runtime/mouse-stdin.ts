@@ -90,6 +90,19 @@ export function filterMouseFromStdin(source: NodeJS.ReadStream): MouseFilteredSt
       if (property === 'ref' || property === 'unref') {
         return () => receiver as NodeJS.ReadStream
       }
+      // Flow control reaches the real descriptor too. Ink believes it owns
+      // stdin, so when it pauses on unmount it must actually pause stdin --
+      // pausing only this filter leaves the real one flowing and its handle
+      // open, which on Linux kept the process alive after the interface was
+      // gone. macOS exited anyway, so only CI saw it.
+      if (property === 'pause' || property === 'resume') {
+        return () => {
+          if (property === 'pause') source.pause()
+          else source.resume()
+          ;(target[property] as () => unknown).call(target)
+          return receiver as NodeJS.ReadStream
+        }
+      }
       const value = Reflect.get(target, property, target) as unknown
       return typeof value === 'function' ? (value as () => unknown).bind(target) : value
     },
@@ -100,6 +113,7 @@ export function filterMouseFromStdin(source: NodeJS.ReadStream): MouseFilteredSt
       if (disposed) return
       disposed = true
       source.unpipe(filter)
+      source.pause()
       listeners.clear()
       filter.end()
     },
