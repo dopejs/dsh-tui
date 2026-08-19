@@ -70,6 +70,11 @@ async function exerciseExit(action: (child: IPty) => void): Promise<PtyResult> {
   return running.result
 }
 
+/*
+ * These spawn a process and drive it through a pseudo-terminal, so the default
+ * timeout -- tuned for tests that call a function -- is the wrong measure.
+ * Windows ran into it while asserting nothing about speed.
+ */
 describe('CLI terminal lifecycle', () => {
   it('restores the alternate screen after normal quit', async () => {
     const running = startCli(cli, process.platform !== 'win32')
@@ -90,7 +95,7 @@ describe('CLI terminal lifecycle', () => {
       expect(before).toBeTruthy()
       expect(after).toBe(before)
     }
-  })
+  }, 30_000)
 
   it('restores the alternate screen after Ctrl-C input', async () => {
     const result = await exerciseExit((child) => {
@@ -99,7 +104,7 @@ describe('CLI terminal lifecycle', () => {
 
     expect(result.exitCode).toBe(0)
     expect(result.output).toContain('\u001B[?1049l')
-  })
+  }, 30_000)
 
   itWithPosixSignals.each(['SIGINT', 'SIGTERM'] as const)(
     'restores the alternate screen after %s',
@@ -121,7 +126,7 @@ describe('CLI terminal lifecycle', () => {
     expect(result.output).toContain('\u001B[?1049h')
     expect(result.output).toContain('\u001B[?1049l')
     expect(result.output).toContain('Injected post-render failure')
-  })
+  }, 30_000)
 
   it('M2.4-F07 contains an output error and restores the alternate screen', async () => {
     const running = startCli(outputErrorCli)
@@ -131,7 +136,7 @@ describe('CLI terminal lifecycle', () => {
     expect(result.output).toContain('\u001B[?1049h')
     expect(result.output).toContain('\u001B[?1049l')
     expect(result.output).toContain('Injected terminal output failure')
-  })
+  }, 30_000)
 })
 
 describe('Terminal Kit candidate lifecycle', () => {
@@ -153,7 +158,7 @@ describe('Terminal Kit candidate lifecycle', () => {
       const after = /__STTY_AFTER__(.+)/.exec(result.output)?.[1]?.trim()
       expect(after).toBe(before)
     }
-  })
+  }, 30_000)
 
   itWithPosixSignals.each(['SIGINT', 'SIGTERM'] as const)(
     'restores the alternate screen after %s',
@@ -180,5 +185,5 @@ describe('Terminal Kit candidate lifecycle', () => {
     expect(result.output).toContain('\u001B[?1049h')
     expect(result.output).toContain('\u001B[?1049l')
     expect(result.output).toContain('Injected post-acquisition failure')
-  })
+  }, 30_000)
 })
