@@ -824,5 +824,13 @@ release to eliminate by guessing.
 
 | Version | Verified against | Scope | Notes |
 | --- | --- | --- | --- |
-| `0.8.1` | npm `0.1.0-rc.7` | Mouse diagnosis | 696 tests including thirty-one on a live PTY; clean-profile launch asserts the modes are asked for. |
+The Linux launch gate failed once on this and passed on re-run, with two
+commits in between that changed no behaviour. Recorded as intermittent rather
+than diagnosed: the mount now records whether it had a mouse filter and what it
+believed about the terminal, and the smoke prints that log when a mode is
+missing, so the next occurrence carries its cause.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.8.1` | npm `0.1.0-rc.7` | Mouse diagnosis | 696 tests including thirty-one on a live PTY; clean-profile launch asserts each mode is asked for, after the alternate screen. |
 
