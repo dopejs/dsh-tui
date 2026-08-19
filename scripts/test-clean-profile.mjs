@@ -428,12 +428,13 @@ function assertMouseReporting(running) {
    * about the thing it was reporting.
    */
   const evidence = () => {
-    let diagnostic = ''
-    try {
-      diagnostic = readFileSync(environment.DSH_TUI_LOG_FILE, 'utf8')
-    } catch {
-      diagnostic = '(no diagnostic log)'
-    }
+    const diagnostic = (() => {
+      try {
+        return readFileSync(environment.DSH_TUI_LOG_FILE, 'utf8')
+      } catch {
+        return '(no diagnostic log)'
+      }
+    })()
     return `${JSON.stringify(output)}\n--- diagnostics ---\n${diagnostic}`
   }
   const alternateScreen = output.indexOf('\u001b[?1049h')
