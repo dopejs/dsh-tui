@@ -123,4 +123,31 @@ onPosix('the cursor an input method composes at (M7.3)', () => {
     expect(caret).toBeDefined()
     expect(cursor).toEqual(caret)
   }, 30_000)
+
+  /*
+   * Turning it off is what a person does when their screen is fusing rows
+   * together, so it has to actually stop moving the cursor -- not merely stop
+   * being asked to.
+   */
+  it('leaves the terminal cursor alone when switched off', async () => {
+    harness = new ScreenHarness({
+      columns: 60,
+      environment: { DSH_TUI_CURSOR: 'off' },
+      rows: 20,
+      scenario: 'empty',
+    })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('Try "explain')),
+      'the composer hint',
+    )
+    harness.type('hello')
+    await harness.waitFor(screen => screen.some(l => l.includes('hello')), 'the text')
+    await harness.settle()
+
+    // The caret is still drawn -- a person can see where they are typing.
+    const caret = harness.invertedCells()
+    expect(caret.length).toBeGreaterThan(0)
+    // The terminal's own cursor is not put on it.
+    expect(harness.cursor()).not.toEqual({ column: caret[0]?.column, row: caret[0]?.row })
+  }, 30_000)
 })

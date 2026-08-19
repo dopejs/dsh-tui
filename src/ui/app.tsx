@@ -47,7 +47,7 @@ import { createScreenModel, type InteractionModal } from '../model/view-model'
 import { workingStatus } from '../model/working-status'
 import { messages, resolveLanguage } from '../model/i18n'
 import type { InputController, InputSubmission, SubmissionMode } from '../runtime/input-controller'
-import { Composer, createComposerView } from './composer'
+import { CURSOR_FOLLOWS_CARET, Composer, createComposerView } from './composer'
 
 /**
  * The empty-composer hint. It names a real task rather than describing the
@@ -1696,7 +1696,7 @@ export function InteractiveTui({
       // The notice, and the blank line that ends every frame so Ink's cursor
       // arithmetic holds. A line drawn but not budgeted for is a line drawn
       // through whatever is below it.
-      - 2,
+      - (CURSOR_FOLLOWS_CARET ? 2 : 1),
   )
   const maximumToolDetailLines = Math.max(
     1,
@@ -1857,8 +1857,12 @@ export function InteractiveTui({
         * true instead of compensating for it, which is what an offset was
         * doing: differently for a full redraw and for a cursor-only update,
         * because those two paths do not agree about where the bottom is.
+        *
+        * Drawn only while the cursor follows the caret, so that switching that
+        * off restores exactly what was rendered before any of it -- which is
+        * what makes the switch worth anything as a diagnosis.
         */}
-      <Box height={1} />
+      {CURSOR_FOLLOWS_CARET ? <Box height={1} /> : null}
     </Box>
   )
 }

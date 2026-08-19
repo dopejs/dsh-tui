@@ -206,6 +206,22 @@ const PROMPT_CELLS = 2
  * different one for a cursor-only update, because those paths disagree about
  * where the bottom is. Kept as an escape hatch, and it should stay at zero.
  */
+/**
+ * Whether the terminal cursor is moved to the caret at all.
+ *
+ * Moving it is what lets an input method compose inside the composer. It also
+ * makes Ink take its cursor-only redraw path, whose arithmetic disagrees with
+ * the full-redraw path about where the bottom of the output is -- the same
+ * disagreement that made a fixed row offset measure 1 in one state and 2 in
+ * another.
+ *
+ * A screen fusing rows together was reported that this cannot reproduce
+ * against an emulator, which has now disagreed with a real terminal three
+ * times. `DSH_TUI_CURSOR=off` turns it back into the behaviour before any of
+ * this, which is the one experiment that tells the two apart.
+ */
+export const CURSOR_FOLLOWS_CARET = process.env.DSH_TUI_CURSOR !== 'off'
+
 const CURSOR_ROW_OFFSET = (() => {
   const configured = Number(process.env.DSH_TUI_CURSOR_ROW_OFFSET)
   return Number.isSafeInteger(configured) ? configured : 0
@@ -297,6 +313,7 @@ export function Composer({
   // leaving the cursor, and an input method's composing text, one keystroke
   // behind the caret.
   useLayoutEffect(() => {
+    if (!CURSOR_FOLLOWS_CARET) return
     const node = box.current
     if (node === null) return
     const { x, y } = measureElement(node)

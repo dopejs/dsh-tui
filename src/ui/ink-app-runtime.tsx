@@ -154,7 +154,11 @@ export function mountInkApplication(
   const setReporting = (enabled: boolean) => {
     if (enabled === reporting) return
     reporting = enabled
-    stdout.write(enabled ? ENABLE_MOUSE : DISABLE_MOUSE)
+    const wrote = stdout.write(enabled ? ENABLE_MOUSE : DISABLE_MOUSE)
+    if (diagnosticLog !== undefined) {
+      appendFileSync(diagnosticLog,
+        `[mouse] setReporting(${String(enabled)}) wrote=${String(wrote)}\n`)
+    }
   }
   const mouseProp = mouse === undefined
     ? undefined

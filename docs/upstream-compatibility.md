@@ -834,3 +834,33 @@ missing, so the next occurrence carries its cause.
 | --- | --- | --- | --- |
 | `0.8.1` | npm `0.1.0-rc.7` | Mouse diagnosis | 696 tests including thirty-one on a live PTY; clean-profile launch asserts each mode is asked for, after the alternate screen. |
 
+### 0.8.2
+
+A screen fusing rows together was reported — an answer drawn over the reasoning
+line above it, the status lines written over each other. It cannot be reproduced
+here: a live PTY driven through typing, cursor movement and scrolling shows no
+fused rows, and the emulator has now disagreed with a real terminal three times.
+
+The suspect is the cursor placement added in `0.6.x`. Moving the terminal cursor
+onto the caret is what lets an input method compose inside the composer, and it
+is also what makes Ink take its cursor-only redraw path, whose arithmetic
+disagrees with the full-redraw path about where the bottom of the output is —
+the same disagreement that made a fixed row offset measure 1 in one state and 2
+in another.
+
+`DSH_TUI_CURSOR=off` turns the whole mechanism off, including the trailing blank
+line that exists only to make Ink's arithmetic hold and its row in the budget.
+What is left is exactly the rendering from before any of it, which is what makes
+the switch worth anything as a diagnosis rather than as a knob.
+
+Two things are recorded as intermittent and undiagnosed. The clean-profile gate
+asserting the mouse modes has now failed once on Linux and once on macOS and
+passed on re-run each time, with no behaviour change in between; the write is
+now logged, so the next occurrence says whether it happened. And the mouse still
+does nothing on Ghostty, with the output side verified — `DSH_TUI_INPUT_LOG`
+records what the terminal sends, which is the missing half.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.8.2` | npm `0.1.0-rc.7` | Redraw diagnosis | 698 tests including thirty-three on a live PTY; clean-profile launch green on this run. |
+

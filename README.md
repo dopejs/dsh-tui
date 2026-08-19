@@ -6,7 +6,7 @@ distributed as an out-of-tree Harness bundle and runs in the same process as
 the agent runtime.
 
 > [!IMPORTANT]
-> This is `0.8.1`. Harness peers are declared `^0.1.0-rc.6` and optional: the
+> This is `0.8.2`. Harness peers are declared `^0.1.0-rc.6` and optional: the
 > `dsh` CLI provides the Harness runtime, so nothing installs them on our
 > behalf and npm must not try. Both the global and local installs are verified
 > against the host's current `latest` on every CI run.
@@ -57,6 +57,22 @@ The command is `dtui` rather than `dsh-tui`, because
 [@deepseek-harness-tui/dsh-tui](https://github.com/ccch1mneyyy/dsh-TUI) already
 claims that name and both should be installable side by side.
 
+## When the screen fuses rows together
+
+Moving the terminal cursor onto the caret is what lets an input method compose
+inside the composer. It also makes Ink take its cursor-only redraw path, whose
+arithmetic disagrees with the full-redraw path about where the bottom of the
+output is. Turn the whole mechanism off to get exactly the rendering that came
+before it:
+
+```bash
+DSH_TUI_CURSOR=off dtui
+```
+
+If the screen stops corrupting, that mechanism is the cause; say so and it can
+be fixed rather than guessed at. The caret is still drawn either way — only an
+input method's composing text moves out of the composer.
+
 ## When the mouse does nothing
 
 A terminal reporting nothing, reporting something the parser does not know, and
@@ -82,7 +98,7 @@ pnpm check
 npm pack --pack-destination /tmp
 pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.7 \
   plugin --profile tui add \
-  /tmp/dopejs-dsh-tui-0.8.1.tgz
+  /tmp/dopejs-dsh-tui-0.8.2.tgz
 pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.7 --profile tui
 ```
 
