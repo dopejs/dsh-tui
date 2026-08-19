@@ -23,14 +23,14 @@ describe('mouse mode sequences (M7.1)', () => {
   })
 
   it('asks for SGR reporting and turns it off in the reverse order', () => {
-    expect(ENABLE_MOUSE).toBe(`${ESC}[?1000h${ESC}[?1006h`)
-    expect(DISABLE_MOUSE).toBe(`${ESC}[?1006l${ESC}[?1000l`)
+    expect(ENABLE_MOUSE).toBe(`${ESC}[?1000h${ESC}[?1002h${ESC}[?1006h`)
+    expect(DISABLE_MOUSE).toBe(`${ESC}[?1006l${ESC}[?1002l${ESC}[?1000l`)
   })
 
   // A terminal left reporting prints escape sequences into the user's shell on
   // every click, long after the process that asked for it is gone.
   it('turns off everything it turned on', () => {
-    for (const mode of ['1000', '1006']) {
+    for (const mode of ['1000', '1002', '1006']) {
       expect(`${mode}:${String(ENABLE_MOUSE.includes(`${mode}h`))}`).toBe(`${mode}:true`)
       expect(`${mode}:${String(DISABLE_MOUSE.includes(`${mode}l`))}`).toBe(`${mode}:true`)
     }

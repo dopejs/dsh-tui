@@ -13,6 +13,8 @@
  */
 import { Transform } from 'node:stream'
 
+import { appendFileSync } from 'node:fs'
+
 import { parseKittyReply } from './kitty'
 import { parseMouse, type MouseEvent } from './mouse'
 
@@ -53,6 +55,9 @@ function looksUnfinished(text: string): boolean {
   return !/[Mm]/.test(text.slice(start))
 }
 
+/** Set `DSH_TUI_INPUT_LOG` to record raw terminal input for diagnosis. */
+const inputLog = process.env.DSH_TUI_INPUT_LOG
+
 export function filterMouseFromStdin(source: NodeJS.ReadStream): MouseFilteredStdin {
   const listeners = new Set<MouseListener>()
   const rawListeners = new Set<(chunk: string) => void>()
@@ -75,6 +80,18 @@ export function filterMouseFromStdin(source: NodeJS.ReadStream): MouseFilteredSt
         return
       }
       const text = String(chunk)
+      /*
+       * What the terminal actually sent, when asked for.
+       *
+       * "The mouse does nothing" has at least three causes -- the terminal
+       * reporting nothing, reporting something this does not recognise, or
+       * reporting something recognised that nothing acts on -- and from inside
+       * the interface they are indistinguishable. This tells them apart in one
+       * run instead of one release each.
+       */
+      if (inputLog !== undefined) {
+        appendFileSync(inputLog, `${JSON.stringify(text)}\n`)
+      }
       for (const listener of rawListeners) listener(text)
       /*
        * A capability reply is a terminal answering a question, exactly as a

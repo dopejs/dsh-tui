@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it } from 'vitest'
 
+import { readFileSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { DISABLE_MOUSE, ENABLE_MOUSE } from '../runtime/mouse'
 import { ScreenHarness } from '../../test-fixtures/screen-harness'
 
@@ -558,5 +562,34 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
     expect(composer).toContain('hello')
     expect(composer).not.toContain('?1u')
     expect(composer).not.toContain('hellohello')
+  }, 30_000)
+
+  /*
+   * Three causes look identical from inside the interface: a terminal that
+   * reports nothing, one that reports something unrecognised, and one whose
+   * reports nothing acts on. The log tells them apart in a single run, which
+   * is the difference between diagnosing this and guessing at it.
+   */
+  it('records raw terminal input when asked to', async () => {
+    const logPath = join(tmpdir(), `dsh-tui-input-${String(process.pid)}.log`)
+    rmSync(logPath, { force: true })
+    harness = new ScreenHarness({
+      environment: { DSH_TUI_INPUT_LOG: logPath },
+      rows: 20,
+      scenario: 'overflow',
+    })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('of a long conversation')),
+      'the conversation',
+    )
+    harness.wheel('up')
+    harness.type('x')
+    await harness.settle()
+
+    const recorded = readFileSync(logPath, 'utf8')
+    // Both what a terminal sends for the wheel and what it sends for a key.
+    expect(recorded).toContain('[<64;')
+    expect(recorded).toContain('x')
+    rmSync(logPath, { force: true })
   }, 30_000)
 })

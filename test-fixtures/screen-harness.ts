@@ -27,6 +27,8 @@ export interface ScreenHarnessOptions {
    * Shift-Enter distinguishable is never taken by any test.
    */
   readonly kittyKeyboard?: boolean
+  /** Extra environment for the spawned interface. */
+  readonly environment?: Readonly<Record<string, string>>
   /** Scenario name passed to the fixture; decides what the transcript holds. */
   readonly scenario?: string
 }
@@ -60,6 +62,7 @@ export class ScreenHarness {
           CI: '',
           FORCE_COLOR: '3',
           TERM: 'xterm-256color',
+          ...options.environment,
         },
         name: 'xterm-256color',
         rows,

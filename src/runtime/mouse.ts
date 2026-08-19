@@ -14,8 +14,17 @@
  * TTY.
  */
 
-/** Ask the terminal to report button presses, releases, and the wheel. */
-export const ENABLE_MOUSE = '\u001b[?1000h\u001b[?1006h'
+/**
+ * Ask the terminal to report button presses, releases, and the wheel.
+ *
+ * `1000` is press-and-release reporting and `1006` is the SGR encoding. `1002`
+ * adds motion while a button is held: not wanted in itself -- the parser drops
+ * motion reports -- but it is what most terminal applications ask for, and a
+ * terminal that reports the wheel only under button-event tracking answers this
+ * and not `1000` alone. Asking for both costs nothing and removes a way for a
+ * terminal to be silent.
+ */
+export const ENABLE_MOUSE = '\u001b[?1000h\u001b[?1002h\u001b[?1006h'
 
 /**
  * Stop reporting, in the reverse order.
@@ -24,7 +33,7 @@ export const ENABLE_MOUSE = '\u001b[?1000h\u001b[?1006h'
  * shell whenever they click, which looks like a corrupted terminal and outlives
  * the process that caused it.
  */
-export const DISABLE_MOUSE = '\u001b[?1006l\u001b[?1000l'
+export const DISABLE_MOUSE = '\u001b[?1006l\u001b[?1002l\u001b[?1000l'
 
 export type MouseEventKind = 'press' | 'release' | 'wheel-down' | 'wheel-up'
 

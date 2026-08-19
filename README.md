@@ -6,7 +6,7 @@ distributed as an out-of-tree Harness bundle and runs in the same process as
 the agent runtime.
 
 > [!IMPORTANT]
-> This is `0.8.0`. Harness peers are declared `^0.1.0-rc.6` and optional: the
+> This is `0.8.1`. Harness peers are declared `^0.1.0-rc.6` and optional: the
 > `dsh` CLI provides the Harness runtime, so nothing installs them on our
 > behalf and npm must not try. Both the global and local installs are verified
 > against the host's current `latest` on every CI run.
@@ -57,6 +57,21 @@ The command is `dtui` rather than `dsh-tui`, because
 [@deepseek-harness-tui/dsh-tui](https://github.com/ccch1mneyyy/dsh-TUI) already
 claims that name and both should be installable side by side.
 
+## When the mouse does nothing
+
+A terminal reporting nothing, reporting something the parser does not know, and
+reporting something nothing acts on all look the same from inside. Record what
+the terminal actually sent:
+
+```bash
+DSH_TUI_INPUT_LOG=/tmp/dsh-tui-input.log dtui
+```
+
+Scroll and click, quit, then read `/tmp/dsh-tui-input.log`. A wheel notch
+appears as `\u001b[<64;12;5M`; an empty file means the terminal was asked and
+answered nothing. `Toggle mouse reporting` in the command menu hands the mouse
+back to the terminal, which restores drag-to-select.
+
 ## Install from this checkout
 
 Prerequisites are Node.js `^22.19.0 || >=24.0.0` and pnpm `11.7.0`.
@@ -67,7 +82,7 @@ pnpm check
 npm pack --pack-destination /tmp
 pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.7 \
   plugin --profile tui add \
-  /tmp/dopejs-dsh-tui-0.8.0.tgz
+  /tmp/dopejs-dsh-tui-0.8.1.tgz
 pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.7 --profile tui
 ```
 

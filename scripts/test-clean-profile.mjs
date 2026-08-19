@@ -409,7 +409,41 @@ async function exerciseSessionSwitch(running, targetSessionId) {
   )
 }
 
+/**
+ * The installed application asks the terminal to report the mouse.
+ *
+ * Verified here rather than only against the screen fixture, because the
+ * fixture mounts the same entry point but nothing else about the real profile:
+ * a mode never asked for is indistinguishable, from inside, from a mode the
+ * terminal ignored.
+ */
+function assertMouseReporting(running) {
+  const output = running.output()
+  const alternateScreen = output.indexOf('\u001b[?1049h')
+  if (alternateScreen === -1) {
+    throw new Error(`Installed TUI never took the alternate screen:\n${output.slice(0, 400)}`)
+  }
+  // Each mode checked on its own rather than as one concatenation: this failed
+  // once for having copied the joined string, which says nothing about whether
+  // any particular mode was asked for.
+  for (const mode of ['1000', '1002', '1006']) {
+    const asked = output.indexOf(`\u001b[?${mode}h`)
+    if (asked === -1) {
+      throw new Error(
+        `Installed TUI never asked for mouse mode ${mode}:\n${output.slice(0, 400)}`,
+      )
+    }
+    if (asked < alternateScreen) {
+      throw new Error(
+        `Installed TUI asked for mouse mode ${mode} before taking the alternate screen, `
+        + `where a terminal keeping per-buffer mode state discards it:\n${output.slice(0, 400)}`,
+      )
+    }
+  }
+}
+
 async function quitAndAssert(running) {
+  assertMouseReporting(running)
   running.child.write('/exit')
   await new Promise(resolve => setTimeout(resolve, 50))
   running.child.write('\r')

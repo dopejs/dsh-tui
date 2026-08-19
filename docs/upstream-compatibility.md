@@ -797,3 +797,32 @@ exist are not the same thing, and only one of them is worth retrying.
 | --- | --- | --- | --- |
 | `0.8.0` | npm `0.1.0-rc.7` | Command menu keys, model picker | 694 tests including thirty on a live PTY; clean-profile launch green. |
 
+### 0.8.1
+
+Mouse reporting still does nothing on Ghostty, and this release is about being
+able to say why rather than guessing again.
+
+The output side is now verified against the installed application, not only the
+screen fixture: the clean-profile smoke asserts that each of `1000`, `1002` and
+`1006` is asked for, and that all of them come after the alternate screen is
+taken. It passes — the application asks. Each mode is checked on its own rather
+than as one concatenated string, which is what the first version of the
+assertion did and what made it fail for a reason unrelated to the terminal.
+
+`1002` is new. `1000` is press-and-release reporting and `1006` is the SGR
+encoding; `1002` adds motion while a button is held, which is not wanted in
+itself — the parser drops motion reports — but it is what most terminal
+applications ask for, and a terminal that reports the wheel only under
+button-event tracking answers it and not `1000` alone. This is a hypothesis, and
+it is marked as one.
+
+The instrument is the point of the release. `DSH_TUI_INPUT_LOG` records every
+byte the terminal sends, before any filtering. A terminal reporting nothing, one
+reporting something the parser does not recognise, and one whose reports nothing
+acts on are indistinguishable from inside the interface, and each would cost a
+release to eliminate by guessing.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.8.1` | npm `0.1.0-rc.7` | Mouse diagnosis | 696 tests including thirty-one on a live PTY; clean-profile launch asserts the modes are asked for. |
+
