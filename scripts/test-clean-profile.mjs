@@ -427,7 +427,15 @@ function assertMouseReporting(running) {
    * it -- which is how this failed once with an error that showed nothing
    * about the thing it was reporting.
    */
-  const evidence = () => JSON.stringify(output)
+  const evidence = () => {
+    let diagnostic = ''
+    try {
+      diagnostic = readFileSync(environment.DSH_TUI_LOG_FILE, 'utf8')
+    } catch {
+      diagnostic = '(no diagnostic log)'
+    }
+    return `${JSON.stringify(output)}\n--- diagnostics ---\n${diagnostic}`
+  }
   const alternateScreen = output.indexOf('\u001b[?1049h')
   if (alternateScreen === -1) {
     throw new Error(`Installed TUI never took the alternate screen:\n${evidence()}`)

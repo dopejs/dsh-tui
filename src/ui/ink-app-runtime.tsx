@@ -6,6 +6,8 @@ import type {
   SessionAttachmentSnapshot,
   SwitchableSessionBinding,
 } from '../runtime/session-attachment-coordinator'
+import { appendFileSync } from 'node:fs'
+
 import { DISABLE_MOUSE, ENABLE_MOUSE } from '../runtime/mouse'
 import { probeKittySupport } from '../runtime/kitty'
 import { filterMouseFromStdin, type MouseFilteredStdin } from '../runtime/mouse-stdin'
@@ -122,6 +124,9 @@ export async function probeTerminalKeyboard(
   return Object.freeze({ kittyKeyboard, mouse })
 }
 
+/** Where the runtime already writes diagnostics, when it was asked to. */
+const diagnosticLog = process.env.DSH_TUI_LOG_FILE
+
 export function mountInkApplication(
   options: InkApplicationOptions,
   streams: InkApplicationStreams = {},
@@ -186,6 +191,16 @@ export function mountInkApplication(
     stdout,
   )
 
+  /*
+   * Recorded, because "the mouse does nothing" and "the mouse was never asked
+   * for" look identical from outside and the second is a defect here rather
+   * than in the terminal. Written to the diagnostic log the runtime already
+   * owns, so it costs nothing when no one is looking.
+   */
+  if (diagnosticLog !== undefined) {
+    appendFileSync(diagnosticLog, `[mouse] filter=${String(mouse !== undefined)}`
+      + ` stdinTTY=${String(stdin.isTTY === true)} stdoutTTY=${String(stdout.isTTY === true)}\n`)
+  }
   if (mouse === undefined) return mounted
 
   /*
