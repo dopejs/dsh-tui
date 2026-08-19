@@ -98,4 +98,34 @@ describe('parseMouse (M7.1)', () => {
     expect(parsed.events).toEqual([])
     expect(parsed.rest).toBe(`${ESC}[<0;5`)
   })
+
+  /*
+   * Buttons a real terminal sends that this does not act on.
+   *
+   * Recorded from Ghostty: a tilting wheel reports 66 and 67 alongside the 64
+   * and 65 of a vertical one, eleven times in a session where nobody meant to
+   * scroll sideways. Dropping them is deliberate -- there is nothing to scroll
+   * horizontally -- and the point of the test is that they are dropped rather
+   * than mistaken for a button press at that position.
+   */
+  it('ignores the horizontal wheel a tilting one reports', () => {
+    expect(parseMouse(report(66, 32, 31)).events).toEqual([])
+    expect(parseMouse(report(67, 32, 31)).events).toEqual([])
+  })
+
+  it('still reads the vertical wheel from the same terminal', () => {
+    expect(parseMouse(report(64, 32, 31)).events)
+      .toEqual([{ column: 31, kind: 'wheel-up', row: 30 }])
+    expect(parseMouse(report(65, 32, 31)).events)
+      .toEqual([{ column: 31, kind: 'wheel-down', row: 30 }])
+  })
+
+  // A click, as Ghostty sends it: press then release at the same cell.
+  it('reads a click as a press and a release', () => {
+    const parsed = parseMouse(`${report(0, 26, 37)}${report(0, 26, 37, 'm')}`)
+    expect(parsed.events).toEqual([
+      { column: 25, kind: 'press', row: 36 },
+      { column: 25, kind: 'release', row: 36 },
+    ])
+  })
 })

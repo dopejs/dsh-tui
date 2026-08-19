@@ -888,3 +888,26 @@ turns the screen test red.
 | --- | --- | --- | --- |
 | `0.8.3` | npm `0.1.0-rc.7` | Interrupt key | 700 tests including thirty-five on a live PTY; clean-profile launch green. |
 
+### 0.8.4
+
+A captured session turned the mouse diagnosis around. Ghostty reports
+perfectly: wheel down twenty-four times, wheel up twelve, presses and releases
+as matched pairs. The encoding is right, the buttons are right, and the parser
+reads 64 and 65. The input side works, and had been working -- what looked like
+a broken wheel was a screen redrawing over itself while it scrolled.
+
+The capture also carried a defect. A tilting wheel reports 66 and 67 for its
+horizontal pair, and matching 64 and 65 by equality read 66 as a middle-button
+press at that cell; 67 was dropped only by accident, through a rule meant for
+motion reports. Bit 6 marks a wheel, and the low bits say which way. Ghostty
+sent 67 eleven times in one session where nobody meant to scroll sideways.
+
+What a real terminal sends is now asserted directly: both vertical directions,
+both horizontal ones ignored, and a click as the press-and-release pair it
+arrives as. This is the first time this project has had a terminal's actual
+bytes to assert against rather than a plausible reconstruction of them.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.8.4` | npm `0.1.0-rc.7` | Wheel button decoding | 703 tests including thirty-five on a live PTY; clean-profile launch green. |
+

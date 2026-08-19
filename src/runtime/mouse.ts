@@ -63,15 +63,25 @@ export interface MouseParse {
 // eslint-disable-next-line no-control-regex -- matching ESC is the whole point
 const SGR = /\u001b\[<(\d+);(\d+);(\d+)([Mm])/gu
 
+const WHEEL_BIT = 64
 const WHEEL_UP = 64
 const WHEEL_DOWN = 65
 const MOTION_BIT = 32
 const BUTTON_MASK = 3
 
 function kindOf(button: number, final: string): MouseEventKind | undefined {
-  // The wheel reports as a press with bit 6 set, and never reports a release.
-  if (button === WHEEL_UP) return 'wheel-up'
-  if (button === WHEEL_DOWN) return 'wheel-down'
+  /*
+   * Bit 6 marks a wheel, and the low bits say which way: 64 up, 65 down, 66
+   * and 67 the horizontal pair a tilting wheel sends. Matching 64 and 65 by
+   * equality read 66 as a middle-button press -- and 67 was dropped only by
+   * accident, through a rule meant for something else. Ghostty sent 67 eleven
+   * times in one session where nobody meant to scroll sideways.
+   */
+  if ((button & WHEEL_BIT) !== 0) {
+    if (button === WHEEL_UP) return 'wheel-up'
+    if (button === WHEEL_DOWN) return 'wheel-down'
+    return undefined
+  }
   // Motion reporting is not asked for, and `3` in the button bits is the
   // "no button" release form that says nothing about which button was let go.
   if ((button & MOTION_BIT) !== 0) return undefined

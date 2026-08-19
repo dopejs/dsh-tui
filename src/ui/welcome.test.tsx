@@ -13,7 +13,7 @@ function render(props: Partial<Parameters<typeof Welcome>[0]> = {}): string {
       permission="workspace-write"
       theme="default"
       tips={DEFAULT_TIPS}
-      version="0.8.3"
+      version="0.8.4"
       {...props}
     />,
     { columns },
