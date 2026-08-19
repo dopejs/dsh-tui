@@ -58,11 +58,6 @@ export class ScreenHarness {
         env: {
           ...process.env,
           CI: '',
-          // The emulator and a real terminal disagree about where Ink's output
-          // ends, so the offset that lands on the caret differs. Pinned here to
-          // the emulator's value: these tests verify that the offset is applied
-          // correctly, not what it should be on any particular terminal.
-          DSH_TUI_CURSOR_ROW_OFFSET: '1',
           FORCE_COLOR: '3',
           TERM: 'xterm-256color',
         },
@@ -220,6 +215,19 @@ export class ScreenHarness {
    */
   shiftEnter(): void {
     this.#process.write(`${String.fromCodePoint(0x1b)}[13;2u`)
+  }
+
+  /** A named key, as a terminal sends it. */
+  key(name: 'ctrl-j' | 'down' | 'left' | 'right' | 'up'): void {
+    const ESC = String.fromCodePoint(0x1b)
+    const sequences = {
+      'ctrl-j': '\n',
+      down: `${ESC}[B`,
+      left: `${ESC}[D`,
+      right: `${ESC}[C`,
+      up: `${ESC}[A`,
+    }
+    this.#process.write(sequences[name])
   }
 
   type(text: string): void {

@@ -684,3 +684,43 @@ it does not settle what a terminal does with it.
 | --- | --- | --- | --- |
 | `0.6.1` | npm `0.1.0-rc.7` | Answer colour, cursor offset | 676 tests including twenty on a live PTY; clean-profile launch green. |
 
+### 0.6.2
+
+The cursor an input method composes at now follows the caret in every state the
+composer can be in, and the offset that used to compensate for it is gone.
+
+Only the easiest state had been covered: typing forward from an empty composer.
+Written as tests, the ordinary ones disagreed — inserting into the middle of a
+line, a second line, an earlier line, a cropped line, and wide characters on
+either side of the cursor. Two of the five were wrong, both placing the cursor
+one row above the caret.
+
+The cause is in Ink's own arithmetic. `visibleLineCount` subtracts a line when
+the output ends in a newline and does not otherwise, while `buildCursorSuffix`
+moves up from what it calls "the line after the last output line". That
+description is only true in the first case: without a trailing newline the
+cursor is still on the last line, and every position lands one row high. The two
+paths through the flush disagree further — a cursor-only update returns to the
+bottom using `previousLineCount - 1`, a full redraw does not — which is why a
+single constant measured 1 in one state and 2 in another.
+
+So the assumption is made true rather than compensated for: every frame ends
+with a blank line, `visibleLineCount` takes its subtracting branch, and the
+cursor lands exactly where it is put. `CURSOR_ROW_OFFSET` stays as an escape
+hatch and should stay at zero. Removing the blank line turns the state tests
+red.
+
+One of those tests had been asserting the wrong thing: a wide character under
+the caret inverts both of its cells, so counting a single inverted cell fails
+wherever an input method is most likely to be used. It now asserts the cursor
+sits on the caret's left edge.
+
+Separately, an answer changed colour halfway through: the role tone was applied
+to the whole row, colouring only the first paragraph — the one drawn on the
+marker's line — while the rest went through the Markdown view untinted. The tone
+belongs to the marker.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.6.2` | npm `0.1.0-rc.7` | IME cursor in every composer state | 681 tests including twenty-five on a live PTY; clean-profile launch green. |
+

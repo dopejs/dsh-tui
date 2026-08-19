@@ -1686,6 +1686,18 @@ export function InteractiveTui({
       />
       <StatusFooter columns={dimensions.columns} model={screen} />
       <Text dimColor wrap="truncate-end">{notice}</Text>
+      {/*
+        * A blank line, always, as the last thing drawn.
+        *
+        * Ink places the cursor by moving up from what it believes is the line
+        * after its output, and that belief only holds when the output ends in
+        * a newline -- `visibleLineCount` subtracts a line for one and does not
+        * otherwise. Ending every frame with an empty line makes the assumption
+        * true instead of compensating for it, which is what an offset was
+        * doing: differently for a full redraw and for a cursor-only update,
+        * because those two paths do not agree about where the bottom is.
+        */}
+      <Box height={1} />
     </Box>
   )
 }

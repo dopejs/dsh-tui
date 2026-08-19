@@ -198,20 +198,17 @@ export function createComposerView(
 const PROMPT_CELLS = 2
 
 /**
- * Rows added when placing the terminal cursor.
+ * Rows added when placing the terminal cursor. None are needed.
  *
- * Ink moves the cursor up from the end of its output, so where a position
- * lands depends on where the terminal thinks that end is -- and a terminal and
- * an emulator do not agree about it. Calibrated against the emulator alone,
- * the composing text of an input method appeared one row above the composer on
- * a real terminal, drawn over its border.
- *
- * Overridable so the right value can be established by looking at a terminal,
- * rather than inferred through another release.
+ * Ink moves the cursor up from what it believes is the line after its output,
+ * and that belief holds because every frame now ends with a blank line. This
+ * was a calibrated constant before that -- one value for a full redraw, a
+ * different one for a cursor-only update, because those paths disagree about
+ * where the bottom is. Kept as an escape hatch, and it should stay at zero.
  */
 const CURSOR_ROW_OFFSET = (() => {
   const configured = Number(process.env.DSH_TUI_CURSOR_ROW_OFFSET)
-  return Number.isSafeInteger(configured) ? configured : 2
+  return Number.isSafeInteger(configured) ? configured : 0
 })()
 
 /**
