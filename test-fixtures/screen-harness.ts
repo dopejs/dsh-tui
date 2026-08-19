@@ -218,11 +218,12 @@ export class ScreenHarness {
   }
 
   /** A named key, as a terminal sends it. */
-  key(name: 'ctrl-j' | 'down' | 'escape' | 'left' | 'right' | 'up'): void {
+  key(name: 'ctrl-j' | 'down' | 'escape' | 'left' | 'right' | 'tab' | 'up'): void {
     const ESC = String.fromCodePoint(0x1b)
     const sequences = {
       'ctrl-j': '\n',
       escape: ESC,
+      tab: '\t',
       down: `${ESC}[B`,
       left: `${ESC}[D`,
       right: `${ESC}[C`,

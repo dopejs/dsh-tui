@@ -28,6 +28,12 @@ import type { PreferencesController } from '../model/preferences-controller'
 import type { PermissionController } from '../model/permission-controller'
 import type { JobsController } from '../model/jobs-controller'
 import type { McpInventoryController } from '../model/mcp-inventory-controller'
+import type { ModelCatalogController } from '../model/model-catalog-controller'
+import { EMPTY_MODEL_CATALOG } from '../model/model-catalog-controller'
+
+/** A session without a model catalog subscribes to nothing and reads nothing. */
+const NO_SUBSCRIPTION = () => () => undefined
+const EMPTY_MODEL_CATALOG_SNAPSHOT = () => EMPTY_MODEL_CATALOG
 import type { PluginInventoryController } from '../model/plugin-inventory-controller'
 import type { SkillsController } from '../model/skills-controller'
 import type { ProjectionHubController } from '../model/projection-hub-controller'
@@ -117,6 +123,8 @@ export interface InteractiveTuiProps {
   readonly interaction: InteractionController
   readonly jobs: JobsController
   readonly mcp: McpInventoryController
+  /** Models a session can be started on, listed by `/model`. */
+  readonly models?: ModelCatalogController
   readonly modelLabel: string
   readonly onQuit: (code: number) => void
   readonly overlay: OverlayController
@@ -264,6 +272,7 @@ export function InteractiveTui({
   interaction,
   jobs,
   mcp,
+  models,
   modelLabel,
   onQuit,
   overlay,
@@ -303,6 +312,21 @@ export function InteractiveTui({
   // not what the user asked to read, and a turn carrying three reminders spent
   // three lines on it before the answer. Withheld, never discarded -- the
   // palette draws it back inline.
+  const modelSnapshot = useSyncExternalStore(
+    models?.subscribe ?? NO_SUBSCRIPTION,
+    models?.getSnapshot ?? EMPTY_MODEL_CATALOG_SNAPSHOT,
+    models?.getSnapshot ?? EMPTY_MODEL_CATALOG_SNAPSHOT,
+  )
+  /*
+   * `/model` runs in the command layer, which has no way to open a panel, so
+   * it raises a flag here instead. Printing the routes made the user copy one
+   * back out of the transcript by hand.
+   */
+  useEffect(() => {
+    if (!modelSnapshot.picking) return
+    overlay.open('models')
+  }, [modelSnapshot.picking, overlay])
+
   const [showContext, setShowContext] = useState(false)
   /*
    * While the terminal reports mouse events it stops making selections of its
@@ -310,8 +334,14 @@ export function InteractiveTui({
    * that; not all do, and nobody should have to know. This hands it back.
    */
   const [mouseReporting, setMouseReporting] = useState(true)
-  /** Whether the open palette was reached by typing `/`, which changes Escape. */
-  const [slashOpened, setSlashOpened] = useState(false)
+  /**
+   * Whether the open palette was reached by typing `/`.
+   *
+   * Only cleared, now that Tab is how a command reaches the composer: Escape
+   * closes and leaves the draft alone, which is what closing a menu means
+   * everywhere else.
+   */
+  const [, setSlashOpened] = useState(false)
   const [notice, setNotice] = useState(
     initialNotice ?? (firstRun
       // A first-run user has no way to discover the panels yet; the palette is
@@ -698,13 +728,40 @@ export function InteractiveTui({
       setNotice(`Command exceeds ${String(editor.textLimit)} code units.`)
       return
     }
-    if (item.inputHint !== undefined) {
-      setNotice(`Complete the ${item.inputHint} argument and press Enter.`)
-      return
-    }
+    /*
+     * Sent, even where the command declares an argument. A command decides
+     * what no argument means -- `/model` lists what is available -- and
+     * stopping short of running it made Enter mean two different things
+     * depending on a property of the command nobody can see from the menu.
+     * Tab is how an argument gets typed.
+     */
     void submitComposer('followup').catch((error: unknown) => {
       setNotice(error instanceof Error ? error.message : String(error))
     })
+  }
+
+  /**
+   * Put the selected command in the composer instead of running it.
+   *
+   * With a trailing space, because what follows is an argument and every one
+   * of them is separated from the name by exactly that.
+   */
+  const takePaletteItem = (item: PaletteItem | undefined) => {
+    if (item === undefined) {
+      setNotice('No palette item is selected.')
+      return
+    }
+    if (item.kind === 'action') {
+      setNotice(`${item.label} is not a command; press Enter to run it.`)
+      return
+    }
+    overlay.close('command-palette')
+    setSlashOpened(false)
+    if (editor.insert(`/${item.name} `) === 'limit-exceeded') {
+      setNotice(`Command exceeds ${String(editor.textLimit)} code units.`)
+      return
+    }
+    setNotice(`/${item.name} — add an argument and press Enter.`)
   }
 
   const applySelectedCompletion = () => {
@@ -991,28 +1048,43 @@ export function InteractiveTui({
       }
       if (key.escape || (key.ctrl && typed.toLowerCase() === 'c')) {
         if (activeOverlay === 'completion') completion.cancel()
-        /*
-         * A palette opened by typing `/` hands back what was typed.
-         *
-         * Slash commands take arguments -- `/model ark/deepseek-v4` -- and a
-         * menu that swallowed the keystrokes would make those unreachable.
-         * Leaving with Escape puts the text in the composer, where it can be
-         * finished and sent like anything else.
-         */
-        if (activeOverlay === 'command-palette' && slashOpened) {
-          const query = palette.getSnapshot().query
-          if (query !== '' && editor.insert(`/${query}`) === 'limit-exceeded') {
-            setNotice(`Composer exceeds ${String(editor.textLimit)} code units.`)
-          }
-          setSlashOpened(false)
-        }
+        if (activeOverlay === 'command-palette') setSlashOpened(false)
+        if (activeOverlay === 'models') models?.closePicker()
         overlay.close()
         setNotice('Overlay closed.')
         return
       }
+      if (activeOverlay === 'models') {
+        if (key.upArrow) models?.move('up')
+        else if (key.downArrow) models?.move('down')
+        else if (key.return) {
+          const route = models?.selected()
+          if (route === undefined) setNotice('No model is selected.')
+          else {
+            models?.closePicker()
+            overlay.close('models')
+            if (editor.insert(`/model ${route.id}`) === 'limit-exceeded') {
+              setNotice(`Command exceeds ${String(editor.textLimit)} code units.`)
+            } else {
+              void submitComposer('followup').catch((error: unknown) => {
+                setNotice(error instanceof Error ? error.message : String(error))
+              })
+            }
+          }
+        }
+        return
+      }
       if (activeOverlay === 'command-palette') {
         if (key.upArrow) palette.move('up')
-        else if (key.downArrow || key.tab) palette.move('down')
+        else if (key.downArrow) palette.move('down')
+        /*
+         * Enter runs it, Tab hands it over.
+         *
+         * Tab was a second way to move down, which arrows already do. It is
+         * worth more as the way to take a command without running it: an
+         * argument has to be typed somewhere, and the composer is where.
+         */
+        else if (key.tab) takePaletteItem(palette.selected())
         else if (key.return) choosePaletteItem(palette.selected())
         else if (key.backspace || key.delete) palette.backspaceQuery()
         else if (!key.ctrl && !key.meta && !key.super && typed !== '') {
@@ -1746,6 +1818,7 @@ export function InteractiveTui({
           permissions={permissionSnapshot}
           activity={activitySnapshot}
           attachments={attachmentSnapshot}
+          models={modelSnapshot}
           {...(terminalCapabilities === undefined ? {} : { terminalCapabilities })}
           jobs={jobsSnapshot}
           mcp={mcpSnapshot}

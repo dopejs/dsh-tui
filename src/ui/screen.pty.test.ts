@@ -15,7 +15,7 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
   it('takes the alternate screen', async () => {
     harness = new ScreenHarness({ scenario: 'empty' })
     await harness.waitFor(
-      screen => screen.some(line => line.includes('command palette')),
+      screen => screen.some(line => line.includes('/ for commands')),
       'the composer hint',
     )
     expect(harness.onAlternateScreen()).toBe(true)
@@ -27,7 +27,7 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
   it('draws a visible caret at the cursor while typing', async () => {
     harness = new ScreenHarness({ scenario: 'empty' })
     await harness.waitFor(
-      screen => screen.some(line => line.includes('command palette')),
+      screen => screen.some(line => line.includes('/ for commands')),
       'the composer hint',
     )
 
@@ -325,7 +325,7 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
   it('stops the terminal reporting before it exits', async () => {
     harness = new ScreenHarness({ rows: 20, scenario: 'conversation' })
     await harness.waitFor(
-      screen => screen.some(line => line.includes('command palette')),
+      screen => screen.some(line => line.includes('/ for commands')),
       'the composer hint',
     )
     await harness.waitForOutput(ENABLE_MOUSE, 'the request to start reporting')
@@ -365,7 +365,7 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
   it('puts the terminal cursor on the caret, where an IME will compose', async () => {
     harness = new ScreenHarness({ columns: 60, rows: 20, scenario: 'empty' })
     await harness.waitFor(
-      screen => screen.some(line => line.includes('command palette')),
+      screen => screen.some(line => line.includes('/ for commands')),
       'the composer hint',
     )
 
@@ -397,7 +397,7 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
   it('keeps the cursor on the caret after wide characters', async () => {
     harness = new ScreenHarness({ columns: 60, rows: 20, scenario: 'empty' })
     await harness.waitFor(
-      screen => screen.some(line => line.includes('command palette')),
+      screen => screen.some(line => line.includes('/ for commands')),
       'the composer hint',
     )
 
@@ -425,7 +425,7 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
   it('asks for mouse reporting only after taking the alternate screen', async () => {
     harness = new ScreenHarness({ rows: 20, scenario: 'empty' })
     await harness.waitFor(
-      screen => screen.some(line => line.includes('command palette')),
+      screen => screen.some(line => line.includes('/ for commands')),
       'the composer hint',
     )
 
@@ -488,7 +488,7 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
   it('inserts a newline on Shift-Enter where the terminal reports it', async () => {
     harness = new ScreenHarness({ columns: 60, kittyKeyboard: true, rows: 20, scenario: 'empty' })
     await harness.waitFor(
-      screen => screen.some(line => line.includes('command palette')),
+      screen => screen.some(line => line.includes('/ for commands')),
       'the composer hint',
     )
 
@@ -533,7 +533,7 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
   it('does not ask a terminal that never answered the query', async () => {
     harness = new ScreenHarness({ columns: 60, rows: 20, scenario: 'empty' })
     await harness.waitFor(
-      screen => screen.some(line => line.includes('command palette')),
+      screen => screen.some(line => line.includes('/ for commands')),
       'the composer hint',
     )
     await harness.settle()
@@ -544,7 +544,7 @@ onPosix('the interface, on a real terminal (M6.10)', () => {
   it('never lets the capability reply reach the composer', async () => {
     harness = new ScreenHarness({ columns: 60, kittyKeyboard: true, rows: 20, scenario: 'empty' })
     await harness.waitFor(
-      screen => screen.some(line => line.includes('command palette')),
+      screen => screen.some(line => line.includes('/ for commands')),
       'the composer hint',
     )
     harness.type('hello')

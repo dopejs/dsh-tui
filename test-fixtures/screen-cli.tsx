@@ -38,6 +38,7 @@ import { SubagentTreeController } from '../src/model/subagent-tree-controller'
 import { TranscriptController } from '../src/model/transcript-controller'
 import { TranscriptViewportController } from '../src/model/transcript-viewport-controller'
 import type { InputController } from '../src/runtime/input-controller'
+import { ModelCatalogController } from '../src/model/model-catalog-controller'
 import type { InteractiveTuiProps } from '../src/ui/app'
 
 const scenario = process.argv[2] ?? 'empty'
@@ -135,7 +136,11 @@ const changes = new ChangeIndexController()
 const viewport = new TranscriptViewportController(transcript)
 const overlay = new OverlayController()
 const palette = new CommandPaletteController({
-  list: () => [{ description: 'Review changes', name: 'review' }],
+  list: () => [
+    { description: 'Review changes', name: 'review' },
+    // Declares an argument, which is what Tab exists for.
+    { description: 'Start a session on a model', inputHint: 'provider/model', name: 'model' },
+  ],
   subscribe: () => () => undefined,
 })
 const preferences = new PreferencesController()
@@ -164,6 +169,19 @@ const sessionCenter = new SessionCenterController(
 )
 const runtimeStatus = new RuntimeStatusController({ model: 'model', provider: 'fixture' })
 const interaction = new InteractionController()
+const modelCatalog = new ModelCatalogController({
+  listModels: async provider => provider === 'ark'
+    ? [{ id: 'deepseek-v4-pro' }, { id: 'glm-5.3' }]
+    : [{ id: 'deepseek-v4-flash' }],
+  listProviders: () => [
+    { id: 'ark', name: 'Ark' },
+    { id: 'deepseek-official', name: 'DeepSeek' },
+  ],
+})
+if (scenario === 'models') {
+  modelCatalog.requestPicker()
+  void modelCatalog.load()
+}
 
 /*
  * Mounted through `mountInkApplication`, the same entry point the plugin uses.
@@ -184,6 +202,7 @@ const application: Omit<InteractiveTuiProps, 'onQuit' | 'sessionCenter'> = {
   jobs,
   mcp,
   modelLabel: 'fixture/model',
+  models: modelCatalog,
   overlay,
   palette,
   permission,

@@ -767,3 +767,33 @@ interior, and here the glyph lands at the end of the row where it belongs.
 | --- | --- | --- | --- |
 | `0.7.0` | npm `0.1.0-rc.7` | Slash menu, model listing, image paste | 694 tests including twenty-nine on a live PTY; clean-profile launch green. |
 
+### 0.8.0
+
+**Enter runs a command, Tab hands it over.** Tab was a second way to move the
+selection down, which the arrows already do; it is worth more as the way to take
+a command without running it, since an argument has to be typed somewhere and
+the composer is where. It arrives with a trailing space, because every argument
+is separated from the name by exactly that.
+
+Enter now sends even where a command declares an argument. Stopping short made
+Enter mean two different things depending on a property of the command that the
+menu does not show, and a command decides for itself what no argument means.
+
+**`/model` opens a list to choose from.** It printed the routes into the
+transcript, which left the exact string to be copied back out by hand: a list
+you cannot act on is a worse answer than the usage text it replaced. Arrow keys
+move, Enter starts a session on the selection, Escape closes. The command layer
+cannot open a panel, so `/model` raises a flag the view is watching.
+
+**The hints advertise the slash.** The composer said `^P for the command
+palette` — a chord nobody guesses, offered in the one place a person is already
+typing. It says `/ for commands`.
+
+Providers that could not be listed are named in the panel, in the danger tone,
+rather than being absent: a model missing from a list and a model that does not
+exist are not the same thing, and only one of them is worth retrying.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.8.0` | npm `0.1.0-rc.7` | Command menu keys, model picker | 694 tests including thirty on a live PTY; clean-profile launch green. |
+

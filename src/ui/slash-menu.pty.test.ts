@@ -13,7 +13,7 @@ afterEach(() => {
 async function openComposer(): Promise<ScreenHarness> {
   const created = new ScreenHarness({ columns: 70, rows: 32, scenario: 'empty' })
   await created.waitFor(
-    screen => screen.some(line => line.includes('command palette')),
+    screen => screen.some(line => line.includes('/ for commands')),
     'the composer hint',
   )
   return created
@@ -48,21 +48,39 @@ onPosix('the slash menu (M7.5)', () => {
    * would make `/model ark/deepseek-v4` unreachable. Escape hands back what was
    * typed, so it can be finished and sent like anything else.
    */
-  it('hands the typed command back to the composer on Escape', async () => {
+  /*
+   * Tab takes a command without running it, with a trailing space, because
+   * what follows is an argument and every one of them is separated from the
+   * name by exactly that. Tab used to be a second way to move down, which the
+   * arrows already do.
+   */
+  it('hands the selected command to the composer on Tab, ready for an argument', async () => {
     harness = await openComposer()
     harness.type('/')
     await harness.waitFor(
       screen => screen.some(line => line.includes('Command palette')),
       'the command menu',
     )
-    harness.type('model ark/deepseek-v4')
-    await harness.settle()
-    harness.key('escape')
+    harness.type('model')
     await harness.waitFor(
-      screen => screen.some(line => line.includes('/model ark/deepseek-v4')),
-      'the command back in the composer',
+      screen => screen.some(line => line.includes('\u203a /model')),
+      'the model command to be selected',
     )
-    expect(harness.screen().join('\n')).not.toContain('Command palette')
+    await harness.settle()
+    harness.key('tab')
+    // Waited on the menu closing, not on the text: the menu lists `/model` too,
+    // so looking for the text alone matches the row that is still on screen.
+    await harness.waitFor(
+      screen => !screen.some(line => line.includes('Command palette')),
+      'the menu to close',
+    )
+    await harness.settle()
+
+    expect(harness.screen().some(line => line.includes('/model '))).toBe(true)
+    // The caret sits after the space, where the argument goes.
+    const caret = harness.invertedCells()[0]
+    const row = harness.screen()[caret?.row ?? 0] ?? ''
+    expect(caret?.column).toBe(row.indexOf('/model ') + '/model '.length)
   }, 30_000)
 
   /*
@@ -78,5 +96,35 @@ onPosix('the slash menu (M7.5)', () => {
       screen => screen.some(line => line.includes('No image on the clipboard')),
       'the empty-clipboard notice',
     )
+  }, 30_000)
+
+  /*
+   * `/model` with nothing to act on opens a list to choose from.
+   *
+   * It used to print the routes into the transcript, which left the exact
+   * string to be copied back out by hand -- a list you cannot act on is a
+   * worse answer than the usage text it replaced.
+   */
+  it('offers the models as a list to move through and choose', async () => {
+    harness = new ScreenHarness({ columns: 70, rows: 32, scenario: 'models' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('Select model')),
+      'the model picker',
+    )
+    await harness.settle()
+
+    const screen = harness.screen()
+    expect(screen.join('\n')).toContain('ark/deepseek-v4-pro')
+    expect(screen.join('\n')).toContain('deepseek-official/deepseek-v4-flash')
+    // The first is selected, and the footer says where in the list it is.
+    expect(screen.some(line => line.includes('\u203a 1. ark/deepseek-v4-pro'))).toBe(true)
+    expect(screen.join('\n')).toContain('1/3')
+
+    harness.key('down')
+    await harness.waitFor(
+      screen2 => screen2.some(line => line.includes('\u203a 2. ')),
+      'the selection to move',
+    )
+    expect(harness.screen().join('\n')).toContain('2/3')
   }, 30_000)
 })

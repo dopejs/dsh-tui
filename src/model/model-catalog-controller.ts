@@ -22,6 +22,10 @@ export interface ModelRoute {
 }
 
 export interface ModelCatalogSnapshot {
+  /** Index into `routes`, so a list can be walked without a second source. */
+  readonly cursor: number
+  /** Set when `/model` was called with nothing to act on. */
+  readonly picking: boolean
   readonly loading: boolean
   /** Providers that could not be listed, with why. */
   readonly failures: readonly { readonly provider: string, readonly reason: string }[]
@@ -33,11 +37,16 @@ export interface ModelCatalogSource {
   readonly listProviders: () => readonly { readonly id: string, readonly name: string }[]
 }
 
-const EMPTY: ModelCatalogSnapshot = Object.freeze({
+/** The snapshot a session without a catalog reports: nothing, not loading. */
+export const EMPTY_MODEL_CATALOG: ModelCatalogSnapshot = Object.freeze({
+  cursor: 0,
   failures: Object.freeze([]),
   loading: false,
+  picking: false,
   routes: Object.freeze([]),
 })
+
+const EMPTY = EMPTY_MODEL_CATALOG
 
 function reasonOf(error: unknown): string {
   return error instanceof Error ? error.message : String(error)
@@ -93,10 +102,45 @@ export class ModelCatalogController {
 
     if (this.#disposed || generation !== this.#generation) return
     this.#publish(Object.freeze({
+      cursor: 0,
       failures: Object.freeze(results.flatMap(result => result.failure ?? [])),
       loading: false,
+      picking: this.#snapshot.picking,
       routes: Object.freeze(results.flatMap(result => result.routes ?? [])),
     }))
+  }
+
+  /**
+   * Ask for the list to be shown.
+   *
+   * `/model` runs in the command layer, which has no way to open a panel, so
+   * it raises a flag the view is watching. Printing the routes instead made
+   * the user copy one back out of the transcript by hand.
+   */
+  requestPicker(): void {
+    if (this.#disposed) return
+    this.#publish({ ...this.#snapshot, cursor: 0, picking: true })
+  }
+
+  closePicker(): void {
+    if (this.#disposed || !this.#snapshot.picking) return
+    this.#publish({ ...this.#snapshot, picking: false })
+  }
+
+  /** Move the selection, stopping at either end rather than wrapping. */
+  move(direction: 'down' | 'up'): boolean {
+    if (this.#disposed || this.#snapshot.routes.length === 0) return false
+    const next = Math.max(0, Math.min(
+      this.#snapshot.routes.length - 1,
+      this.#snapshot.cursor + (direction === 'down' ? 1 : -1),
+    ))
+    if (next === this.#snapshot.cursor) return false
+    this.#publish({ ...this.#snapshot, cursor: next })
+    return true
+  }
+
+  selected(): ModelRoute | undefined {
+    return this.#snapshot.routes[this.#snapshot.cursor]
   }
 
   dispose(): void {

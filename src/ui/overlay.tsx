@@ -2,6 +2,7 @@ import { Box, Text, renderToString } from 'ink'
 
 import type { ActivityCenterSnapshot } from '../model/activity-center-controller'
 import type { AttachmentsSnapshot } from '../model/attachments-controller'
+import { EMPTY_MODEL_CATALOG, type ModelCatalogSnapshot } from '../model/model-catalog-controller'
 import type { ChangeIndexSnapshot, IndexedChange } from '../model/change-index-controller'
 import type { CommandPaletteSnapshot } from '../model/command-palette-controller'
 import type { CompletionSnapshot } from '../model/completion-controller'
@@ -41,6 +42,8 @@ interface OverlayPanelProps {
   readonly active: OverlayKind
   readonly activity: ActivityCenterSnapshot
   readonly attachments: AttachmentsSnapshot
+  /** Absent where a session has no catalog; the panel then has nothing to show. */
+  readonly models?: ModelCatalogSnapshot
   readonly changes: ChangeIndexSnapshot
   readonly columns: number
   readonly completion: CompletionSnapshot
@@ -66,6 +69,7 @@ export function OverlayPanel({
   active,
   activity,
   attachments,
+  models = EMPTY_MODEL_CATALOG,
   changes,
   columns,
   completion,
@@ -88,6 +92,41 @@ export function OverlayPanel({
   // A screen reader announces every border character, so the frame becomes
   // noise wrapped around the text the user actually asked for.
   const frame = screenReader ? {} : { borderStyle: 'round' as const }
+  if (active === 'models') {
+    const visible = models.routes.slice(0, Math.max(1, maxRows - 3))
+    return (
+      <Box {...frame} flexDirection="column" width={Math.max(4, columns)}>
+        <Text bold wrap="truncate-end">Select model</Text>
+        {models.loading ? <Text {...tone('muted')}>Asking every provider…</Text> : null}
+        {visible.map((route, index) => (
+          <Text
+            key={route.id}
+            {...(index === models.cursor ? tone('accent') : {})}
+            wrap="truncate-end"
+          >
+            {index === models.cursor ? '› ' : '  '}
+            {String(index + 1)}. {route.id}
+          </Text>
+        ))}
+        {models.routes.length === 0 && !models.loading ? (
+          <Text {...tone('muted')} wrap="truncate-end">No provider advertises a model.</Text>
+        ) : null}
+        {/* Named, because a model missing from a list and a model that does not
+            exist are not the same thing, and only one of them is worth retrying. */}
+        {models.failures.map(failure => (
+          <Text key={failure.provider} {...tone('danger')} wrap="truncate-end">
+            {'  '}{failure.provider} could not be listed: {failure.reason}
+          </Text>
+        ))}
+        <Text dimColor wrap="truncate-end">
+          {models.routes.length === 0
+            ? 'Esc close'
+            : `${String(models.cursor + 1)}/${String(models.routes.length)}`
+              + ' · Enter start a session · Esc close'}
+        </Text>
+      </Box>
+    )
+  }
   if (active === 'attachments') {
     const limits = attachments.limits
     return (

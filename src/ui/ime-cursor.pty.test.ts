@@ -30,7 +30,9 @@ async function openComposer(options: { columns?: number } = {}): Promise<ScreenH
     scenario: 'empty',
   })
   await created.waitFor(
-    screen => screen.some(line => line.includes('command palette')),
+    // A short marker: the full hint is truncated on a narrow terminal, and one
+    // of these cases deliberately uses one.
+    screen => screen.some(line => line.includes('Try "explain')),
     'the composer hint',
   )
   return created

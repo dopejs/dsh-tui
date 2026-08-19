@@ -33,7 +33,7 @@ export interface Messages {
 
 const EN: Messages = Object.freeze({
   cancel: '^C cancel',
-  composerPlaceholder: 'Try "explain this repository" · ^P for the command palette',
+  composerPlaceholder: 'Try "explain this repository" · / for commands',
   gettingStarted: 'Getting started',
   languageChanged: 'Interface language changed.',
   openedOverlay: 'Opened',
@@ -42,14 +42,14 @@ const EN: Messages = Object.freeze({
   sendHint: 'Enter send · ^J newline · ^S steer · ^C cancel',
   tipActivity: '^Y  activity · ^B jobs · ^G subagents',
   tipExit: '/exit  quit with a durable teardown',
-  tipPalette: '^P  command palette — every action is here',
+  tipPalette: '/   commands — or ^P for every action',
   welcome: 'Welcome. ^P opens the command palette — every action is listed there. Enter sends.',
   working: 'working',
 })
 
 const ZH: Messages = Object.freeze({
   cancel: '^C 取消',
-  composerPlaceholder: '试试「解释一下这个仓库」· ^P 打开命令面板',
+  composerPlaceholder: '试试「解释一下这个仓库」· 输入 / 唤出命令',
   gettingStarted: '快速上手',
   languageChanged: '界面语言已切换。',
   openedOverlay: '已打开',
@@ -58,7 +58,7 @@ const ZH: Messages = Object.freeze({
   sendHint: 'Enter 发送 · ^J 换行 · ^S 插话 · ^C 取消',
   tipActivity: '^Y  活动 · ^B 任务 · ^G 子代理',
   tipExit: '/exit  安全退出并落盘',
-  tipPalette: '^P  命令面板 — 所有操作都在这里',
+  tipPalette: '/   命令 — 或 ^P 打开全部操作',
   welcome: '欢迎。^P 打开命令面板，所有操作都在其中。Enter 发送。',
   working: '处理中',
 })

@@ -161,17 +161,17 @@ describe('InteractiveTui', () => {
 
     expect(renderApp(transcript, interaction)).toMatchInlineSnapshot(`
       "╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.7.0                                   │
+      │ dsh-tui v0.8.0                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
       │ Getting started                                  │
-      │ ^P  command palette — every action is here       │
+      │ /   commands — or ^P for every action            │
       │ ^Y  activity · ^B jobs · ^G subagents            │
       │ /exit  quit with a durable teardown              │
       ╰──────────────────────────────────────────────────╯
       ╭──────────────────────────────────────────────────╮
-      │ ›  Try "explain this repository" · ^P for the c… │
+      │ ›  Try "explain this repository" · / for comman… │
       ╰──────────────────────────────────────────────────╯
       dsh-tui · session-app · idle · fixture/model
       transcript empty
@@ -194,17 +194,17 @@ describe('InteractiveTui', () => {
       'Target session failed; restored session-app.',
     )).toMatchInlineSnapshot(`
       "╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.7.0                                   │
+      │ dsh-tui v0.8.0                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
       │ Getting started                                  │
-      │ ^P  command palette — every action is here       │
+      │ /   commands — or ^P for every action            │
       │ ^Y  activity · ^B jobs · ^G subagents            │
       │ /exit  quit with a durable teardown              │
       ╰──────────────────────────────────────────────────╯
       ╭──────────────────────────────────────────────────╮
-      │ ›  Try "explain this repository" · ^P for the c… │
+      │ ›  Try "explain this repository" · / for comman… │
       ╰──────────────────────────────────────────────────╯
       dsh-tui · session-app · idle · fixture/model
       transcript empty
@@ -228,12 +228,12 @@ describe('InteractiveTui', () => {
 
     expect(renderApp(transcript, interaction)).toMatchInlineSnapshot(`
       "╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.7.0                                   │
+      │ dsh-tui v0.8.0                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
       │ Getting started                                  │
-      │ ^P  command palette — every action is here       │
+      │ /   commands — or ^P for every action            │
       │ ^Y  activity · ^B jobs · ^G subagents            │
       │ /exit  quit with a durable teardown              │
       ╰──────────────────────────────────────────────────╯
@@ -244,7 +244,7 @@ describe('InteractiveTui', () => {
       │ Y allow once · N reject                          │
       ╰──────────────────────────────────────────────────╯
       ╭──────────────────────────────────────────────────╮
-      │ ›  Try "explain this repository" · ^P for the c… │
+      │ ›  Try "explain this repository" · / for comman… │
       ╰──────────────────────────────────────────────────╯
       dsh-tui · session-app · idle · fixture/model
       transcript empty
@@ -321,18 +321,18 @@ describe('InteractiveTui', () => {
       viewport.insertSearch('needle')
     })).toMatchInlineSnapshot(`
       "╭──────────────────────────────────────────────────╮
-      │ dsh-tui v0.7.0                                   │
+      │ dsh-tui v0.8.0                                   │
       │ fixture/model                                    │
       │ /fixture/workspace                               │
       │                                                  │
       │ Getting started                                  │
-      │ ^P  command palette — every action is here       │
+      │ /   commands — or ^P for every action            │
       │ ^Y  activity · ^B jobs · ^G subagents            │
       │ /exit  quit with a durable teardown              │
       ╰──────────────────────────────────────────────────╯
       / needle█ · 0/0
       ╭──────────────────────────────────────────────────╮
-      │ ›  Try "explain this repository" · ^P for the c… │
+      │ ›  Try "explain this repository" · / for comman… │
       ╰──────────────────────────────────────────────────╯
       dsh-tui · session-app · idle · fixture/model
       transcript empty
