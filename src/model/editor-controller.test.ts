@@ -289,3 +289,45 @@ describe('EditorController (M1.1)', () => {
     expect(() => new EditorController({ undoCodeUnitLimit: 0 })).toThrow('undoCodeUnitLimit')
   })
 })
+
+describe('EditorController.moveTo (M7.8)', () => {
+  // A click lands on a cell, which is an offset, not a direction.
+  it('puts the caret at an exact offset', () => {
+    const editor = new EditorController({ initialText: 'hello world' })
+    expect(editor.moveTo(6)).toBe(true)
+    expect(editor.getSnapshot().cursor).toBe(6)
+    editor.dispose()
+  })
+
+  // A click past the end of the text asks for the end of the text, which is
+  // what every editor does with it.
+  it('clamps rather than refusing an offset outside the text', () => {
+    const editor = new EditorController({ initialText: 'abc' })
+    // Asserted by where the caret lands, not by whether it reported a move:
+    // a new editor already sits at the end, so clamping to the end is a
+    // no-op there and says nothing about the clamp.
+    editor.moveTo(0)
+    editor.moveTo(99)
+    expect(editor.getSnapshot().cursor).toBe(3)
+    editor.moveTo(-5)
+    expect(editor.getSnapshot().cursor).toBe(0)
+    editor.dispose()
+  })
+
+  it('reports that nothing moved when the caret is already there', () => {
+    const editor = new EditorController({ initialText: 'abc' })
+    editor.moveTo(2)
+    expect(editor.moveTo(2)).toBe(false)
+    editor.dispose()
+  })
+
+  it('extends a selection when asked', () => {
+    const editor = new EditorController({ initialText: 'hello world' })
+    editor.moveTo(0)
+    editor.moveTo(5, true)
+    const snapshot = editor.getSnapshot()
+    expect(snapshot.cursor).toBe(5)
+    expect(snapshot.anchor).toBe(0)
+    editor.dispose()
+  })
+})

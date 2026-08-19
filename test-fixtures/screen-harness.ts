@@ -164,6 +164,13 @@ export class ScreenHarness {
     return this.#terminal.buffer.active.getLine(row)?.getCell(column)?.getChars() ?? ''
   }
 
+  /** A left-button click at a cell, as a terminal reports it: press then release. */
+  click(row: number, column: number): void {
+    const ESC = String.fromCodePoint(0x1b)
+    const at = `${String(column + 1)};${String(row + 1)}`
+    this.#process.write(`${ESC}[<0;${at}M${ESC}[<0;${at}m`)
+  }
+
   /** A wheel notch, as a terminal reports it in SGR mode. */
   wheel(direction: 'down' | 'up', column = 1, row = 1): void {
     const button = direction === 'up' ? 64 : 65

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
-import { Box, Text, useInput, usePaste, useStdout } from 'ink'
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import { Box, Text, measureElement, useInput, usePaste, useStdout, type DOMElement } from 'ink'
 import type { AskUserQuestionAnswer } from '@deepseek-ai/dsh-user-questions'
 
 import type { ActivityCenterController } from '../model/activity-center-controller'
@@ -29,6 +29,7 @@ import type { PermissionController } from '../model/permission-controller'
 import type { JobsController } from '../model/jobs-controller'
 import type { McpInventoryController } from '../model/mcp-inventory-controller'
 import type { ModelCatalogController } from '../model/model-catalog-controller'
+import type { ScreenModel } from '../model/view-model'
 import { EMPTY_MODEL_CATALOG } from '../model/model-catalog-controller'
 
 /** A session without a model catalog subscribes to nothing and reads nothing. */
@@ -47,7 +48,9 @@ import { createScreenModel, type InteractionModal } from '../model/view-model'
 import { workingStatus } from '../model/working-status'
 import { messages, resolveLanguage } from '../model/i18n'
 import type { InputController, InputSubmission, SubmissionMode } from '../runtime/input-controller'
-import { CURSOR_FOLLOWS_CARET, Composer, createComposerView } from './composer'
+import type { ComposerView } from './composer'
+import { CURSOR_FOLLOWS_CARET, Composer, createComposerView, offsetAtCell } from './composer'
+import { hitTestTranscript } from '../model/hit-test'
 
 /**
  * The empty-composer hint. It names a real task rather than describing the
@@ -67,12 +70,14 @@ interface QuestionDraft {
 }
 
 /**
- * Lines the transcript moves per wheel notch.
+ * How far the transcript moves per wheel notch, in transcript rows.
  *
- * Three is what a terminal's own scrollback does, so the gesture arrives
- * already calibrated to what the hand expects.
+ * Rows, not screen lines: the window can only start at a row boundary, since
+ * the renderer composes each row as an element and cannot draw the tail of
+ * one. Three rows is three whole messages, which reads as a lurch rather than
+ * a scroll -- one is the smallest step this model can take.
  */
-const WHEEL_LINES = 3
+const WHEEL_LINES = 1
 
 export interface InteractiveTuiProps {
   readonly acceptsInput?: () => boolean
@@ -352,6 +357,15 @@ export function InteractiveTui({
   // Injected context is folded by default; expansion is per-row and lives in
   // presentation state, never in the durable log.
   const [expandedRowIds, setExpandedRowIds] = useState<ReadonlySet<string>>(() => new Set())
+  /*
+   * Read by the click handler, which must see the frame that is on screen
+   * rather than the one it was built with: a handler rebuilt on every frame
+   * would resubscribe the mouse listener just as often.
+   */
+  const clickRef = useRef<((row: number, column: number) => void) | undefined>(undefined)
+  const composerRef = useRef<DOMElement | null>(null)
+  const composerViewRef = useRef<ComposerView | undefined>(undefined)
+  const screenRef = useRef<ScreenModel | undefined>(undefined)
   // When the current turn began, so the working row can report elapsed time.
   // Reset on each idle→running transition rather than accumulated, so a second
   // turn does not inherit the first one's clock.
@@ -490,6 +504,8 @@ export function InteractiveTui({
       if (!mouseReporting) return
       if (event.kind === 'wheel-up') viewport.scrollLines(WHEEL_LINES)
       else if (event.kind === 'wheel-down') viewport.scrollLines(-WHEEL_LINES)
+      else if (event.kind === 'press') clickRef.current?.(event.row, event.column)
+
     })
   }, [mouse, mouseReporting, viewport])
 
@@ -1681,12 +1697,71 @@ export function InteractiveTui({
     }
   })
 
+  /*
+   * What a click lands on.
+   *
+   * The transcript is drawn from the top of the frame, so a click's row is an
+   * index into what was laid out there; the composer is measured, so a click
+   * inside its box becomes a text offset. Anything else is ignored rather than
+   * guessed at -- a click on empty space is not a click on the nearest thing.
+   */
+  const handleClick = useCallback((row: number, column: number) => {
+    if (!acceptsInput()) return
+    if (overlay.getSnapshot().active !== undefined) return
+
+    const composerBox = composerRef.current
+    const metrics = composerBox === null ? undefined : measureElement(composerBox)
+    if (metrics !== undefined && metrics.height > 0) {
+      const inside = row > metrics.y && row < metrics.y + metrics.height - 1
+      if (inside) {
+        const view = composerViewRef.current
+        // The frame costs a border and a padding cell on the left, exactly as
+        // it does when the caret is placed; `offsetAtCell` accounts for the
+        // prompt after that.
+        const offset = view === undefined
+          ? undefined
+          : offsetAtCell(view, row - metrics.y - 1, column - metrics.x - 2)
+        if (offset !== undefined) editor.moveTo(offset)
+        return
+      }
+      if (row >= metrics.y) return
+    }
+
+    const currentScreen = screenRef.current
+    if (currentScreen === undefined) return
+    const hit = hitTestTranscript(row, {
+      expandedRowIds,
+      firstLine: 0,
+      // The same rows the renderer draws, not the ones the model holds.
+      // Injected context is withheld unless asked for, and counting it here
+      // shifted every line below it -- so a click on a fold was read as a
+      // click on whatever the miscount landed on.
+      rows: currentScreen.rows.filter(
+        item => currentScreen.showContext === true || item.kind !== 'context',
+      ),
+    })
+    if (hit === undefined) return
+    if (!hit.onReasoningFold) {
+      viewport.focusRow(hit.rowId)
+      return
+    }
+    setExpandedRowIds((current) => {
+      const next = new Set(current)
+      if (next.has(hit.rowId)) next.delete(hit.rowId)
+      else next.add(hit.rowId)
+      return next
+    })
+  }, [acceptsInput, editor, expandedRowIds, overlay, viewport])
+
+  clickRef.current = handleClick
+
   const composerMaxRows = Math.max(1, Math.min(6, Math.floor(dimensions.rows / 3)))
   const composerView = createComposerView(
     editorSnapshot,
     Math.max(1, dimensions.columns - 2),
     composerMaxRows,
   )
+  composerViewRef.current = composerView
   const composerRows = composerView.rows.length
     + (composerView.hiddenAbove > 0 || composerView.hiddenBelow > 0 ? 1 : 0)
   const activeOverlay = modal === undefined ? overlaySnapshot.active : undefined
@@ -1773,6 +1848,7 @@ export function InteractiveTui({
     },
     modal,
   )
+  screenRef.current = screen
 
   if (fullScreenOverlay && activeOverlay !== undefined) {
     return <OverlayPanel
@@ -1850,6 +1926,7 @@ export function InteractiveTui({
         </Text>
       ) : null}
       <Composer
+        boxRef={composerRef}
         columns={dimensions.columns}
         maxRows={composerMaxRows}
         placeholder={text.composerPlaceholder}

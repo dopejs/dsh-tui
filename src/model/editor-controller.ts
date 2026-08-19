@@ -397,6 +397,27 @@ export class EditorController {
     return true
   }
 
+  /**
+   * Put the caret at an exact offset, as a click does.
+   *
+   * Clamped rather than rejected: a click past the end of a line is a click
+   * asking for the end of that line, which is what every editor does with it.
+   */
+  moveTo(offset: number, extend = false): boolean {
+    this.#assertActive()
+    if (!Number.isSafeInteger(offset)) return false
+    const cursor = Math.max(0, Math.min(this.#state.text.length, offset))
+    const anchor = extend ? (this.#state.anchor ?? this.#state.cursor) : undefined
+    if (cursor === this.#state.cursor && anchor === this.#state.anchor) return false
+    this.#setState({
+      ...(anchor === undefined ? {} : { anchor }),
+      cursor,
+      text: this.#state.text,
+    })
+    this.#preferredColumn = undefined
+    return true
+  }
+
   previousHistory(): boolean {
     this.#assertActive()
     if (this.#history.length === 0) return false

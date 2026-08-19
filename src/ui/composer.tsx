@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from 'react'
+import { useLayoutEffect, useRef, useState, type RefObject } from 'react'
 import { Box, Text, measureElement, useCursor, type DOMElement } from 'ink'
 import stringWidth from 'string-width'
 
@@ -16,6 +16,10 @@ interface LogicalLine {
 export interface ComposerToken {
   readonly cursor: boolean
   readonly selected: boolean
+  /** Text offset this token starts at, so a click can be turned back into one. */
+  readonly start: number
+  /** Text offset just past it. */
+  readonly end: number
   readonly text: string
 }
 
@@ -162,7 +166,13 @@ function cropTokens(
   const trailingEllipsis = hiddenTrailing && remainingMarkerCells > 0
   return {
     leadingEllipsis,
-    tokens: tokens.slice(start, end).map(({ cursor, selected, text }) => ({ cursor, selected, text })),
+    tokens: tokens.slice(start, end).map(({ cursor, end: tokenEnd, selected, start: tokenStart, text }) => ({
+      cursor,
+      end: tokenEnd,
+      selected,
+      start: tokenStart,
+      text,
+    })),
     trailingEllipsis,
   }
 }
@@ -196,6 +206,30 @@ export function createComposerView(
 
 /** Cells the `› ` / `│ ` row prefix occupies, ahead of any content. */
 const PROMPT_CELLS = 2
+
+/**
+ * The text offset a click at a cell asks for.
+ *
+ * Walks the same tokens the renderer draws, in cells rather than code units,
+ * so a click after two Chinese characters lands after them and not in the
+ * middle of the second. A click past the end of a line asks for the end of
+ * that line, which is what every editor does with it.
+ */
+export function offsetAtCell(
+  view: ComposerView,
+  row: number,
+  column: number,
+): number | undefined {
+  const line = view.rows[row]
+  if (line === undefined) return undefined
+  let cells = (line.leadingEllipsis ? 1 : 0) + PROMPT_CELLS
+  for (const token of line.tokens) {
+    const width = Math.max(1, stringWidth(token.text))
+    if (column < cells + width) return token.start
+    cells += width
+  }
+  return line.tokens.at(-1)?.end ?? line.tokens[0]?.start ?? 0
+}
 
 /**
  * Rows added when placing the terminal cursor. None are needed.
@@ -246,6 +280,14 @@ function caretCellOffset(row: ComposerRow | undefined): number {
 }
 
 interface ComposerProps {
+  /**
+   * The composer's own box, so a caller can measure where it was drawn.
+   *
+   * A click arrives as a screen cell, and turning that into a text offset
+   * needs to know which rows the composer occupies. Measuring it is the only
+   * way to know that does not repeat the layout arithmetic somewhere else.
+   */
+  readonly boxRef?: RefObject<DOMElement | null>
   readonly columns: number
   readonly maxRows: number
   /** Shown only while the draft is empty; it is a hint, never real content. */
@@ -256,6 +298,7 @@ interface ComposerProps {
 }
 
 export function Composer({
+  boxRef,
   columns,
   maxRows,
   placeholder,
@@ -332,7 +375,14 @@ export function Composer({
   }, [caretColumn, caretRow, screenReader, setCursorPosition, snapshot])
 
   return (
-    <Box {...frame} flexDirection="column" ref={box}>
+    <Box
+      {...frame}
+      flexDirection="column"
+      ref={(node) => {
+        box.current = node
+        if (boxRef !== undefined) boxRef.current = node
+      }}
+    >
       {/*
         * The hint is drawn inside the same row layout as real text: same `› `
         * prefix, same cursor cell. Drawing it without the prefix left the

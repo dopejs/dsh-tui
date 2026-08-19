@@ -119,7 +119,7 @@ const CHROME_ROWS = 3
  * drawn straight through the composer -- a fused border and input line, and a
  * status line written over its own second half.
  */
-function transcriptRowHeight(row: TranscriptRow, first: boolean): number {
+export function transcriptRowHeight(row: TranscriptRow, first: boolean): number {
   return 1
     + (first ? 0 : 1)
     + (row.reasoning === undefined ? 0 : 1)

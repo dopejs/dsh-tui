@@ -927,3 +927,35 @@ another at the same commit. It asserts the menu's own chrome now.
 | --- | --- | --- | --- |
 | `0.8.4` | npm `0.1.0-rc.7` | Wheel button decoding | 703 tests including thirty-five on a live PTY; clean-profile launch green. |
 
+### 0.9.0
+
+Clicking works, and the criticism that prompted it was right: what shipped as
+mouse support was the wheel wired to a scroll function, and nothing else.
+Presses and releases were decoded and delivered to nothing. The one gesture
+that was asked for — click the fold to open the reasoning — had never been
+written.
+
+Clicking the folded reasoning opens it, and clicking the reasoning closes it
+again: expanded, there is no fold affordance left to aim at. Clicking in the
+composer moves the caret to that cell, measured in cells rather than code
+units, so a click after two CJK characters lands after them.
+
+A terminal reports a cell, not an element, and turning one into the other means
+repeating the arithmetic the renderer does. The row height now lives in one
+place and both use it — a hit test that measured rows differently would be
+right only until the first row taller than one line. Two defects came out of
+that anyway, and both were caught on a live terminal: the composer's frame
+costs a border and a padding cell that the column never subtracted, and the hit
+test walked the rows the model holds rather than the ones the renderer draws,
+so a withheld context row shifted every line below it.
+
+The wheel now moves one row per notch rather than three. It is still rows, not
+screen lines, and that is a limit of the renderer rather than a choice: each row
+is composed as an element, so the window can only start at a row boundary — it
+cannot draw the tail of a message. Line-level scrolling needs the transcript
+rendered to lines and windowed over those, which is a different renderer.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.9.0` | npm `0.1.0-rc.7` | Clicking | 718 tests including thirty-seven on a live PTY; clean-profile launch green. |
+
