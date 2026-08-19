@@ -993,5 +993,14 @@ does it on most terminals without toggling anything.
 
 | Version | Verified against | Scope | Notes |
 | --- | --- | --- | --- |
+An IME cursor test failed once on Linux and not on macOS: it moved the caret
+twice, paused a fixed 150ms, and asserted -- and the position is applied on a
+later frame than the keystroke that moved it, so on a slower runner the
+assertion saw one keystroke behind. It waits for the two to coincide now. What
+the interface promises is that they end up in the same cell, not how long that
+takes.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
 | `0.9.1` | npm `0.1.0-rc.7` | Inline command completion | 718 tests including thirty-seven on a live PTY; clean-profile launch green. |
 

@@ -45,6 +45,24 @@ async function openComposer(options: { columns?: number } = {}): Promise<ScreenH
  * inverted cell is wrong wherever an input method is most likely to be used.
  * What has to hold is that the terminal's cursor sits at the caret's left edge.
  */
+/**
+ * Waits for the terminal cursor to reach the caret.
+ *
+ * The position is applied on a later frame than the keystroke that moved it,
+ * so a fixed pause asserts whatever had landed by then -- which on a slower
+ * runner was one keystroke behind. What the interface promises is that they
+ * end up in the same cell, not how many milliseconds that takes.
+ */
+async function waitForCursorOnCaret(instance: ScreenHarness): Promise<void> {
+  await instance.waitFor(
+    () => {
+      const { caret, cursor } = caretAndCursor(instance)
+      return caret !== undefined && cursor.row === caret.row && cursor.column === caret.column
+    },
+    'the terminal cursor to reach the caret',
+  )
+}
+
 function caretAndCursor(instance: ScreenHarness) {
   const cells = [...instance.invertedCells()].sort(
     (left, right) => left.row - right.row || left.column - right.column,
@@ -60,11 +78,7 @@ onPosix('the cursor an input method composes at (M7.3)', () => {
 
     harness.key('left')
     harness.key('left')
-    await harness.settle()
-
-    const { caret, cursor } = caretAndCursor(harness)
-    expect(caret).toBeDefined()
-    expect(cursor).toEqual(caret)
+    await waitForCursorOnCaret(harness)
   }, 30_000)
 
   it('follows the caret onto a second line', async () => {
@@ -74,11 +88,7 @@ onPosix('the cursor an input method composes at (M7.3)', () => {
     harness.key('ctrl-j')
     harness.type('second')
     await harness.waitFor(screen => screen.some(l => l.includes('second')), 'the second line')
-    await harness.settle()
-
-    const { caret, cursor } = caretAndCursor(harness)
-    expect(caret).toBeDefined()
-    expect(cursor).toEqual(caret)
+    await waitForCursorOnCaret(harness)
   }, 30_000)
 
   it('follows the caret back up to an earlier line', async () => {
@@ -89,11 +99,7 @@ onPosix('the cursor an input method composes at (M7.3)', () => {
     harness.type('second')
     await harness.waitFor(screen => screen.some(l => l.includes('second')), 'the second line')
     harness.key('up')
-    await harness.settle()
-
-    const { caret, cursor } = caretAndCursor(harness)
-    expect(caret).toBeDefined()
-    expect(cursor).toEqual(caret)
+    await waitForCursorOnCaret(harness)
   }, 30_000)
 
   // A line longer than the composer is cropped around the cursor, and the crop
@@ -103,11 +109,7 @@ onPosix('the cursor an input method composes at (M7.3)', () => {
     harness = await openComposer({ columns: 40 })
     harness.type('0123456789012345678901234567890123456789012345678901234567890123456789')
     await harness.waitFor(screen => screen.some(l => l.includes('…')), 'the crop')
-    await harness.settle()
-
-    const { caret, cursor } = caretAndCursor(harness)
-    expect(caret).toBeDefined()
-    expect(cursor).toEqual(caret)
+    await waitForCursorOnCaret(harness)
   }, 30_000)
 
   // The case an input method actually produces, with more to come after it.
@@ -117,11 +119,7 @@ onPosix('the cursor an input method composes at (M7.3)', () => {
     await harness.waitFor(screen => screen.some(l => l.includes('你好')), 'the text')
 
     harness.key('left')
-    await harness.settle()
-
-    const { caret, cursor } = caretAndCursor(harness)
-    expect(caret).toBeDefined()
-    expect(cursor).toEqual(caret)
+    await waitForCursorOnCaret(harness)
   }, 30_000)
 
   /*
