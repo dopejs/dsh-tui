@@ -864,3 +864,27 @@ records what the terminal sends, which is the missing half.
 | --- | --- | --- | --- |
 | `0.8.2` | npm `0.1.0-rc.7` | Redraw diagnosis | 698 tests including thirty-three on a live PTY; clean-profile launch green on this run. |
 
+### 0.8.3
+
+Escape interrupts the agent, and says so.
+
+The key already cancelled a running turn, but only after clearing a selection
+and then a draft — so at the one moment interrupting matters, Escape did the
+less urgent of two things and a second press was needed for the one that was
+wanted. Interrupting now comes first while the agent is working; clearing is
+what Escape does when there is nothing more urgent for it to do.
+
+The working line said `^C cancel`. Ctrl-C is the key that ends programs;
+Escape is what a person reaches for to stop something in progress. Both still
+cancel, and the hint names the one that is not also an exit.
+
+Escape no longer quits. From an empty composer it used to end the session,
+which is a long way from what the key means anywhere else and one stray press
+from losing the terminal. It now says there is nothing to cancel and names the
+two ways out that remain, `/exit` and Ctrl-C. Reinstating the old behaviour
+turns the screen test red.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.8.3` | npm `0.1.0-rc.7` | Interrupt key | 700 tests including thirty-five on a live PTY; clean-profile launch green. |
+

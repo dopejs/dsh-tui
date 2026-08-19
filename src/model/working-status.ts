@@ -61,6 +61,8 @@ export function workingStatus(input: WorkingStatusInput): WorkingStatus {
   if (input.reasoningEffort !== undefined && input.reasoningEffort !== '') {
     segments.push(input.reasoningEffort)
   }
-  segments.push('^C cancel')
+  // Esc, not Ctrl-C: interrupting the agent is what a person reaches for while
+  // it is working, and Ctrl-C is the key that ends programs. Both still work.
+  segments.push('Esc cancel')
   return Object.freeze({ segments: Object.freeze(segments) })
 }

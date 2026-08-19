@@ -32,14 +32,14 @@ export interface Messages {
 }
 
 const EN: Messages = Object.freeze({
-  cancel: '^C cancel',
+  cancel: 'Esc cancel',
   composerPlaceholder: 'Try "explain this repository" · / for commands',
   gettingStarted: 'Getting started',
   languageChanged: 'Interface language changed.',
   openedOverlay: 'Opened',
   overlayClosed: 'Overlay closed.',
   reasoningHidden: 'reasoning hidden · ^E show',
-  sendHint: 'Enter send · ^J newline · ^S steer · ^C cancel',
+  sendHint: 'Enter send · ^J newline · ^S steer · Esc cancel',
   tipActivity: '^Y  activity · ^B jobs · ^G subagents',
   tipExit: '/exit  quit with a durable teardown',
   tipPalette: '/   commands — or ^P for every action',
@@ -48,14 +48,14 @@ const EN: Messages = Object.freeze({
 })
 
 const ZH: Messages = Object.freeze({
-  cancel: '^C 取消',
+  cancel: 'Esc 取消',
   composerPlaceholder: '试试「解释一下这个仓库」· 输入 / 唤出命令',
   gettingStarted: '快速上手',
   languageChanged: '界面语言已切换。',
   openedOverlay: '已打开',
   overlayClosed: '面板已关闭。',
   reasoningHidden: '推理已折叠 · ^E 展开',
-  sendHint: 'Enter 发送 · ^J 换行 · ^S 插话 · ^C 取消',
+  sendHint: 'Enter 发送 · ^J 换行 · ^S 插话 · Esc 取消',
   tipActivity: '^Y  活动 · ^B 任务 · ^G 子代理',
   tipExit: '/exit  安全退出并落盘',
   tipPalette: '/   命令 — 或 ^P 打开全部操作',

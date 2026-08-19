@@ -127,4 +127,39 @@ onPosix('the slash menu (M7.5)', () => {
     )
     expect(harness.screen().join('\n')).toContain('2/3')
   }, 30_000)
+
+  /*
+   * Escape used to end the session from an empty composer, which is a long way
+   * from what the key means anywhere else and one stray press from losing the
+   * terminal. `/exit` and Ctrl-C still quit.
+   */
+  it('does not quit when Escape is pressed with nothing to cancel', async () => {
+    harness = await openComposer()
+    harness.key('escape')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('Nothing to cancel')),
+      'the notice',
+    )
+    await harness.settle()
+
+    // Still running, and still showing the composer.
+    expect(harness.screen().some(line => line.includes('Try "explain'))).toBe(true)
+  }, 30_000)
+
+  // A draft is cleared by Escape, but only when there is no more urgent thing
+  // for it to do.
+  it('clears a draft on Escape while the agent is idle', async () => {
+    harness = await openComposer()
+    harness.type('some draft')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('some draft')),
+      'the draft',
+    )
+    harness.key('escape')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('Composer cleared')),
+      'the cleared notice',
+    )
+    expect(harness.screen().some(line => line.includes('some draft'))).toBe(false)
+  }, 30_000)
 })

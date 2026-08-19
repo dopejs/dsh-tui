@@ -1479,16 +1479,27 @@ export function InteractiveTui({
     }
 
     if (key.escape) {
-      if (editor.clearSelection()) {
+      /*
+       * Interrupting comes first while the agent is working.
+       *
+       * Clearing a draft ahead of it meant Escape did the less urgent of two
+       * things at the one moment the other one matters, and a second press was
+       * needed for the thing that was wanted first.
+       */
+      if (agentStatus === 'running') {
+        input.cancelAgent()
+        setNotice('Agent cancellation requested.')
+      } else if (editor.clearSelection()) {
         setNotice('Selection cleared.')
       } else if (editor.getSnapshot().text !== '') {
         editor.clear()
         setNotice('Composer cleared.')
-      } else if (agentStatus === 'running') {
-        input.cancelAgent()
-        setNotice('Agent cancellation requested.')
       } else {
-        onQuit(0)
+        // Not a way out. Escape used to end the session from an empty composer,
+        // which is a long way from what the key means anywhere else, and one
+        // stray press away from losing the terminal. `/exit` and Ctrl-C both
+        // still quit.
+        setNotice('Nothing to cancel. /exit or ^C to quit.')
       }
       return
     }

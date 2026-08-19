@@ -42,9 +42,11 @@ describe('workingStatus (M6.6)', () => {
     expect(workingStatus({ elapsedMs: 5_000, running: false }).segments).toEqual([])
   })
 
+  // Escape, not Ctrl-C: interrupting is what a person reaches for while the
+  // agent works, and Ctrl-C is the key that ends programs.
   it('always offers the elapsed time and the cancel key', () => {
     expect(workingStatus({ elapsedMs: 2_500, running: true }).segments)
-      .toEqual(['2.5s', '^C cancel'])
+      .toEqual(['2.5s', 'Esc cancel'])
   })
 
   it('adds the rate and effort when the runtime reports them', () => {
@@ -53,7 +55,7 @@ describe('workingStatus (M6.6)', () => {
       outputTokens: 200,
       reasoningEffort: 'medium',
       running: true,
-    }).segments).toEqual(['10s', '20 tok/s', 'medium', '^C cancel'])
+    }).segments).toEqual(['10s', '20 tok/s', 'medium', 'Esc cancel'])
   })
 
   // Absent facts are omitted, never zeroed.
