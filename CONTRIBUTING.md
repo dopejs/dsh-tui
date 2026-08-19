@@ -33,6 +33,26 @@ Create a numbered ADR under `docs/decisions/` when a change affects process
 topology, package boundaries, durable state, compatibility, UI framework, or
 resource ownership. Include context, decision, consequences, and alternatives.
 
+## Choosing the number
+
+A minor is for a capability that was never claimed. Everything else is a patch,
+including — especially — repairing something already announced as working.
+
+The distinction is not bookkeeping. A changelog of minors reads as a product
+gaining capability, and using them for repairs makes the record say the
+opposite of what happened. `0.9.0` was labelled "clicking", but mouse support
+had been announced in `0.5.0`; clicking had simply never been written. `0.3.0`
+was labelled "fullscreen layout", but the alternate screen had been taken since
+`0.1.0` and the layout had never filled it. Both were repairs wearing a feature's
+number, and of the nine minors cut in this project's first days, two were
+earned.
+
+The test to apply: if a user reading the previous release notes would have
+expected this to work already, it is a patch.
+
+Batch, too. Six of those releases carried a single fix each, which is version
+churn a reader has to wade through to find what changed.
+
 ## Releasing
 
 Releases are cut by pushing a tag; there is no manual publish step.
