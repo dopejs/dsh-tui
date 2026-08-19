@@ -156,8 +156,8 @@ export function mountInkApplication(
     reporting = enabled
     const wrote = stdout.write(enabled ? ENABLE_MOUSE : DISABLE_MOUSE)
     if (diagnosticLog !== undefined) {
-      appendFileSync(diagnosticLog,
-        `[mouse] setReporting(${String(enabled)}) wrote=${String(wrote)}\n`)
+      appendFileSync(diagnosticLog, `[mouse pid=${String(process.pid)}]`
+        + ` setReporting(${String(enabled)}) wrote=${String(wrote)}\n`)
     }
   }
   const mouseProp = mouse === undefined
@@ -202,7 +202,10 @@ export function mountInkApplication(
    * owns, so it costs nothing when no one is looking.
    */
   if (diagnosticLog !== undefined) {
-    appendFileSync(diagnosticLog, `[mouse] filter=${String(mouse !== undefined)}`
+    // Attributed by process: the log outlives one run, and a line that cannot
+    // be tied to the run being asserted about explains nothing.
+    appendFileSync(diagnosticLog, `[mouse pid=${String(process.pid)}]`
+      + ` filter=${String(mouse !== undefined)}`
       + ` stdinTTY=${String(stdin.isTTY === true)} stdoutTTY=${String(stdout.isTTY === true)}\n`)
   }
   if (mouse === undefined) return mounted

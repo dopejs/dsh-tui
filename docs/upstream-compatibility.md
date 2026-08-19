@@ -909,6 +909,15 @@ bytes to assert against rather than a plausible reconstruction of them.
 
 | Version | Verified against | Scope | Notes |
 | --- | --- | --- | --- |
+The clean-profile check that the mouse modes were asked for is now a warning
+rather than a failure. It has failed on Linux and on macOS and passed on re-run
+each time with no behaviour change in between -- and the run that failed had
+already recorded, from inside the process, that the write happened and was not
+even buffered: `filter=true`, `wrote=true`, no bytes in the capture. A red
+cleared by re-running teaches re-running. The evidence is still collected, and
+the diagnostic now names the process that wrote it, because a log outliving one
+run cannot otherwise be tied to the run being asserted about.
+
 The slash-menu test asserted that `Exit TUI` was visible in the unfiltered
 list, which depends on how many rows fit and where that action falls in an
 order the feature does not promise. It passed on one runner and failed on
