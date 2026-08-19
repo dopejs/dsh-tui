@@ -28,7 +28,17 @@ onPosix('the slash menu (M7.5)', () => {
       screen => screen.some(line => line.includes('Command palette')),
       'the command menu',
     )
-    expect(harness.screen().join('\n')).toContain('Exit TUI')
+    /*
+     * The menu's own chrome, not a particular row.
+     *
+     * Asserting that `Exit TUI` was visible made the test depend on how many
+     * rows fit and where that action fell in an unfiltered list -- neither of
+     * which the feature promises. It passed on one runner and failed on
+     * another at the same commit.
+     */
+    const screen = harness.screen().join('\n')
+    expect(screen).toContain('Enter select')
+    expect(screen).toContain('Esc close')
   }, 30_000)
 
   // A slash inside a sentence or a path is a slash.

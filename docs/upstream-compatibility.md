@@ -909,5 +909,12 @@ bytes to assert against rather than a plausible reconstruction of them.
 
 | Version | Verified against | Scope | Notes |
 | --- | --- | --- | --- |
+The slash-menu test asserted that `Exit TUI` was visible in the unfiltered
+list, which depends on how many rows fit and where that action falls in an
+order the feature does not promise. It passed on one runner and failed on
+another at the same commit. It asserts the menu's own chrome now.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
 | `0.8.4` | npm `0.1.0-rc.7` | Wheel button decoding | 703 tests including thirty-five on a live PTY; clean-profile launch green. |
 
