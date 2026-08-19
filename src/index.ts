@@ -24,7 +24,9 @@ import { ActivityCenterController } from './model/activity-center-controller'
 import { AttachmentsController } from './model/attachments-controller'
 import { AgentStatusController } from './model/agent-status-controller'
 import { ChangeIndexController } from './model/change-index-controller'
+import { readClipboardImage } from './runtime/clipboard-image'
 import { CommandPaletteController } from './model/command-palette-controller'
+import { ModelCatalogController } from './model/model-catalog-controller'
 import { CompletionController } from './model/completion-controller'
 import { EditorController } from './model/editor-controller'
 import { InteractionController } from './model/interaction-controller'
@@ -496,6 +498,11 @@ export async function startTuiRuntime(
           name: 'lang',
           recordInput: false,
         })
+        const modelCatalog = new ModelCatalogController({
+          listModels: provider => llm.listModels(provider),
+          listProviders: () => llm.listProviders(),
+        })
+        bindingOwner.own('model catalog controller', () => modelCatalog.dispose())
         registerIfAbsent({
           description: 'Start a fresh session, disposing this one first',
           handler: () => startSession(undefined, 'Starting a new session'),
@@ -503,11 +510,34 @@ export async function startTuiRuntime(
           recordInput: false,
         })
         registerIfAbsent({
-          description: 'Start a fresh session on an exact provider/model',
-          handler: (invocation) => {
+          description: 'Start a fresh session on a model, listing them when none is named',
+          handler: async (invocation) => {
             const requested = invocation.rawInput.trim()
+            /*
+             * No argument lists what is available instead of correcting the
+             * caller. The exact route had to be typed from memory, and typing
+             * it wrong was answered with usage text -- which says what the
+             * shape is, and never what may be put in it.
+             */
             if (requested === '') {
-              return { kind: 'error', text: 'Usage: /model provider/model' }
+              await modelCatalog.load()
+              const catalog = modelCatalog.getSnapshot()
+              const lines = catalog.routes.map(route => `  /model ${route.id}`)
+              const failures = catalog.failures.map(
+                failure => `  ${failure.provider}: ${failure.reason}`,
+              )
+              if (lines.length === 0 && failures.length === 0) {
+                return { kind: 'error', text: 'No provider advertises any model.' }
+              }
+              return {
+                kind: 'success',
+                text: [
+                  ...(lines.length === 0 ? [] : ['Available models:', ...lines]),
+                  // Named, because a model missing from a list and a model that
+                  // does not exist are not the same thing.
+                  ...(failures.length === 0 ? [] : ['Providers that could not be listed:', ...failures]),
+                ].join('\n'),
+              }
             }
             try {
               const selection = parseModelSelector(requested)
@@ -680,6 +710,7 @@ export async function startTuiRuntime(
             activity,
             attachments,
             readFile: async (path: string) => new Uint8Array(await readFile(path)),
+            readClipboardImage: () => readClipboardImage(),
             terminalCapabilities,
             jobs: jobsPanel,
             mcp,

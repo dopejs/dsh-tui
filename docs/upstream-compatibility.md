@@ -724,3 +724,46 @@ belongs to the marker.
 | --- | --- | --- | --- |
 | `0.6.2` | npm `0.1.0-rc.7` | IME cursor in every composer state | 681 tests including twenty-five on a live PTY; clean-profile launch green. |
 
+### 0.7.0
+
+Three things, released together rather than one version each.
+
+**A leading slash opens the command menu.** Every action lived behind Ctrl-P,
+which is not a chord anyone guesses, and a slash is what a person types anyway.
+Only on an empty composer — a slash inside a sentence or a path is a slash.
+
+Slash commands take arguments, so a menu that swallowed the keystrokes would
+make `/model ark/deepseek-v4` unreachable. Escape hands back what was typed:
+the composer receives `/` plus the query, to be finished and sent like anything
+else.
+
+**`/model` with no argument lists what is available** instead of answering with
+usage text, which says what the shape is and never what may be put in it.
+Providers are asked concurrently and independently: one that is slow or
+unreachable does not decide whether the others are shown, and a provider that
+could not be listed is named. A model missing from a list and a model that does
+not exist are not the same thing, and the difference is the user's to act on.
+
+**Ctrl-V stages an image from the clipboard.** A terminal delivers text on paste
+and nothing else, so an image on the clipboard is invisible to anything reading
+stdin and has to be asked for — through AppleScript on macOS, which writes a PNG
+to a file because binary through a pipe does not survive. Implemented for macOS
+only, and every other platform is told that rather than shown an empty result.
+An empty clipboard, a system that cannot be asked, and a failure are three
+different notices.
+
+The screen tests caught a rendering defect on the way: the blank line that ends
+every frame was not in the row budget, so at twenty rows the command menu was
+drawn through the welcome panel. A line drawn but not budgeted for is a line
+drawn through whatever is below it — the same mistake the turn separator made in
+`0.4.1`.
+
+A second one is recorded and not fixed: with the welcome panel showing, a
+twenty-row terminal still overflows, because the panel itself is not budgeted.
+The existing assertion missed it — it looks for a border glyph in a line's
+interior, and here the glyph lands at the end of the row where it belongs.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.7.0` | npm `0.1.0-rc.7` | Slash menu, model listing, image paste | 694 tests including twenty-nine on a live PTY; clean-profile launch green. |
+

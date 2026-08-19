@@ -198,6 +198,9 @@ const application: Omit<InteractiveTuiProps, 'onQuit' | 'sessionCenter'> = {
   subagents,
   transcript,
   viewport,
+  // Answers the way a machine with nothing on its clipboard does, so the
+  // key's feedback path is exercised without a real clipboard.
+  readClipboardImage: async () => ({ kind: 'empty' as const }),
   workspace: '/fixture/workspace',
 }
 

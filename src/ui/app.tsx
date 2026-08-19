@@ -74,6 +74,19 @@ export interface InteractiveTuiProps {
   readonly attachments: AttachmentsController
   /** Reads a file for attachment; injected so the model layer stays pure. */
   readonly readFile?: (path: string) => Promise<Uint8Array>
+  /**
+   * Reads an image out of the system clipboard.
+   *
+   * Injected because it asks the operating system, which a view must not do,
+   * and because a terminal delivers only text on paste -- an image on the
+   * clipboard is invisible to anything reading stdin.
+   */
+  readonly readClipboardImage?: () => Promise<
+    | { readonly kind: 'image', readonly image: { readonly bytes: Uint8Array, readonly path: string } }
+    | { readonly kind: 'empty' }
+    | { readonly kind: 'unsupported', readonly reason: string }
+    | { readonly kind: 'failed', readonly reason: string }
+  >
   /** Negotiated once at startup; drives hyperlinks and inline images. */
   readonly terminalCapabilities?: TerminalCapabilities
   readonly changes: ChangeIndexController
@@ -243,6 +256,7 @@ export function InteractiveTui({
   completion,
   editor,
   mouse,
+  readClipboardImage,
   renderMode = 'alternate',
   firstRun = false,
   input,
@@ -296,6 +310,8 @@ export function InteractiveTui({
    * that; not all do, and nobody should have to know. This hands it back.
    */
   const [mouseReporting, setMouseReporting] = useState(true)
+  /** Whether the open palette was reached by typing `/`, which changes Escape. */
+  const [slashOpened, setSlashOpened] = useState(false)
   const [notice, setNotice] = useState(
     initialNotice ?? (firstRun
       // A first-run user has no way to discover the panels yet; the palette is
@@ -975,6 +991,21 @@ export function InteractiveTui({
       }
       if (key.escape || (key.ctrl && typed.toLowerCase() === 'c')) {
         if (activeOverlay === 'completion') completion.cancel()
+        /*
+         * A palette opened by typing `/` hands back what was typed.
+         *
+         * Slash commands take arguments -- `/model ark/deepseek-v4` -- and a
+         * menu that swallowed the keystrokes would make those unreachable.
+         * Leaving with Escape puts the text in the composer, where it can be
+         * finished and sent like anything else.
+         */
+        if (activeOverlay === 'command-palette' && slashOpened) {
+          const query = palette.getSnapshot().query
+          if (query !== '' && editor.insert(`/${query}`) === 'limit-exceeded') {
+            setNotice(`Composer exceeds ${String(editor.textLimit)} code units.`)
+          }
+          setSlashOpened(false)
+        }
         overlay.close()
         setNotice('Overlay closed.')
         return
@@ -1506,6 +1537,60 @@ export function InteractiveTui({
       }
       return
     }
+    /*
+     * `/` on an empty composer opens the command menu.
+     *
+     * Every action lived behind Ctrl-P, which is not a thing anyone guesses,
+     * and slash commands are what a person types anyway. Only on an empty
+     * composer: a `/` inside a sentence or a path is a slash.
+     */
+    /*
+     * Ctrl-V stages an image from the clipboard.
+     *
+     * A terminal delivers text on paste and nothing else, so the image has to
+     * be asked for. Every outcome is reported: an empty clipboard and a system
+     * that cannot be asked call for different reactions, and a key that
+     * sometimes silently does nothing is a key nobody trusts.
+     */
+    if (key.ctrl && typed.toLowerCase() === 'v') {
+      if (readClipboardImage === undefined) {
+        setNotice('Pasting an image is not available in this build.')
+        return
+      }
+      setNotice('Reading the clipboard…')
+      void readClipboardImage().then(async (result) => {
+        if (result.kind === 'empty') {
+          setNotice('No image on the clipboard.')
+          return
+        }
+        if (result.kind !== 'image') {
+          setNotice(`Could not read the clipboard: ${result.reason}`)
+          return
+        }
+        // The bytes are already in hand; the file they came from is gone, so
+        // the path serves only to name the attachment and its media type.
+        const outcome = await attachments.attach(
+          result.image.path,
+          async () => result.image.bytes,
+        )
+        setNotice(outcome === 'attached'
+          ? 'Image staged for the next message.'
+          : outcome === 'unavailable'
+            ? 'This session has no attachment store.'
+            : 'The attachment store refused the image.')
+      }, (error: unknown) => {
+        setNotice(error instanceof Error ? error.message : String(error))
+      })
+      return
+    }
+    if (typed === '/' && !key.ctrl && !key.meta && !key.super && editor.getSnapshot().text === '') {
+      completion.cancel()
+      palette.reset()
+      setSlashOpened(true)
+      overlay.open('command-palette')
+      setNotice('Command menu — type to filter, Esc to keep typing.')
+      return
+    }
     if (!key.ctrl && !key.meta && !key.super && typed !== '') {
       if (editor.insert(typed) === 'limit-exceeded') {
         setNotice(`Composer exceeds ${String(editor.textLimit)} code units.`)
@@ -1536,7 +1621,10 @@ export function InteractiveTui({
       - (fullScreenOverlay ? 0 : composerRows)
       - searchRows
       - overlayMaxRows
-      - 1,
+      // The notice, and the blank line that ends every frame so Ink's cursor
+      // arithmetic holds. A line drawn but not budgeted for is a line drawn
+      // through whatever is below it.
+      - 2,
   )
   const maximumToolDetailLines = Math.max(
     1,
