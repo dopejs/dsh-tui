@@ -353,14 +353,16 @@ describe('InteractiveTui input (M1.1–M1.3)', () => {
       expect(overlay.getSnapshot().active).toBeUndefined()
       await eventually(() => expect(editor.getSnapshot().text).toBe(''))
 
+      // No key opens this any more: a message that starts with a slash is a
+      // command, so the commands are offered while it is being typed.
       stdin.write('/rev')
       await eventually(() => expect(editor.getSnapshot().text).toBe('/rev'))
-      stdin.write('\t')
       await eventually(() => expect(completion.getSnapshot()).toMatchObject({
         status: 'ready',
       }))
       expect(overlay.getSnapshot().active).toBe('completion')
-      stdin.write('\r')
+      // Tab takes the suggestion; Enter would send what is already typed.
+      stdin.write('\t')
       await eventually(() => expect(editor.getSnapshot().text).toBe('/review '))
       stdin.write('src/controller.ts')
       await eventually(() => expect(editor.getSnapshot().text).toBe('/review src/controller.ts'))

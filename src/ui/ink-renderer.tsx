@@ -201,7 +201,10 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
                 {row.reasoningMs === undefined
                   ? ''
                   : `thought for ${formatElapsed(row.reasoningMs)} · `}
-                {model.welcome?.reasoningHiddenText ?? 'reasoning hidden · ^E show'}
+                {/* No chord named here: the line is clickable, and naming a
+                    key as well as offering the click makes the interface
+                    explain two ways to do one thing. Ctrl-E still works. */}
+                {model.welcome?.reasoningHiddenText ?? 'reasoning hidden'}
               </Text>
             )}
             {/*

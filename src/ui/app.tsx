@@ -12,6 +12,7 @@ import type {
   TuiActionId,
 } from '../model/command-palette-controller'
 import type { CompletionController } from '../model/completion-controller'
+import { extractCompletionContext } from '../model/completion-controller'
 import type { EditorController } from '../model/editor-controller'
 import type {
   InteractionController,
@@ -1391,19 +1392,43 @@ export function InteractiveTui({
         completion.move('up')
         return
       }
-      if (key.downArrow || key.tab) {
+      if (key.downArrow) {
         completion.move('down')
         return
       }
-      if (key.return) {
+      /*
+       * Tab completes, Enter sends.
+       *
+       * Enter used to apply the selection, so finishing `/exit` and pressing
+       * Enter filled the composer with `/exit ` instead of running it -- the
+       * list is a suggestion, and pressing Enter on a message that is already
+       * what was meant should send it. Tab is what takes a suggestion.
+       */
+      if (key.tab) {
         applySelectedCompletion()
         return
       }
-      completion.cancel()
-      overlay.close('completion')
+      if (key.return) {
+        completion.cancel()
+        overlay.close('completion')
+        void submitComposer('followup').catch((error: unknown) => {
+          setNotice(error instanceof Error ? error.message : String(error))
+        })
+        return
+      }
+      /*
+       * Typing narrows the list rather than dismissing it.
+       *
+       * A keystroke used to close this and then insert the character, which
+       * made the offered commands vanish at the first letter of the one being
+       * looked for. The edit happens first and the context is read again: a
+       * message that is still a command keeps its list, and anything else
+       * closes it.
+       */
       if (key.backspace) editor.backspace()
       else if (key.delete) editor.deleteForward()
       else if (!key.ctrl && !key.meta && !key.super && typed !== '') editor.insert(typed)
+      offerCommands()
       return
     }
 
@@ -1568,6 +1593,7 @@ export function InteractiveTui({
     if (key.backspace || key.delete) {
       if (key.delete) editor.deleteForward()
       else editor.backspace()
+      offerCommands()
       return
     }
     if (key.leftArrow) {
@@ -1637,13 +1663,6 @@ export function InteractiveTui({
       return
     }
     /*
-     * `/` on an empty composer opens the command menu.
-     *
-     * Every action lived behind Ctrl-P, which is not a thing anyone guesses,
-     * and slash commands are what a person types anyway. Only on an empty
-     * composer: a `/` inside a sentence or a path is a slash.
-     */
-    /*
      * Ctrl-V stages an image from the clipboard.
      *
      * A terminal delivers text on paste and nothing else, so the image has to
@@ -1682,18 +1701,11 @@ export function InteractiveTui({
       })
       return
     }
-    if (typed === '/' && !key.ctrl && !key.meta && !key.super && editor.getSnapshot().text === '') {
-      completion.cancel()
-      palette.reset()
-      setSlashOpened(true)
-      overlay.open('command-palette')
-      setNotice('Command menu — type to filter, Esc to keep typing.')
-      return
-    }
     if (!key.ctrl && !key.meta && !key.super && typed !== '') {
       if (editor.insert(typed) === 'limit-exceeded') {
         setNotice(`Composer exceeds ${String(editor.textLimit)} code units.`)
       }
+      offerCommands()
     }
   })
 
@@ -1752,6 +1764,27 @@ export function InteractiveTui({
       return next
     })
   }, [acceptsInput, editor, expandedRowIds, overlay, viewport])
+
+  /*
+   * A message that starts with `/` is a command, so the commands are offered
+   * while it is being typed -- the same way a path is offered once one is
+   * being typed. This used to take over the keyboard with a palette of its
+   * own, which put the text somewhere other than where the user was looking
+   * and made an argument something to be handed back afterwards.
+   */
+  const offerCommands = () => {
+    const current = editor.getSnapshot()
+    const context = extractCompletionContext(current.text, current.cursor)
+    const open = overlay.getSnapshot().active === 'completion'
+    if (context?.kind === 'command') {
+      if (completion.request(current.text, current.cursor)) overlay.open('completion')
+      return
+    }
+    if (open) {
+      completion.cancel()
+      overlay.close('completion')
+    }
+  }
 
   clickRef.current = handleClick
 

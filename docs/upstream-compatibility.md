@@ -959,3 +959,39 @@ rendered to lines and windowed over those, which is a different renderer.
 | --- | --- | --- | --- |
 | `0.9.0` | npm `0.1.0-rc.7` | Clicking | 718 tests including thirty-seven on a live PTY; clean-profile launch green. |
 
+### 0.9.1
+
+A patch, by the rule written down in `0.9.0`: everything here repairs something
+already announced as working.
+
+The slash menu was the wrong shape. It took over the keyboard with a palette
+carrying a query line of its own, which put the text somewhere other than where
+the user was looking and made an argument something to hand back afterwards. A
+message starting with a slash is a command, so the commands are offered above
+the composer while it is typed — the same way a path is offered once one is
+being typed. The machinery for this already existed and had a `command` kind;
+the palette route went around it.
+
+Typing narrows the list rather than dismissing it. A keystroke used to close the
+list and then insert the character, so the offered commands vanished at the
+first letter of the one being looked for.
+
+Tab takes a suggestion and Enter sends. Enter used to apply the selection, so
+finishing `/exit` and pressing Enter filled the composer with `/exit ` instead
+of running it — caught by the launch gate, not by any unit test. The same key
+now applies whatever kind of suggestion is offered.
+
+The reasoning fold no longer names a chord. The line is clickable, and offering
+both a click and a key to press makes the interface explain two ways to do one
+thing. Ctrl-E still works.
+
+Two things asked for in the same breath are not both possible. Hovering needs
+the terminal to report every mouse movement, and while a terminal reports mouse
+activity it stops making selections of its own — so hover and drag-to-select
+exclude each other. `Toggle mouse reporting` hands selection back; Shift-drag
+does it on most terminals without toggling anything.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.9.1` | npm `0.1.0-rc.7` | Inline command completion | 718 tests including thirty-seven on a live PTY; clean-profile launch green. |
+

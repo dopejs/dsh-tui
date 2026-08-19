@@ -354,13 +354,13 @@ async function exerciseMultilineComposer(running) {
   await waitForOutputSince(running, offset, 'dsh-tui · session-', 'attach the conversation fork')
 
   offset = running.output().length
+  // No key opens this: a message starting with a slash is a command, so the
+  // commands are offered while it is being typed.
   running.child.write('/ex')
-  await waitForOutputSince(running, offset, '/ex', 'render the command completion query')
+  await waitForOutputSince(running, offset, 'Command completion · ex', 'offer the commands')
   offset = running.output().length
+  // Tab takes the suggestion; Enter sends what is already typed.
   running.child.write('\t')
-  await waitForOutputSince(running, offset, 'Command completion · ex', 'open command completion')
-  offset = running.output().length
-  running.child.write('\r')
   await waitForOutputSince(running, offset, 'Completion applied.', 'apply command completion')
   offset = running.output().length
   running.child.write('\u0003')
@@ -372,7 +372,9 @@ async function exerciseMultilineComposer(running) {
   running.child.write('\t')
   await waitForOutputSince(running, offset, 'Path completion · cord', 'open path completion')
   offset = running.output().length
-  running.child.write('\r')
+  // Tab here too: the key that takes a suggestion is the same one whatever
+  // kind of suggestion it is.
+  running.child.write('\t')
   await waitForOutputSince(running, offset, '@cordis.patch.yml', 'apply workspace path completion')
   offset = running.output().length
   running.child.write('\u0003')

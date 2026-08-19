@@ -20,28 +20,51 @@ async function openComposer(): Promise<ScreenHarness> {
 }
 
 onPosix('the slash menu (M7.5)', () => {
-  // Every action lived behind Ctrl-P, which is not a chord anyone guesses.
-  it('opens the command menu when a message starts with a slash', async () => {
+  /*
+   * A command is typed in the composer, and the commands are offered above it
+   * as it is typed -- the way a path is offered once one is being typed.
+   *
+   * This used to take over the keyboard with a palette carrying a query line
+   * of its own, which put the text somewhere other than where the user was
+   * looking and made an argument something to hand back afterwards.
+   */
+  it('offers the commands while a command is being typed', async () => {
     harness = await openComposer()
     harness.type('/')
     await harness.waitFor(
-      screen => screen.some(line => line.includes('Command palette')),
-      'the command menu',
+      screen => screen.some(line => line.includes('/model')),
+      'the commands offered',
     )
-    /*
-     * The menu's own chrome, not a particular row.
-     *
-     * Asserting that `Exit TUI` was visible made the test depend on how many
-     * rows fit and where that action fell in an unfiltered list -- neither of
-     * which the feature promises. It passed on one runner and failed on
-     * another at the same commit.
-     */
-    const screen = harness.screen().join('\n')
-    expect(screen).toContain('Enter select')
-    expect(screen).toContain('Esc close')
+    await harness.settle()
+
+    // The text stayed in the composer, which is the whole point: it is a
+    // message being typed, not a query in a panel of its own.
+    const screen = harness.screen()
+    // The composer still holds the text: it is a message being typed, not a
+    // query living in a panel. Found by the box it is drawn in rather than by
+    // the prompt glyph, which the selected completion row also uses.
+    const composerTop = screen.findLastIndex(line => line.startsWith('\u256d'))
+    expect((screen[composerTop + 1] ?? '')).toContain('/')
+    // The count, not a particular row: the list is bounded by the space it
+    // has, so which entries are visible is not something the feature promises.
+    expect(screen.some(line => line.includes('1/3'))).toBe(true)
   }, 30_000)
 
-  // A slash inside a sentence or a path is a slash.
+  it('narrows the list as more of the command is typed', async () => {
+    harness = await openComposer()
+    harness.type('/')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('1/3')),
+      'all three commands',
+    )
+    harness.type('mod')
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('1/1')),
+      'the list narrowed to one',
+    )
+    expect(harness.screen().some(line => line.includes('/model'))).toBe(true)
+  }, 30_000)
+
   it('leaves a slash alone once there is something to send', async () => {
     harness = await openComposer()
     harness.type('read src/index.ts')
@@ -50,47 +73,8 @@ onPosix('the slash menu (M7.5)', () => {
       'the typed text',
     )
     await harness.settle()
-    expect(harness.screen().join('\n')).not.toContain('Command palette')
-  }, 30_000)
-
-  /*
-   * Slash commands take arguments, and a menu that swallowed the keystrokes
-   * would make `/model ark/deepseek-v4` unreachable. Escape hands back what was
-   * typed, so it can be finished and sent like anything else.
-   */
-  /*
-   * Tab takes a command without running it, with a trailing space, because
-   * what follows is an argument and every one of them is separated from the
-   * name by exactly that. Tab used to be a second way to move down, which the
-   * arrows already do.
-   */
-  it('hands the selected command to the composer on Tab, ready for an argument', async () => {
-    harness = await openComposer()
-    harness.type('/')
-    await harness.waitFor(
-      screen => screen.some(line => line.includes('Command palette')),
-      'the command menu',
-    )
-    harness.type('model')
-    await harness.waitFor(
-      screen => screen.some(line => line.includes('\u203a /model')),
-      'the model command to be selected',
-    )
-    await harness.settle()
-    harness.key('tab')
-    // Waited on the menu closing, not on the text: the menu lists `/model` too,
-    // so looking for the text alone matches the row that is still on screen.
-    await harness.waitFor(
-      screen => !screen.some(line => line.includes('Command palette')),
-      'the menu to close',
-    )
-    await harness.settle()
-
-    expect(harness.screen().some(line => line.includes('/model '))).toBe(true)
-    // The caret sits after the space, where the argument goes.
-    const caret = harness.invertedCells()[0]
-    const row = harness.screen()[caret?.row ?? 0] ?? ''
-    expect(caret?.column).toBe(row.indexOf('/model ') + '/model '.length)
+    // A slash inside a path is a slash: the commands are not offered for it.
+    expect(harness.screen().some(line => line.includes('Command completion'))).toBe(false)
   }, 30_000)
 
   /*

@@ -161,7 +161,22 @@ const recovery = new RecoveryController({
   sessionId: 'session-screen',
   suggestedExportDestination: 'session-screen.jsonl',
 })
-const completion = new CompletionController({ complete: async () => [] })
+/** Completes commands the way the host does, so the offered list is real. */
+const COMMANDS = [
+  { description: 'Review changes', name: 'review' },
+  { description: 'Start a session on a model', name: 'model' },
+  { description: 'Exit the interactive TUI', name: 'exit' },
+]
+const completion = new CompletionController({
+  complete: async request => request.kind !== 'command'
+    ? []
+    : COMMANDS.filter(command => command.name.startsWith(request.query)).map(command => ({
+      description: command.description,
+      id: command.name,
+      label: `/${command.name}`,
+      replacement: `/${command.name} `,
+    })),
+})
 const sessionCenter = new SessionCenterController(
   { inspect: async () => { throw new Error('not configured') }, list: async () => [] },
   { switchSession: async () => undefined },

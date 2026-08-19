@@ -21,11 +21,12 @@ const model = {
 
 describe('reasoning policy (M6.7)', () => {
   // A human may want the scratch work; it must not be mistaken for the answer.
-  it('folds reasoning behind a discoverable key in the transcript', () => {
+  // No chord is named: the line is clickable, and offering both a click and a
+  // key to press makes the interface explain two ways to do one thing.
+  it('folds reasoning behind a discoverable affordance in the transcript', () => {
     const output = renderInkFrame(model, 70)
     expect(output).toContain('The answer is 42.')
     expect(output).toContain('reasoning hidden')
-    expect(output).toContain('^E show')
     expect(output).not.toContain('Weigh the options')
   })
 
