@@ -6,7 +6,7 @@ distributed as an out-of-tree Harness bundle and runs in the same process as
 the agent runtime.
 
 > [!IMPORTANT]
-> This is `0.9.1`. Harness peers are declared `^0.1.0-rc.6` and optional: the
+> This is `0.10.0`. Harness peers are declared `^0.1.0-rc.6` and optional: the
 > `dsh` CLI provides the Harness runtime, so nothing installs them on our
 > behalf and npm must not try. Both the global and local installs are verified
 > against the host's current `latest` on every CI run.
@@ -88,6 +88,10 @@ appears as `\u001b[<64;12;5M`; an empty file means the terminal was asked and
 answered nothing. `Toggle mouse reporting` in the command menu hands the mouse
 back to the terminal, which restores drag-to-select.
 
+Mouse reporting is a terminal-wide mode: while it is on, the terminal makes no
+selection anywhere, so clickable regions cannot capture the mouse while the rest
+of the text stays selectable. Shift-drag selects without turning reporting off.
+
 ## Install from this checkout
 
 Prerequisites are Node.js `^22.19.0 || >=24.0.0` and pnpm `11.7.0`.
@@ -98,7 +102,7 @@ pnpm check
 npm pack --pack-destination /tmp
 pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.7 \
   plugin --profile tui add \
-  /tmp/dopejs-dsh-tui-0.9.1.tgz
+  /tmp/dopejs-dsh-tui-0.10.0.tgz
 pnpm dlx --allow-build=node-pty @deepseek-ai/dsh@0.1.0-rc.7 --profile tui
 ```
 

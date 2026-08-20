@@ -1004,3 +1004,33 @@ takes.
 | --- | --- | --- | --- |
 | `0.9.1` | npm `0.1.0-rc.7` | Inline command completion | 718 tests including thirty-seven on a live PTY; clean-profile launch green. |
 
+### 0.10.0
+
+Hovering, which is a capability nothing here has claimed before — so a minor,
+by the rule in `0.9.0`.
+
+A clickable line says so before it is clicked. There is no cursor shape to
+change in a terminal, so a change of tone is the only thing that distinguishes
+what can be clicked from what cannot, and without it the click that now opens
+reasoning is undiscoverable.
+
+Motion reporting (`?1003`) is what makes a pointer's position knowable, and a
+terminal asked for it sends one report per cell crossed. So the state tracks the
+*target* rather than the position: it changes only when the row under the
+pointer changes, and a sweep across the screen costs the frames it actually
+changes something rather than one per cell.
+
+Motion reports used to be decoded and dropped, which was right while nothing
+consumed them and is why the parser had a rule for discarding them.
+
+One thing asked for is not possible, and the reason is worth stating rather than
+working around. Mouse reporting is a terminal-wide mode: while it is on, the
+terminal makes no selection anywhere, so "clickable regions capture the mouse,
+everything else stays selectable" cannot be built. What is available is
+Shift-drag, which every terminal that supports this reporting also supports, and
+`Toggle mouse reporting`, which hands the mouse back entirely.
+
+| Version | Verified against | Scope | Notes |
+| --- | --- | --- | --- |
+| `0.10.0` | npm `0.1.0-rc.7` | Hover | 719 tests including thirty-eight on a live PTY; clean-profile launch green. |
+

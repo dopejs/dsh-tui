@@ -54,6 +54,8 @@ const ROW_TONE: Record<TranscriptRowKind, SemanticTone | undefined> = {
 }
 
 interface FrameProps {
+  /** The clickable row the pointer is over, drawn so it reads as clickable. */
+  readonly hoveredRowId?: string
   readonly columns: number
   /** Rows the user expanded; injected context is folded until then. */
   readonly expandedRowIds?: ReadonlySet<string>
@@ -136,7 +138,7 @@ export function StatusFooter({ columns, model }: FrameProps) {
   )
 }
 
-export function Frame({ columns, expandedRowIds, model }: FrameProps) {
+export function Frame({ columns, expandedRowIds, hoveredRowId, model }: FrameProps) {
   const theme = model.welcome?.theme ?? 'default'
   const tone = (name: SemanticTone | undefined) => toneStyle(theme, name)
   return (
@@ -192,7 +194,10 @@ export function Frame({ columns, expandedRowIds, model }: FrameProps) {
                 ))}
               </Box>
             ) : (
-              <Text {...tone('muted')} wrap="truncate-end">
+              <Text
+                {...(row.id === hoveredRowId ? tone('accent') : tone('muted'))}
+                wrap="truncate-end"
+              >
                 {'  '}
                 {/* How long it thought, once that is known. A turn that paused
                     for eight seconds and one that answered instantly are not

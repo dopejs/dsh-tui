@@ -159,9 +159,27 @@ export class ScreenHarness {
     return found
   }
 
+  /**
+   * A cell's colour, as a number.
+   *
+   * Compared rather than named: what matters is that a hovered line is drawn
+   * differently from an idle one, not which colour a theme chose for it.
+   */
+  styleAt(row: number, column: number): number {
+    const cell = this.#terminal.buffer.active.getLine(row)?.getCell(column)
+    return cell === undefined ? -1 : cell.getFgColor()
+  }
+
   /** The character drawn in a cell, as the terminal holds it. */
   characterAt(row: number, column: number): string {
     return this.#terminal.buffer.active.getLine(row)?.getCell(column)?.getChars() ?? ''
+  }
+
+  /** Pointer motion with no button held, as a terminal reports it. */
+  hover(row: number, column: number): void {
+    this.#process.write(
+      `${String.fromCodePoint(0x1b)}[<35;${String(column + 1)};${String(row + 1)}M`,
+    )
   }
 
   /** A left-button click at a cell, as a terminal reports it: press then release. */

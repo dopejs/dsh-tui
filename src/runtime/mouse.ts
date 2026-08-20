@@ -24,7 +24,7 @@
  * and not `1000` alone. Asking for both costs nothing and removes a way for a
  * terminal to be silent.
  */
-export const ENABLE_MOUSE = '\u001b[?1000h\u001b[?1002h\u001b[?1006h'
+export const ENABLE_MOUSE = '\u001b[?1000h\u001b[?1002h\u001b[?1003h\u001b[?1006h'
 
 /**
  * Stop reporting, in the reverse order.
@@ -33,9 +33,9 @@ export const ENABLE_MOUSE = '\u001b[?1000h\u001b[?1002h\u001b[?1006h'
  * shell whenever they click, which looks like a corrupted terminal and outlives
  * the process that caused it.
  */
-export const DISABLE_MOUSE = '\u001b[?1006l\u001b[?1002l\u001b[?1000l'
+export const DISABLE_MOUSE = '\u001b[?1006l\u001b[?1003l\u001b[?1002l\u001b[?1000l'
 
-export type MouseEventKind = 'press' | 'release' | 'wheel-down' | 'wheel-up'
+export type MouseEventKind = 'move' | 'press' | 'release' | 'wheel-down' | 'wheel-up'
 
 export interface MouseEvent {
   /** Terminal column, zero-based. */
@@ -82,9 +82,14 @@ function kindOf(button: number, final: string): MouseEventKind | undefined {
     if (button === WHEEL_DOWN) return 'wheel-down'
     return undefined
   }
-  // Motion reporting is not asked for, and `3` in the button bits is the
-  // "no button" release form that says nothing about which button was let go.
-  if ((button & MOTION_BIT) !== 0) return undefined
+  /*
+   * Bit 5 marks motion. Reported only because a pointer's position cannot
+   * otherwise be known, and knowing it is what lets a clickable line say so
+   * before it is clicked.
+   */
+  if ((button & MOTION_BIT) !== 0) return 'move'
+  // `3` in the button bits is the "no button" release form, which says nothing
+  // about which button was let go.
   if ((button & BUTTON_MASK) === BUTTON_MASK) return undefined
   return final === 'M' ? 'press' : 'release'
 }

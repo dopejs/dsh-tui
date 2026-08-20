@@ -446,7 +446,7 @@ function assertMouseReporting(running) {
   // Each mode checked on its own rather than as one concatenation: this failed
   // once for having copied the joined string, which says nothing about whether
   // any particular mode was asked for.
-  for (const mode of ['1000', '1002', '1006']) {
+  for (const mode of ['1000', '1002', '1003', '1006']) {
     const asked = output.indexOf(`\u001b[?${mode}h`)
     /*
      * Reported, not thrown, until it can be explained.

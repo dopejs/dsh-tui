@@ -67,4 +67,37 @@ onPosix('clicking (M7.8)', () => {
     expect(caret?.row).toBe(row)
     expect(caret?.column).toBe(target)
   }, 30_000)
+
+  /*
+   * A clickable line says so before it is clicked.
+   *
+   * Nothing else in the transcript reacts to the pointer, so the change of
+   * tone is the only thing distinguishing what can be clicked from what
+   * cannot -- there is no cursor shape to change in a terminal.
+   */
+  it('marks the reasoning fold while the pointer is over it', async () => {
+    harness = new ScreenHarness({ columns: 80, rows: 24, scenario: 'conversation' })
+    await harness.waitFor(
+      screen => screen.some(line => line.includes('reasoning hidden')),
+      'the folded reasoning',
+    )
+    await harness.settle()
+
+    const instance = harness
+    const fold = instance.screen().findIndex(line => line.includes('reasoning hidden'))
+    const before = instance.styleAt(fold, 4)
+
+    instance.hover(fold, 10)
+    await instance.waitFor(
+      () => instance.styleAt(fold, 4) !== before,
+      'the fold to change tone',
+    )
+
+    // And it goes back when the pointer leaves.
+    instance.hover(fold + 1, 10)
+    await instance.waitFor(
+      () => instance.styleAt(fold, 4) === before,
+      'the fold to return to its usual tone',
+    )
+  }, 30_000)
 })

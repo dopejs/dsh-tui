@@ -120,7 +120,7 @@ export interface InteractiveTuiProps {
   readonly mouse?: {
     readonly onMouse: (listener: (event: {
       readonly column: number
-      readonly kind: 'press' | 'release' | 'wheel-down' | 'wheel-up'
+      readonly kind: 'move' | 'press' | 'release' | 'wheel-down' | 'wheel-up'
       readonly row: number
     }) => void) => () => void
     /** Hand mouse reporting back to the terminal, restoring text selection. */
@@ -333,6 +333,8 @@ export function InteractiveTui({
     overlay.open('models')
   }, [modelSnapshot.picking, overlay])
 
+  /** The clickable row the pointer is over, if any. */
+  const [hoveredRowId, setHoveredRowId] = useState<string | undefined>(undefined)
   const [showContext, setShowContext] = useState(false)
   /*
    * While the terminal reports mouse events it stops making selections of its
@@ -364,6 +366,7 @@ export function InteractiveTui({
    * would resubscribe the mouse listener just as often.
    */
   const clickRef = useRef<((row: number, column: number) => void) | undefined>(undefined)
+  const hoverRef = useRef<((row: number, column: number) => void) | undefined>(undefined)
   const composerRef = useRef<DOMElement | null>(null)
   const composerViewRef = useRef<ComposerView | undefined>(undefined)
   const screenRef = useRef<ScreenModel | undefined>(undefined)
@@ -506,6 +509,7 @@ export function InteractiveTui({
       if (event.kind === 'wheel-up') viewport.scrollLines(WHEEL_LINES)
       else if (event.kind === 'wheel-down') viewport.scrollLines(-WHEEL_LINES)
       else if (event.kind === 'press') clickRef.current?.(event.row, event.column)
+      else if (event.kind === 'move') hoverRef.current?.(event.row, event.column)
 
     })
   }, [mouse, mouseReporting, viewport])
@@ -1786,7 +1790,34 @@ export function InteractiveTui({
     }
   }
 
+  /*
+   * What the pointer is over.
+   *
+   * A terminal asked for motion reports sends one per cell crossed, so this
+   * decides on the target rather than the position: state changes only when
+   * the row under the pointer changes, and a diagonal sweep across the screen
+   * costs the frames it actually changes something.
+   */
+  const handleHover = (row: number, column: number) => {
+    void column
+    const currentScreen = screenRef.current
+    if (currentScreen === undefined || overlay.getSnapshot().active !== undefined) {
+      if (hoveredRowId !== undefined) setHoveredRowId(undefined)
+      return
+    }
+    const hit = hitTestTranscript(row, {
+      expandedRowIds,
+      firstLine: 0,
+      rows: currentScreen.rows.filter(
+        item => currentScreen.showContext === true || item.kind !== 'context',
+      ),
+    })
+    const target = hit?.onReasoningFold === true ? hit.rowId : undefined
+    if (target !== hoveredRowId) setHoveredRowId(target)
+  }
+
   clickRef.current = handleClick
+  hoverRef.current = handleHover
 
   const composerMaxRows = Math.max(1, Math.min(6, Math.floor(dimensions.rows / 3)))
   const composerView = createComposerView(
@@ -1925,7 +1956,12 @@ export function InteractiveTui({
         * as though it were.
         */}
       <Box flexDirection="column" flexGrow={1} minHeight={0} overflow="hidden">
-        <Frame columns={dimensions.columns} expandedRowIds={expandedRowIds} model={screen} />
+        <Frame
+          columns={dimensions.columns}
+          expandedRowIds={expandedRowIds}
+          {...(hoveredRowId === undefined ? {} : { hoveredRowId })}
+          model={screen}
+        />
       </Box>
       {activeOverlay === undefined ? null : (
         <OverlayPanel
